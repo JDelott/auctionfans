@@ -140,16 +140,15 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
     const now = new Date();
     const diff = end.getTime() - now.getTime();
 
-    if (diff <= 0) return 'Auction Ended';
+    if (diff <= 0) return 'Ended';
 
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-    const seconds = Math.floor((diff % (1000 * 60)) / 1000);
 
-    if (days > 0) return `${days}d ${hours}h ${minutes}m`;
-    if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
-    return `${minutes}m ${seconds}s`;
+    if (days > 0) return `${days}d ${hours}h`;
+    if (hours > 0) return `${hours}h ${minutes}m`;
+    return `${minutes}m`;
   };
 
   const getVideoEmbedUrl = (url: string, timestamp?: number) => {
@@ -168,7 +167,6 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
       });
 
       if (response.ok) {
-        // Redirect to dashboard after successful deletion
         router.push('/dashboard?deleted=true');
       } else {
         const errorData = await response.json();
@@ -185,7 +183,7 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
@@ -193,12 +191,10 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
 
   if (!auction) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-heading text-gray-900 mb-4">Auction Not Found</h1>
-          <Link href="/auctions" className="btn-primary">
-            Browse Auctions
-          </Link>
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">Auction Not Found</h1>
+          <Link href="/auctions" className="btn-primary">Browse Auctions</Link>
         </div>
       </div>
     );
@@ -212,26 +208,29 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Breadcrumb */}
-        <div className="mb-6">
-          <Link 
-            href="/auctions" 
-            className="inline-flex items-center text-sm text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+      <div className="max-w-6xl mx-auto px-4 py-4">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-4">
+          <Link href="/auctions" className="text-sm text-gray-500 hover:text-gray-700 flex items-center">
+            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
             </svg>
             Back to Auctions
           </Link>
+          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+            auction.status === 'active' ? 'bg-green-100 text-green-800' :
+            auction.status === 'ended' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
+          }`}>
+            {auction.status.toUpperCase()}
+          </span>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Left Column - Images & Video */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Main Image */}
-            <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-              <div className="aspect-square bg-gray-100 relative">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left: Images & Info */}
+          <div className="lg:col-span-2 space-y-4">
+            {/* Image Gallery */}
+            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+              <div className="aspect-[4/3] bg-gray-100 relative">
                 {auction.images.length > 0 ? (
                   <Image
                     src={auction.images[selectedImage]?.image_url}
@@ -242,49 +241,36 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
                     priority
                   />
                 ) : (
-                  <div className="w-full h-full bg-gray-100 flex items-center justify-center">
+                  <div className="w-full h-full flex items-center justify-center">
                     <div className="text-center">
-                      <div className="w-20 h-20 bg-gray-200 rounded-lg mx-auto mb-4 flex items-center justify-center">
-                        <svg className="w-8 h-8 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-16 h-16 bg-gray-200 rounded-lg mx-auto mb-2 flex items-center justify-center">
+                        <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                       </div>
-                      <p className="text-gray-500 text-sm">No image available</p>
+                      <p className="text-gray-500 text-sm">No image</p>
                     </div>
                   </div>
                 )}
-                
-                {/* Status Badge */}
-                <div className="absolute top-4 right-4">
-                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    auction.status === 'active' ? 'bg-green-100 text-green-800' :
-                    auction.status === 'ended' ? 'bg-red-100 text-red-800' :
-                    'bg-gray-100 text-gray-800'
-                  }`}>
-                    {auction.status.toUpperCase()}
-                  </span>
-                </div>
               </div>
 
-              {/* Image Thumbnails */}
+              {/* Thumbnails */}
               {auction.images.length > 1 && (
-                <div className="p-4 border-t">
-                  <div className="flex space-x-3 overflow-x-auto">
+                <div className="p-3 border-t bg-gray-50">
+                  <div className="flex space-x-2 overflow-x-auto">
                     {auction.images.map((image, index) => (
                       <button
                         key={image.id}
                         onClick={() => setSelectedImage(index)}
-                        className={`flex-shrink-0 w-16 h-16 rounded-lg overflow-hidden border-2 transition-colors ${
-                          selectedImage === index 
-                            ? 'border-indigo-500' 
-                            : 'border-gray-200 hover:border-gray-300'
+                        className={`flex-shrink-0 w-12 h-12 rounded overflow-hidden border-2 ${
+                          selectedImage === index ? 'border-indigo-500' : 'border-gray-200'
                         }`}
                       >
                         <Image
                           src={image.image_url}
-                          alt={`${auction.title} view ${index + 1}`}
-                          width={64}
-                          height={64}
+                          alt={`View ${index + 1}`}
+                          width={48}
+                          height={48}
                           className="w-full h-full object-cover"
                         />
                       </button>
@@ -294,145 +280,109 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
               )}
             </div>
 
-            {/* Video Section */}
-            {auction.video_url && (
-              <div className="bg-white rounded-xl shadow-sm overflow-hidden">
-                <div className="p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Featured Video</h3>
-                  <div className="aspect-video bg-gray-100 rounded-lg overflow-hidden">
-                    <iframe
-                      src={getVideoEmbedUrl(auction.video_url, auction.video_timestamp)}
-                      title="Product video"
-                      className="w-full h-full"
-                      allowFullScreen
-                    />
+            {/* Title & Creator */}
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <h1 className="text-xl font-bold text-gray-900 mb-3">{auction.title}</h1>
+              
+              <Link 
+                href={`/creators/${auction.username}`}
+                className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg hover:bg-gray-100"
+              >
+                {auction.profile_image_url ? (
+                  <Image
+                    src={auction.profile_image_url}
+                    alt={auction.display_name || auction.username}
+                    width={32}
+                    height={32}
+                    className="rounded-full"
+                  />
+                ) : (
+                  <div className="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
+                    {(auction.display_name || auction.username).charAt(0).toUpperCase()}
                   </div>
-                  {auction.video_timestamp && (
-                    <p className="text-sm text-gray-600 mt-3">
-                      Starts at: {Math.floor(auction.video_timestamp / 60)}:{String(auction.video_timestamp % 60).padStart(2, '0')}
-                    </p>
+                )}
+                <div className="flex-1">
+                  <p className="font-medium text-gray-900 text-sm">{auction.display_name || auction.username}</p>
+                  {auction.is_verified && (
+                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Verified</span>
                   )}
                 </div>
-              </div>
-            )}
+              </Link>
+            </div>
 
-            {/* Item Details */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Item Details</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            {/* Details */}
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <div className="grid grid-cols-3 gap-4 mb-4">
                 <div>
-                  <p className="text-sm font-medium text-gray-500 mb-1">CONDITION</p>
-                  <p className="text-gray-900 capitalize">{auction.condition}</p>
+                  <p className="text-xs text-gray-500 uppercase">Condition</p>
+                  <p className="font-medium capitalize">{auction.condition}</p>
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-500 mb-1">STARTING PRICE</p>
-                  <p className="text-gray-900">${startingPrice.toFixed(2)}</p>
+                  <p className="text-xs text-gray-500 uppercase">Starting</p>
+                  <p className="font-medium">${startingPrice.toFixed(2)}</p>
                 </div>
                 {auction.category_name && (
                   <div>
-                    <p className="text-sm font-medium text-gray-500 mb-1">CATEGORY</p>
-                    <p className="text-gray-900">{auction.category_name}</p>
+                    <p className="text-xs text-gray-500 uppercase">Category</p>
+                    <p className="font-medium text-sm">{auction.category_name}</p>
                   </div>
                 )}
               </div>
               
               {auction.description && auction.description !== 'NA' && (
                 <div>
-                  <p className="text-sm font-medium text-gray-500 mb-2">DESCRIPTION</p>
-                  <p className="text-gray-700 leading-relaxed">{auction.description}</p>
+                  <p className="text-xs text-gray-500 uppercase mb-1">Description</p>
+                  <p className="text-gray-700 text-sm leading-relaxed">{auction.description}</p>
                 </div>
               )}
             </div>
+
+            {/* Video */}
+            {auction.video_url && (
+              <div className="bg-white rounded-lg shadow-sm p-4">
+                <h3 className="font-medium text-gray-900 mb-3">Video</h3>
+                <div className="aspect-video bg-gray-100 rounded overflow-hidden">
+                  <iframe
+                    src={getVideoEmbedUrl(auction.video_url, auction.video_timestamp)}
+                    title="Product video"
+                    className="w-full h-full"
+                    allowFullScreen
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
-          {/* Right Column - Auction Info & Bidding */}
-          <div className="space-y-6">
-            {/* Main Auction Info */}
-            <div className="bg-white rounded-xl shadow-sm p-6">
-              <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-900 mb-3">{auction.title}</h1>
-                
-                {/* Creator Info */}
-                <Link 
-                  href={`/creators/${auction.username}`}
-                  className="inline-flex items-center space-x-3 p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                >
-                  {auction.profile_image_url ? (
-                    <Image
-                      src={auction.profile_image_url}
-                      alt={auction.display_name || auction.username}
-                      width={40}
-                      height={40}
-                      className="rounded-full"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-semibold">
-                      {(auction.display_name || auction.username).charAt(0).toUpperCase()}
-                    </div>
-                  )}
-                  <div>
-                    <p className="font-medium text-gray-900">{auction.display_name || auction.username}</p>
-                    <div className="flex items-center space-x-2">
-                      {auction.is_verified && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                          <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                          </svg>
-                          Verified
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </Link>
-              </div>
-
-              {/* Current Price & Time */}
-              <div className="border-t border-b py-6 my-6">
-                <div className="grid grid-cols-2 gap-6">
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 mb-2">CURRENT BID</p>
-                    <p className="text-3xl font-bold text-gray-900">
-                      ${currentPrice.toFixed(2)}
-                    </p>
-                    {buyNowPrice > 0 && (
-                      <p className="text-sm text-gray-600 mt-1">
-                        Buy Now: ${buyNowPrice.toFixed(2)}
-                      </p>
-                    )}
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-500 mb-2">TIME REMAINING</p>
-                    <p className="text-xl font-bold text-gray-900">
-                      {formatTimeRemaining(auction.end_time)}
-                    </p>
-                    <p className="text-sm text-gray-600 mt-1">
-                      {auction.bid_count} bid{auction.bid_count !== 1 ? 's' : ''}
-                    </p>
-                  </div>
+          {/* Right: Bidding */}
+          <div className="space-y-4">
+            {/* Price & Bidding */}
+            <div className="bg-white rounded-lg shadow-sm p-4">
+              <div className="text-center mb-4">
+                <p className="text-sm text-gray-500 mb-1">Current Bid</p>
+                <p className="text-3xl font-bold text-gray-900">${currentPrice.toFixed(2)}</p>
+                <div className="flex justify-between text-sm text-gray-600 mt-2">
+                  <span>{auction.bid_count} bids</span>
+                  <span>{formatTimeRemaining(auction.end_time)}</span>
                 </div>
               </div>
 
               {/* Bidding Form */}
               {isActive && !isOwner && (
-                <div className="space-y-4">
-                  <form onSubmit={handleBid} className="space-y-4">
+                <div className="space-y-3">
+                  <form onSubmit={handleBid} className="space-y-3">
                     <div>
-                      <label htmlFor="bidAmount" className="block text-sm font-medium text-gray-700 mb-2">
-                        Your Bid (minimum: ${(Math.max(currentPrice, startingPrice) + 0.01).toFixed(2)})
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Your Bid (min: ${(Math.max(currentPrice, startingPrice) + 0.01).toFixed(2)})
                       </label>
                       <div className="relative">
-                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                          <span className="text-gray-500 sm:text-sm">$</span>
-                        </div>
+                        <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">$</span>
                         <input
-                          id="bidAmount"
                           type="number"
                           step="0.01"
                           min={Math.max(currentPrice, startingPrice) + 0.01}
                           value={bidAmount}
                           onChange={(e) => setBidAmount(e.target.value)}
-                          className="block w-full pl-7 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                          placeholder="0.00"
+                          className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                           disabled={bidding}
                         />
                       </div>
@@ -440,94 +390,53 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
                     <button
                       type="submit"
                       disabled={bidding}
-                      className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-semibold py-3 px-4 rounded-lg transition-colors"
+                      className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg"
                     >
-                      {bidding ? 'Placing Bid...' : 'Place Bid'}
+                      {bidding ? 'Placing...' : 'Place Bid'}
                     </button>
                   </form>
                   
                   {bidError && (
-                    <div className="bg-red-50 border border-red-200 rounded-lg p-3">
+                    <div className="bg-red-50 border border-red-200 rounded p-2">
                       <p className="text-red-600 text-sm">{bidError}</p>
                     </div>
                   )}
 
-                  {/* Buy Now Button */}
                   {buyNowPrice > 0 && (
-                    <button className="w-full bg-gray-100 hover:bg-gray-200 text-gray-900 font-semibold py-3 px-4 rounded-lg transition-colors">
-                      Buy Now for ${buyNowPrice.toFixed(2)}
+                    <button className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg">
+                      Buy Now ${buyNowPrice.toFixed(2)}
                     </button>
                   )}
                 </div>
               )}
 
               {!isActive && (
-                <div className="bg-gray-50 rounded-lg p-4 text-center">
-                  <p className="text-gray-600">
-                    {auction.status === 'ended' ? 'This auction has ended' : 'This auction is not active'}
+                <div className="bg-gray-50 rounded-lg p-3 text-center">
+                  <p className="text-gray-600 text-sm">
+                    {auction.status === 'ended' ? 'Auction ended' : 'Not active'}
                   </p>
                 </div>
               )}
 
               {/* Owner Actions */}
               {isOwner && (
-                <div className="space-y-4">
-                  <div className="bg-blue-50 rounded-lg p-4">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-blue-800 text-sm font-medium">This is your auction</p>
-                        <p className="text-blue-600 text-xs mt-1">
-                          Status: {auction.status.charAt(0).toUpperCase() + auction.status.slice(1)}
-                        </p>
-                      </div>
-                      <div className="flex space-x-2">
-                        <Link 
-                          href={`/creator/auctions/${auction.id}/edit`}
-                          className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
-                        >
-                          Edit
-                        </Link>
-                        {(auction.status === 'pending' || auction.status === 'active') && (
-                          <button
-                            onClick={() => setShowDeleteConfirm(true)}
-                            className={`px-3 py-1 text-white text-sm rounded-lg transition-colors ${
-                              auction.status === 'active'
-                                ? 'bg-red-600 hover:bg-red-700'
-                                : 'bg-red-500 hover:bg-red-600'
-                            }`}
-                          >
-                            Delete
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Auction Statistics for Owner */}
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <h4 className="font-medium text-gray-900 mb-3">Auction Statistics</h4>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <p className="text-gray-500">Total Bids</p>
-                        <p className="font-semibold text-gray-900">{auction.bid_count}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Current Price</p>
-                        <p className="font-semibold text-green-600">${currentPrice.toFixed(2)}</p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Started</p>
-                        <p className="font-semibold text-gray-900">
-                          {new Date(auction.start_time).toLocaleDateString()}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-gray-500">Ends</p>
-                        <p className="font-semibold text-gray-900">
-                          {new Date(auction.end_time).toLocaleDateString()}
-                        </p>
-                      </div>
-                    </div>
+                <div className="bg-blue-50 rounded-lg p-3">
+                  <p className="text-blue-800 font-medium text-sm mb-2">Your Auction</p>
+                  <div className="flex space-x-2">
+                    <Link 
+                      href={`/creator/auctions/${auction.id}/edit`}
+                      className="flex-1 text-center py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                    >
+                      Edit
+                    </Link>
+                    {(auction.status === 'pending' || auction.status === 'active') && (
+                      <button
+                        onClick={() => setShowDeleteConfirm(true)}
+                        className="flex-1 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                      >
+                        Delete
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
@@ -535,24 +444,20 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
 
             {/* Recent Bids */}
             {auction.recent_bids.length > 0 && (
-              <div className="bg-white rounded-xl shadow-sm p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Bids</h3>
-                <div className="space-y-3">
-                  {auction.recent_bids.map((bid) => (
-                    <div key={bid.id} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0">
+              <div className="bg-white rounded-lg shadow-sm p-4">
+                <h3 className="font-medium text-gray-900 mb-3">Recent Bids</h3>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {auction.recent_bids.slice(0, 8).map((bid, index) => (
+                    <div key={bid.id} className="flex justify-between items-center text-sm py-1">
                       <div>
-                        <p className="font-medium text-gray-900">
-                          {bid.display_name || bid.username}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {new Date(bid.created_at).toLocaleDateString()} at {new Date(bid.created_at).toLocaleTimeString()}
+                        <p className="font-medium">{bid.display_name || bid.username}</p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(bid.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                         </p>
                       </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-gray-900">
-                          ${toNumber(bid.amount).toFixed(2)}
-                        </p>
-                      </div>
+                      <p className={`font-semibold ${index === 0 ? 'text-green-600' : 'text-gray-900'}`}>
+                        ${toNumber(bid.amount).toFixed(2)}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -561,67 +466,34 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
           </div>
         </div>
 
-        {/* Delete Confirmation Modal */}
+        {/* Delete Modal */}
         {showDeleteConfirm && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-md mx-4">
-              <div className="flex items-center mb-4">
-                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
-                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                  </svg>
-                </div>
-                <h3 className="text-lg font-semibold text-gray-900">Delete Auction</h3>
-              </div>
-              
+            <div className="bg-white rounded-lg p-6 max-w-sm mx-4">
+              <h3 className="text-lg font-semibold mb-2">Delete Auction</h3>
               <p className="text-gray-600 mb-4">
-                Are you sure you want to delete &quot;{auction.title}&quot;? This action cannot be undone and will permanently remove the auction and all associated data.
+                Delete &quot;{auction.title}&quot;? This cannot be undone.
               </p>
               
               {auction.status === 'active' && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-                  <div className="flex items-start">
-                    <svg className="w-5 h-5 text-red-600 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                    </svg>
-                    <div>
-                      <p className="text-red-800 text-sm font-medium">
-                        Critical Warning: This is an active auction!
-                      </p>
-                      <p className="text-red-700 text-sm mt-1">
-                        • This auction has {auction.bid_count} bid{auction.bid_count !== 1 ? 's' : ''}<br/>
-                        • Active bidders will lose their bids<br/>
-                        • This may damage your reputation as a creator
-                      </p>
-                    </div>
-                  </div>
+                <div className="bg-red-50 border border-red-200 rounded p-3 mb-4">
+                  <p className="text-red-800 text-sm font-medium">Warning: Active auction with {auction.bid_count} bids!</p>
                 </div>
               )}
               
-              <div className="flex justify-end space-x-3">
+              <div className="flex space-x-3">
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
-                  disabled={deleting}
-                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                  className="flex-1 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeleteAuction}
                   disabled={deleting}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center"
+                  className="flex-1 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
                 >
-                  {deleting ? (
-                    <>
-                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
-                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                      </svg>
-                      Deleting...
-                    </>
-                  ) : (
-                    'Delete Permanently'
-                  )}
+                  {deleting ? 'Deleting...' : 'Delete'}
                 </button>
               </div>
             </div>
