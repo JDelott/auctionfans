@@ -15,11 +15,29 @@ interface AuctionItem {
   created_at: string;
 }
 
+interface PurchasedItem {
+  id: string;
+  final_price: number | string;
+  payment_status: string;
+  shipping_status: string;
+  created_at: string;
+  purchase_type: string;
+  auction_id: string;
+  auction_title: string;
+  description: string;
+  condition: string;
+  seller_username: string;
+  seller_display_name?: string;
+  seller_verified: boolean;
+  primary_image?: string;
+}
+
 export default function DashboardPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [userAuctions, setUserAuctions] = useState<AuctionItem[]>([]);
   const [watchlist, setWatchlist] = useState<AuctionItem[]>([]);
+  const [purchases, setPurchases] = useState<PurchasedItem[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
@@ -38,20 +56,42 @@ export default function DashboardPage() {
 
   const fetchDashboardData = async () => {
     try {
-      const [auctionsRes, watchlistRes] = await Promise.all([
-        fetch('/api/auctions/my-auctions'),
-        fetch('/api/auctions/watchlist')
-      ]);
+      const fetchPromises = [
+        fetch('/api/auctions/watchlist'),
+        fetch('/api/transactions/my-purchases')
+      ];
 
-      if (auctionsRes.ok) {
-        const auctionsData = await auctionsRes.json();
-        setUserAuctions(auctionsData.auctions || []);
+      // Add user auctions fetch for creators
+      if (user?.is_creator) {
+        fetchPromises.unshift(fetch('/api/auctions/my-auctions'));
       }
 
-      if (watchlistRes.ok) {
-        const watchlistData = await watchlistRes.json();
+      const responses = await Promise.all(fetchPromises);
+      
+      let responseIndex = 0;
+
+      // Handle user auctions for creators
+      if (user?.is_creator && responses[responseIndex]) {
+        if (responses[responseIndex].ok) {
+          const auctionsData = await responses[responseIndex].json();
+          setUserAuctions(auctionsData.auctions || []);
+        }
+        responseIndex++;
+      }
+
+      // Handle watchlist
+      if (responses[responseIndex] && responses[responseIndex].ok) {
+        const watchlistData = await responses[responseIndex].json();
         setWatchlist(watchlistData.auctions || []);
       }
+      responseIndex++;
+
+      // Handle purchases
+      if (responses[responseIndex] && responses[responseIndex].ok) {
+        const purchasesData = await responses[responseIndex].json();
+        setPurchases(purchasesData.purchases || []);
+      }
+
     } catch (error) {
       console.error('Failed to fetch dashboard data:', error);
     } finally {
@@ -146,7 +186,8 @@ export default function DashboardPage() {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* Grid layout changes based on user type */}
+        <div className={`grid gap-8 ${user.is_creator ? 'grid-cols-1 lg:grid-cols-3' : 'grid-cols-1 lg:grid-cols-2'}`}>
           {/* Creator Auctions */}
           {user.is_creator && (
             <div className="card">
@@ -231,6 +272,102 @@ export default function DashboardPage() {
               </div>
             </div>
           )}
+
+          {/* Purchase History */}
+          <div className="card">
+            <div className="px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-pink-50">
+              <h2 className="text-subheading text-gray-900">Purchase History</h2>
+            </div>
+            <div className="p-8">
+              {loadingData ? (
+                <div className="text-center py-8">
+                  <div className="w-6 h-6 border-2 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto"></div>
+                </div>
+              ) : purchases.length > 0 ? (
+                <div className="space-y-6">
+                  {purchases.slice(0, 3).map((purchase) => (
+                    <div key={purchase.id} className="border border-gray-100 rounded-lg p-4 hover:border-gray-200 transition-colors">
+                      <div className="flex items-start gap-4">
+                        {purchase.primary_image && (
+                          <div className="w-16 h-16 bg-gray-100 rounded-lg flex-shrink-0 overflow-hidden">
+                            <img 
+                              src={purchase.primary_image} 
+                              alt={purchase.auction_title}
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-1 truncate">
+                            {purchase.auction_title}
+                          </h3>
+                          <p className="text-sm text-gray-600 mb-2">
+                            by @{purchase.seller_username}
+                            {purchase.seller_verified && <span className="text-blue-500 ml-1">✓</span>}
+                          </p>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div>
+                                <p className="text-sm text-gray-500">Paid</p>
+                                <p className="text-lg font-bold text-green-600">
+                                  ${formatPrice(purchase.final_price)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-gray-500">Status</p>
+                                <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                                  purchase.shipping_status === 'delivered' ? 'bg-green-100 text-green-800' :
+                                  purchase.shipping_status === 'shipped' ? 'bg-blue-100 text-blue-800' :
+                                  'bg-orange-100 text-orange-800'
+                                }`}>
+                                  {purchase.shipping_status.charAt(0).toUpperCase() + purchase.shipping_status.slice(1)}
+                                </span>
+                              </div>
+                            </div>
+                            <Link 
+                              href={`/auctions/${purchase.auction_id}`}
+                              className="btn-secondary px-3 py-1 text-sm"
+                            >
+                              VIEW
+                            </Link>
+                          </div>
+                          <p className="text-xs text-gray-500 mt-2">
+                            Purchased {new Date(purchase.created_at).toLocaleDateString()}
+                            {purchase.purchase_type === 'buy_now' && (
+                              <span className="ml-2 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs">
+                                Buy Now
+                              </span>
+                            )}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                  {purchases.length > 3 && (
+                    <div className="text-center mt-6">
+                      <p className="text-indigo-600 hover:text-indigo-700 font-medium">
+                        View All Purchases →
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="w-16 h-16 bg-purple-100 rounded-xl mx-auto mb-6 flex items-center justify-center">
+                    <div className="w-6 h-6 bg-purple-400 rounded"></div>
+                  </div>
+                  <h3 className="text-subheading text-gray-900 mb-2">No purchases yet</h3>
+                  <p className="text-body text-gray-600 mb-6">Start bidding on items you love</p>
+                  <Link 
+                    href="/auctions"
+                    className="btn-primary"
+                  >
+                    Browse Auctions
+                  </Link>
+                </div>
+              )}
+            </div>
+          </div>
 
           {/* Watchlist */}
           <div className="card">
