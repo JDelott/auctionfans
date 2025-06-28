@@ -14,25 +14,25 @@ export default function Navigation() {
   };
 
   return (
-    <nav className="bg-white shadow-sm border-b">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex items-center">
-            <Link href="/" className="text-2xl font-bold text-indigo-600">
-              AuctionFans
+    <nav className="border-b border-gray-200 bg-white/95 backdrop-blur-sm sticky top-0 z-50">
+      <div className="max-w-6xl mx-auto px-6">
+        <div className="flex justify-between items-center h-16">
+          <div className="flex items-center space-x-12">
+            <Link href="/" className="text-xl font-bold bg-gradient-primary bg-clip-text text-transparent">
+              AUCTIONFANS
             </Link>
-            <div className="hidden md:ml-10 md:flex md:space-x-8">
+            <div className="hidden md:flex space-x-8">
               <Link 
                 href="/auctions" 
-                className="text-gray-700 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
+                className="text-caption text-gray-600 hover:text-indigo-600 transition-colors"
               >
-                Browse Auctions
+                AUCTIONS
               </Link>
               <Link 
                 href="/creators" 
-                className="text-gray-700 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
+                className="text-caption text-gray-600 hover:text-indigo-600 transition-colors"
               >
-                Creators
+                CREATORS
               </Link>
             </div>
           </div>
@@ -42,31 +42,33 @@ export default function Navigation() {
               <div className="relative">
                 <button
                   onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center space-x-2 text-gray-700 hover:text-indigo-600 px-3 py-2 rounded-md text-sm font-medium"
+                  className="flex items-center space-x-3 text-caption text-gray-600 hover:text-gray-900"
                 >
-                  <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center text-white text-sm font-medium">
-                    {user.display_name?.[0] || user.username[0] || 'U'}
+                  <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center shadow-lg">
+                    <div className="text-white text-sm font-bold">
+                      {user.display_name?.[0]?.toUpperCase() || user.username[0]?.toUpperCase() || 'U'}
+                    </div>
                   </div>
-                  <span>{user.display_name || user.username}</span>
+                  <span className="hidden sm:block font-medium">{user.display_name || user.username}</span>
                   {user.is_creator && (
-                    <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full">
-                      Creator
+                    <span className="creator-badge">
+                      CREATOR
                     </span>
                   )}
                 </button>
                 
                 {showUserMenu && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50">
+                  <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden">
                     <Link
                       href="/dashboard"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="block px-6 py-3 text-caption text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
                       onClick={() => setShowUserMenu(false)}
                     >
                       Dashboard
                     </Link>
                     <Link
                       href="/profile"
-                      className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="block px-6 py-3 text-caption text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
                       onClick={() => setShowUserMenu(false)}
                     >
                       Profile
@@ -74,17 +76,18 @@ export default function Navigation() {
                     {user.is_creator && (
                       <Link
                         href="/creator/auctions"
-                        className="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        className="block px-6 py-3 text-caption text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
                         onClick={() => setShowUserMenu(false)}
                       >
                         My Auctions
                       </Link>
                     )}
+                    <hr className="border-gray-200" />
                     <button
                       onClick={handleLogout}
-                      className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                      className="block w-full text-left px-6 py-3 text-caption text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
                     >
-                      Sign out
+                      Sign Out
                     </button>
                   </div>
                 )}
@@ -93,15 +96,15 @@ export default function Navigation() {
               <>
                 <Link 
                   href="/auth/login" 
-                  className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-md text-sm font-medium"
+                  className="text-caption text-gray-600 hover:text-indigo-600 transition-colors"
                 >
-                  Sign In
+                  SIGN IN
                 </Link>
                 <Link 
                   href="/auth/register" 
-                  className="bg-white hover:bg-gray-50 text-indigo-600 border border-indigo-600 px-4 py-2 rounded-md text-sm font-medium"
+                  className="btn-primary"
                 >
-                  Sign Up
+                  SIGN UP
                 </Link>
               </>
             )}

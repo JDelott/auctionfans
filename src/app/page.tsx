@@ -2,92 +2,135 @@ import Link from 'next/link';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen bg-white">
       {/* Hero Section */}
-      <div className="relative overflow-hidden">
-        <div className="max-w-7xl mx-auto">
-          <div className="relative z-10 pb-8 bg-gradient-to-br from-blue-50 to-indigo-100 sm:pb-16 md:pb-20 lg:max-w-2xl lg:w-full lg:pb-28 xl:pb-32">
-            <main className="mt-10 mx-auto max-w-7xl px-4 sm:mt-12 sm:px-6 md:mt-16 lg:mt-20 lg:px-8 xl:mt-28">
-              <div className="sm:text-center lg:text-left">
-                <h1 className="text-4xl tracking-tight font-extrabold text-gray-900 sm:text-5xl md:text-6xl">
-                  <span className="block xl:inline">Own what your</span>{' '}
-                  <span className="block text-indigo-600 xl:inline">favorite creators used</span>
-                </h1>
-                <p className="mt-3 text-base text-gray-500 sm:mt-5 sm:text-lg sm:max-w-xl sm:mx-auto md:mt-5 md:text-xl lg:mx-0">
-                  Bid on authentic items used by content creators in their videos. From gaming setups to fashion pieces, 
-                  own a piece of internet history.
-                </p>
-                <div className="mt-5 sm:mt-8 sm:flex sm:justify-center lg:justify-start">
-                  <div className="rounded-md shadow">
-                    <Link 
-                      href="/auctions"
-                      className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 md:py-4 md:text-lg md:px-10"
-                    >
-                      Browse Auctions
-                    </Link>
-                  </div>
-                  <div className="mt-3 sm:mt-0 sm:ml-3">
-                    <Link 
-                      href="/auth/register?creator=true"
-                      className="w-full flex items-center justify-center px-8 py-3 border border-transparent text-base font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 md:py-4 md:text-lg md:px-10"
-                    >
-                      Join as Creator
-                    </Link>
+      <section className="relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-white to-purple-50"></div>
+        <div className="relative max-w-6xl mx-auto px-6 py-24">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+            <div>
+              <div className="accent-bar w-16 mb-6"></div>
+              <h1 className="text-display mb-6">
+                Authentic Creator Collections
+              </h1>
+              <p className="text-xl text-gray-600 mb-8 max-w-lg leading-relaxed">
+                A curated marketplace for verified items used by content creators. 
+                Own authentic pieces from your favorite creators&lsquo; content.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <Link 
+                  href="/auctions"
+                  className="btn-primary inline-flex items-center justify-center"
+                >
+                  Explore Auctions
+                </Link>
+                <Link 
+                  href="/auth/register?creator=true"
+                  className="btn-secondary inline-flex items-center justify-center"
+                >
+                  Join as Creator
+                </Link>
+              </div>
+            </div>
+            <div className="relative">
+              <div className="relative">
+                <div className="aspect-square bg-gradient-primary rounded-2xl flex items-center justify-center shadow-2xl">
+                  <div className="w-32 h-32 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                    <div className="w-12 h-12 bg-white rounded-lg"></div>
                   </div>
                 </div>
+                <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-gradient-secondary rounded-xl shadow-lg"></div>
+                <div className="absolute -top-4 -left-4 w-16 h-16 bg-gradient-accent rounded-lg shadow-lg"></div>
               </div>
-            </main>
-          </div>
-        </div>
-        <div className="lg:absolute lg:inset-y-0 lg:right-0 lg:w-1/2">
-          <div className="h-56 w-full bg-gradient-to-r from-purple-400 via-pink-500 to-red-500 sm:h-72 md:h-96 lg:w-full lg:h-full flex items-center justify-center">
-            <div className="text-white text-center">
-              <div className="text-6xl mb-4">🎬</div>
-              <div className="text-xl font-semibold">Creator Items</div>
             </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* Stats Section */}
+      <section className="py-20 bg-gray-50">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="grid grid-cols-3 gap-8">
+            <div className="text-center">
+              <div className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-2">1,247</div>
+              <div className="text-caption text-gray-600">Items Sold</div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl font-bold bg-gradient-secondary bg-clip-text text-transparent mb-2">89</div>
+              <div className="text-caption text-gray-600">Verified Creators</div>
+            </div>
+            <div className="text-center">
+              <div className="text-4xl font-bold bg-gradient-accent bg-clip-text text-transparent mb-2">4.9</div>
+              <div className="text-caption text-gray-600">Trust Rating</div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Features Section */}
-      <div className="py-12 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="lg:text-center">
-            <h2 className="text-base text-indigo-600 font-semibold tracking-wide uppercase">Features</h2>
-            <p className="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-gray-900 sm:text-4xl">
-              How AuctionFans Works
+      <section className="py-24">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <div className="accent-bar w-16 mx-auto mb-6"></div>
+            <h2 className="text-heading text-gray-900 mb-4">How It Works</h2>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              Our comprehensive verification process ensures authenticity and provenance for every item.
             </p>
           </div>
 
-          <div className="mt-10">
-            <div className="space-y-10 md:space-y-0 md:grid md:grid-cols-3 md:gap-x-8 md:gap-y-10">
-              <div className="relative text-center">
-                <div className="text-4xl mb-4">🎥</div>
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Video-Linked Items</h3>
-                <p className="mt-2 text-base text-gray-500">
-                  Every item is linked to the video where it was featured, with exact timestamps.
-                </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="card card-featured p-8 text-center">
+              <div className="w-16 h-16 bg-gradient-primary rounded-xl mb-6 mx-auto flex items-center justify-center">
+                <div className="w-6 h-6 bg-white rounded"></div>
               </div>
+              <h3 className="text-subheading text-gray-900 mb-4">Video Verification</h3>
+              <p className="text-body text-gray-600">
+                Every item is linked to specific video content with timestamp verification and provenance tracking.
+              </p>
+            </div>
 
-              <div className="relative text-center">
-                <div className="text-4xl mb-4">✅</div>
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Verified Creators</h3>
-                <p className="mt-2 text-base text-gray-500">
-                  All creators go through our verification process to ensure authenticity.
-                </p>
+            <div className="card p-8 text-center">
+              <div className="w-16 h-16 bg-gradient-secondary rounded-xl mb-6 mx-auto flex items-center justify-center">
+                <div className="w-6 h-6 border-2 border-white rounded-full"></div>
               </div>
+              <h3 className="text-subheading text-gray-900 mb-4">Creator Authentication</h3>
+              <p className="text-body text-gray-600">
+                Rigorous multi-step verification process for all content creators on the platform.
+              </p>
+            </div>
 
-              <div className="relative text-center">
-                <div className="text-4xl mb-4">🔒</div>
-                <h3 className="text-lg leading-6 font-medium text-gray-900">Secure Bidding</h3>
-                <p className="mt-2 text-base text-gray-500">
-                  Safe and secure auction system with buyer protection.
-                </p>
+            <div className="card p-8 text-center">
+              <div className="w-16 h-16 bg-gradient-accent rounded-xl mb-6 mx-auto flex items-center justify-center">
+                <div className="w-6 h-6 bg-white rounded transform rotate-45"></div>
               </div>
+              <h3 className="text-subheading text-gray-900 mb-4">Secure Transactions</h3>
+              <p className="text-body text-gray-600">
+                End-to-end secure payment processing with comprehensive buyer and seller protection.
+              </p>
             </div>
           </div>
         </div>
-      </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="relative py-24 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-primary"></div>
+        <div className="absolute inset-0 bg-black/20"></div>
+        <div className="relative max-w-6xl mx-auto px-6 text-center">
+          <h2 className="text-heading text-white mb-4">Start Your Collection Today</h2>
+          <p className="text-lg text-white/80 mb-8 max-w-lg mx-auto">
+            Join thousands of collectors and creators in the authentic content marketplace.
+          </p>
+          <Link 
+            href="/auth/register"
+            className="btn-accent"
+          >
+            Get Started Now
+          </Link>
+        </div>
+        <div className="absolute top-20 right-20 w-32 h-32 bg-white/10 rounded-full"></div>
+        <div className="absolute bottom-20 left-20 w-24 h-24 bg-white/10 rounded-full"></div>
+      </section>
     </div>
   );
 }

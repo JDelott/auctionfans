@@ -20,7 +20,6 @@ export default function RegisterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  // Check if user came from "Join as Creator" link
   const isCreatorMode = searchParams.get('creator') === 'true';
 
   useState(() => {
@@ -54,8 +53,8 @@ export default function RegisterPage() {
         is_creator: formData.is_creator,
       });
       router.push('/dashboard');
-    } catch (err) {
-      setError((err as Error).message);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
@@ -70,134 +69,141 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <Link href="/" className="flex justify-center">
-            <h1 className="text-3xl font-bold text-indigo-600">AuctionFans</h1>
-          </Link>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            {isCreatorMode ? 'Join as a Creator' : 'Create your account'}
-          </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Or{' '}
-            <Link
-              href="/auth/login"
-              className="font-medium text-indigo-600 hover:text-indigo-500"
-            >
-              sign in to existing account
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="max-w-md w-full mx-6">
+        <div className="bg-white border border-gray-200 p-8">
+          <div className="mb-8">
+            <Link href="/" className="text-xl font-medium text-gray-900">
+              AUCTIONFANS
             </Link>
-          </p>
-        </div>
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md">
-              {error}
-            </div>
-          )}
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="email" className="block text-sm font-medium text-gray-700">
-                Email address
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                autoComplete="email"
-                required
-                value={formData.email}
-                onChange={handleChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="Enter your email"
-              />
-            </div>
-            <div>
-              <label htmlFor="username" className="block text-sm font-medium text-gray-700">
-                Username
-              </label>
-              <input
-                id="username"
-                name="username"
-                type="text"
-                required
-                value={formData.username}
-                onChange={handleChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="Choose a username"
-              />
-            </div>
-            <div>
-              <label htmlFor="display_name" className="block text-sm font-medium text-gray-700">
-                Display Name (Optional)
-              </label>
-              <input
-                id="display_name"
-                name="display_name"
-                type="text"
-                value={formData.display_name}
-                onChange={handleChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="Your display name"
-              />
-            </div>
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">
-                Password
-              </label>
-              <input
-                id="password"
-                name="password"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={formData.password}
-                onChange={handleChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="Enter your password (min 8 characters)"
-              />
-            </div>
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
-                Confirm Password
-              </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                autoComplete="new-password"
-                required
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
-                placeholder="Confirm your password"
-              />
-            </div>
-            <div className="flex items-center">
-              <input
-                id="is_creator"
-                name="is_creator"
-                type="checkbox"
-                checked={formData.is_creator}
-                onChange={handleChange}
-                className="h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
-              />
-              <label htmlFor="is_creator" className="ml-2 block text-sm text-gray-900">
-                I&apos;m a content creator and want to sell items from my videos
-              </label>
-            </div>
+            <h2 className="mt-6 text-heading text-gray-900">
+              {isCreatorMode ? 'Creator Registration' : 'Create Account'}
+            </h2>
+            <p className="mt-2 text-caption text-gray-600">
+              Already have an account?{' '}
+              <Link
+                href="/auth/login"
+                className="text-gray-900 hover:underline"
+              >
+                Sign in here
+              </Link>
+            </p>
           </div>
 
-          <div>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 text-caption">
+                {error}
+              </div>
+            )}
+            
+            <div className="grid grid-cols-1 gap-6">
+              <div>
+                <label htmlFor="email" className="block text-caption text-gray-700 mb-2">
+                  EMAIL ADDRESS
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="input w-full"
+                  placeholder="your@email.com"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="username" className="block text-caption text-gray-700 mb-2">
+                  USERNAME
+                </label>
+                <input
+                  id="username"
+                  name="username"
+                  type="text"
+                  required
+                  value={formData.username}
+                  onChange={handleChange}
+                  className="input w-full"
+                  placeholder="username"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="display_name" className="block text-caption text-gray-700 mb-2">
+                  DISPLAY NAME (OPTIONAL)
+                </label>
+                <input
+                  id="display_name"
+                  name="display_name"
+                  type="text"
+                  value={formData.display_name}
+                  onChange={handleChange}
+                  className="input w-full"
+                  placeholder="Display Name"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="password" className="block text-caption text-gray-700 mb-2">
+                  PASSWORD
+                </label>
+                <input
+                  id="password"
+                  name="password"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="input w-full"
+                  placeholder="Minimum 8 characters"
+                />
+              </div>
+
+              <div>
+                <label htmlFor="confirmPassword" className="block text-caption text-gray-700 mb-2">
+                  CONFIRM PASSWORD
+                </label>
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type="password"
+                  autoComplete="new-password"
+                  required
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="input w-full"
+                  placeholder="Confirm password"
+                />
+              </div>
+
+              <div className="flex items-start space-x-3">
+                <input
+                  id="is_creator"
+                  name="is_creator"
+                  type="checkbox"
+                  checked={formData.is_creator}
+                  onChange={handleChange}
+                  className="mt-1 w-4 h-4 text-gray-900 border-gray-300 focus:ring-0 focus:ring-offset-0"
+                />
+                <label htmlFor="is_creator" className="text-caption text-gray-700">
+                  I am a content creator and want to sell items from my videos
+                </label>
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              className="btn-primary w-full disabled:opacity-50"
             >
-              {loading ? 'Creating account...' : 'Create account'}
+              {loading ? 'Creating Account...' : 'Create Account'}
             </button>
-          </div>
-        </form>
+          </form>
+        </div>
       </div>
     </div>
   );
