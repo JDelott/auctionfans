@@ -21,6 +21,8 @@ export default function DashboardPage() {
   const [userAuctions, setUserAuctions] = useState<AuctionItem[]>([]);
   const [watchlist, setWatchlist] = useState<AuctionItem[]>([]);
   const [loadingData, setLoadingData] = useState(true);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
@@ -54,6 +56,29 @@ export default function DashboardPage() {
       console.error('Failed to fetch dashboard data:', error);
     } finally {
       setLoadingData(false);
+    }
+  };
+
+  const handleDeleteAuction = async (auctionId: string) => {
+    try {
+      setDeletingId(auctionId);
+      const response = await fetch(`/api/auctions/${auctionId}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Remove the auction from the local state
+        setUserAuctions(prev => prev.filter(auction => auction.id !== auctionId));
+        setShowDeleteConfirm(null);
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to delete auction');
+      }
+    } catch (error) {
+      console.error('Failed to delete auction:', error);
+      alert('Failed to delete auction');
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -159,12 +184,23 @@ export default function DashboardPage() {
                               </div>
                             </div>
                           </div>
-                          <Link 
-                            href={`/auctions/${auction.id}`}
-                            className="btn-secondary px-4 py-2 ml-4"
-                          >
-                            VIEW
-                          </Link>
+                          <div className="flex flex-col gap-2 ml-4">
+                            <Link 
+                              href={`/auctions/${auction.id}`}
+                              className="btn-secondary px-4 py-2 text-center"
+                            >
+                              VIEW
+                            </Link>
+                            {auction.status === 'pending' && (
+                              <button
+                                onClick={() => setShowDeleteConfirm(auction.id)}
+                                disabled={deletingId === auction.id}
+                                className="px-4 py-2 bg-red-100 text-red-700 border border-red-200 rounded-lg hover:bg-red-200 transition-colors disabled:opacity-50 text-sm"
+                              >
+                                {deletingId === auction.id ? 'Deleting...' : 'DELETE'}
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -248,6 +284,33 @@ export default function DashboardPage() {
             </div>
           </div>
         </div>
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Delete Auction</h3>
+              <p className="text-gray-600 mb-6">
+                Are you sure you want to delete this auction? This action cannot be undone.
+              </p>
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(null)}
+                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => handleDeleteAuction(showDeleteConfirm)}
+                  disabled={deletingId === showDeleteConfirm}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
+                >
+                  {deletingId === showDeleteConfirm ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

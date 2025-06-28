@@ -55,6 +55,8 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
   const [bidding, setBidding] = useState(false);
   const [bidError, setBidError] = useState('');
   const [selectedImage, setSelectedImage] = useState(0);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   // Helper function to safely convert to number
   const toNumber = (value: number | string | undefined | null): number => {
@@ -86,6 +88,19 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
   useEffect(() => {
     fetchAuction();
   }, [fetchAuction]);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('updated') === 'true') {
+      // Show success message
+      const timer = setTimeout(() => {
+        // You could add a toast notification here
+        console.log('Auction updated successfully!');
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, []);
 
   const handleBid = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,6 +158,29 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
       return `https://www.youtube.com/embed/${videoId}${timestamp ? `?start=${timestamp}` : ''}`;
     }
     return url;
+  };
+
+  const handleDeleteAuction = async () => {
+    try {
+      setDeleting(true);
+      const response = await fetch(`/api/auctions/${resolvedParams.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Redirect to dashboard after successful deletion
+        router.push('/dashboard?deleted=true');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to delete auction');
+      }
+    } catch (error) {
+      console.error('Failed to delete auction:', error);
+      alert('Failed to delete auction');
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
   };
 
   if (loading) {
@@ -431,9 +469,66 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
                 </div>
               )}
 
+              {/* Owner Actions */}
               {isOwner && (
-                <div className="bg-blue-50 rounded-lg p-4">
-                  <p className="text-blue-800 text-sm font-medium">This is your auction</p>
+                <div className="space-y-4">
+                  <div className="bg-blue-50 rounded-lg p-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-blue-800 text-sm font-medium">This is your auction</p>
+                        <p className="text-blue-600 text-xs mt-1">
+                          Status: {auction.status.charAt(0).toUpperCase() + auction.status.slice(1)}
+                        </p>
+                      </div>
+                      <div className="flex space-x-2">
+                        <Link 
+                          href={`/creator/auctions/${auction.id}/edit`}
+                          className="px-3 py-1 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+                        >
+                          Edit
+                        </Link>
+                        {(auction.status === 'pending' || auction.status === 'active') && (
+                          <button
+                            onClick={() => setShowDeleteConfirm(true)}
+                            className={`px-3 py-1 text-white text-sm rounded-lg transition-colors ${
+                              auction.status === 'active'
+                                ? 'bg-red-600 hover:bg-red-700'
+                                : 'bg-red-500 hover:bg-red-600'
+                            }`}
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Auction Statistics for Owner */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h4 className="font-medium text-gray-900 mb-3">Auction Statistics</h4>
+                    <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="text-gray-500">Total Bids</p>
+                        <p className="font-semibold text-gray-900">{auction.bid_count}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Current Price</p>
+                        <p className="font-semibold text-green-600">${currentPrice.toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Started</p>
+                        <p className="font-semibold text-gray-900">
+                          {new Date(auction.start_time).toLocaleDateString()}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-gray-500">Ends</p>
+                        <p className="font-semibold text-gray-900">
+                          {new Date(auction.end_time).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -465,6 +560,73 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
             )}
           </div>
         </div>
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md mx-4">
+              <div className="flex items-center mb-4">
+                <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
+                  <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                  </svg>
+                </div>
+                <h3 className="text-lg font-semibold text-gray-900">Delete Auction</h3>
+              </div>
+              
+              <p className="text-gray-600 mb-4">
+                Are you sure you want to delete &quot;{auction.title}&quot;? This action cannot be undone and will permanently remove the auction and all associated data.
+              </p>
+              
+              {auction.status === 'active' && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
+                  <div className="flex items-start">
+                    <svg className="w-5 h-5 text-red-600 mr-2 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    <div>
+                      <p className="text-red-800 text-sm font-medium">
+                        Critical Warning: This is an active auction!
+                      </p>
+                      <p className="text-red-700 text-sm mt-1">
+                        • This auction has {auction.bid_count} bid{auction.bid_count !== 1 ? 's' : ''}<br/>
+                        • Active bidders will lose their bids<br/>
+                        • This may damage your reputation as a creator
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              <div className="flex justify-end space-x-3">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={deleting}
+                  className="px-4 py-2 text-gray-600 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteAuction}
+                  disabled={deleting}
+                  className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center"
+                >
+                  {deleting ? (
+                    <>
+                      <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                      </svg>
+                      Deleting...
+                    </>
+                  ) : (
+                    'Delete Permanently'
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
