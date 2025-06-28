@@ -9,7 +9,7 @@ interface AuctionItem {
   id: string;
   title: string;
   description: string;
-  current_price: number;
+  current_price: number | string;
   status: string;
   end_time: string;
   created_at: string;
@@ -55,6 +55,11 @@ export default function DashboardPage() {
     } finally {
       setLoadingData(false);
     }
+  };
+
+  const formatPrice = (price: number | string | null | undefined): string => {
+    const numPrice = Number(price) || 0;
+    return numPrice.toFixed(2);
   };
 
   if (loading || !user) {
@@ -136,7 +141,7 @@ export default function DashboardPage() {
                           <div>
                             <h3 className="text-body text-gray-900 mb-2 font-medium">{auction.title}</h3>
                             <p className="text-lg font-semibold bg-gradient-primary bg-clip-text text-transparent mb-2">
-                              ${auction.current_price.toFixed(2)}
+                              ${formatPrice(auction.current_price)}
                             </p>
                             <span className={`inline-block ${
                               auction.status === 'active' ? 'status-active' :
@@ -201,7 +206,7 @@ export default function DashboardPage() {
                         <div>
                           <h3 className="text-body text-gray-900 mb-2 font-medium">{auction.title}</h3>
                           <p className="text-lg font-semibold bg-gradient-secondary bg-clip-text text-transparent mb-2">
-                            ${auction.current_price.toFixed(2)}
+                            ${formatPrice(auction.current_price)}
                           </p>
                           <p className="text-caption text-gray-500">
                             Ends {new Date(auction.end_time).toLocaleDateString()}
@@ -223,7 +228,7 @@ export default function DashboardPage() {
                     <div className="w-6 h-6 bg-white rounded"></div>
                   </div>
                   <h3 className="text-subheading text-gray-900 mb-2">No items watched</h3>
-                  <p className="text-body text-gray-600 mb-6">Start following auctions you&lsquo;re interested in</p>
+                  <p className="text-body text-gray-600 mb-6">Start following auctions you&apos;re interested in</p>
                   <Link 
                     href="/auctions"
                     className="btn-accent"
