@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { AuthProvider } from '@/contexts/AuthContext';
+import Navigation from '@/components/Navigation';
 
 export const metadata: Metadata = {
   title: "AuctionFans - Creator Item Auctions",
@@ -14,7 +16,12 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="antialiased">
-        {children}
+        <AuthProvider>
+          <Navigation />
+          <main>
+            {children}
+          </main>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -154,5 +154,5 @@ INSERT INTO categories (name, description) VALUES
     ('Art & Collectibles', 'Artwork, collectible items, and unique pieces'),
     ('Books & Media', 'Books, DVDs, vinyl records, and other media'),
     ('Toys & Games', 'Toys, board games, and gaming accessories'),
-    ('Other', 'Items that don\'t fit into other categories')
+    ('Other', 'Items that do not fit into other categories')
 ON CONFLICT DO NOTHING;
