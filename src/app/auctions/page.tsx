@@ -244,31 +244,37 @@ export default function AuctionsPage() {
                     )}
                   </div>
 
-                  <h3 className="text-subheading text-gray-900 mb-2 line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                  <h3 className="text-subheading text-gray-900 mb-3 line-clamp-2 group-hover:text-indigo-600 transition-colors">
                     {auction.title}
                   </h3>
 
-                  <div className="flex items-center justify-between mb-3">
+                  <div className="space-y-3 mb-4">
                     <div>
-                      <p className="text-lg font-semibold bg-gradient-primary bg-clip-text text-transparent mb-1">
+                      <p className="text-sm text-gray-500 mb-1">Current Price</p>
+                      <p className="text-2xl font-bold text-green-600">
                         ${formatPrice(auction.current_price)}
                       </p>
-                      <p className="text-caption text-gray-500">
-                        {auction.bid_count} bid{auction.bid_count !== 1 ? 's' : ''}
-                      </p>
                     </div>
-                    <div className="text-right">
-                      <p className="text-caption text-gray-600 mb-1">ENDS IN</p>
-                      <p className="text-body font-medium text-gray-900">
-                        {formatTimeRemaining(auction.end_time)}
-                      </p>
+                    
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-caption text-gray-500">
+                          {auction.bid_count} bid{auction.bid_count !== 1 ? 's' : ''}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-caption text-gray-600 mb-1">ENDS IN</p>
+                        <p className="text-sm font-semibold text-orange-600">
+                          {formatTimeRemaining(auction.end_time)}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
                     <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 bg-gradient-primary rounded-full"></div>
-                      <span className="text-caption text-gray-600">
+                      <div className="w-6 h-6 bg-indigo-500 rounded-full"></div>
+                      <span className="text-sm text-gray-600">
                         {auction.display_name || auction.username}
                       </span>
                     </div>

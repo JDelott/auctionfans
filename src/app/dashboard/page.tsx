@@ -125,7 +125,7 @@ export default function DashboardPage() {
           {/* Creator Auctions */}
           {user.is_creator && (
             <div className="card">
-              <div className="px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-indigo-50 to-purple-50">
+              <div className="px-8 py-6 border-b border-gray-200 bg-gradient-to-r from-gray-50 to-gray-100">
                 <h2 className="text-subheading text-gray-900">My Auctions</h2>
               </div>
               <div className="p-8">
@@ -136,24 +136,32 @@ export default function DashboardPage() {
                 ) : userAuctions.length > 0 ? (
                   <div className="space-y-6">
                     {userAuctions.slice(0, 3).map((auction) => (
-                      <div key={auction.id} className="border-b border-gray-200 pb-6 last:border-0">
+                      <div key={auction.id} className="border border-gray-100 rounded-lg p-4 hover:border-gray-200 transition-colors">
                         <div className="flex justify-between items-start">
-                          <div>
-                            <h3 className="text-body text-gray-900 mb-2 font-medium">{auction.title}</h3>
-                            <p className="text-lg font-semibold bg-gradient-primary bg-clip-text text-transparent mb-2">
-                              ${formatPrice(auction.current_price)}
-                            </p>
-                            <span className={`inline-block ${
-                              auction.status === 'active' ? 'status-active' :
-                              auction.status === 'ended' ? 'status-ended' :
-                              'status-pending'
-                            }`}>
-                              {auction.status}
-                            </span>
+                          <div className="flex-1">
+                            <h3 className="text-lg font-semibold text-gray-900 mb-2">{auction.title}</h3>
+                            <div className="flex items-center gap-4 mb-3">
+                              <div>
+                                <p className="text-sm text-gray-500 mb-1">Current Price</p>
+                                <p className="text-2xl font-bold text-green-600">
+                                  ${formatPrice(auction.current_price)}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-sm text-gray-500 mb-1">Status</p>
+                                <span className={`inline-block px-3 py-1 rounded-full text-sm font-medium ${
+                                  auction.status === 'active' ? 'bg-green-100 text-green-800' :
+                                  auction.status === 'ended' ? 'bg-gray-100 text-gray-800' :
+                                  'bg-orange-100 text-orange-800'
+                                }`}>
+                                  {auction.status.charAt(0).toUpperCase() + auction.status.slice(1)}
+                                </span>
+                              </div>
+                            </div>
                           </div>
                           <Link 
                             href={`/auctions/${auction.id}`}
-                            className="btn-secondary px-4 py-2"
+                            className="btn-secondary px-4 py-2 ml-4"
                           >
                             VIEW
                           </Link>
@@ -171,8 +179,8 @@ export default function DashboardPage() {
                   </div>
                 ) : (
                   <div className="text-center py-12">
-                    <div className="w-16 h-16 bg-gradient-primary rounded-xl mx-auto mb-6 flex items-center justify-center">
-                      <div className="w-6 h-6 bg-white rounded"></div>
+                    <div className="w-16 h-16 bg-gray-100 rounded-xl mx-auto mb-6 flex items-center justify-center">
+                      <div className="w-6 h-6 bg-gray-400 rounded"></div>
                     </div>
                     <h3 className="text-subheading text-gray-900 mb-2">No auctions yet</h3>
                     <p className="text-body text-gray-600 mb-6">Start selling items from your content</p>
