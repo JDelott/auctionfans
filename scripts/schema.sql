@@ -53,6 +53,12 @@ CREATE TABLE IF NOT EXISTS auction_items (
     start_time TIMESTAMP WITH TIME ZONE,
     end_time TIMESTAMP WITH TIME ZONE,
     winner_id UUID REFERENCES users(id),
+    winner_response VARCHAR(20), -- pending, accepted, declined, payment_expired
+    winner_response_at TIMESTAMP WITH TIME ZONE,
+    payment_status VARCHAR(20) DEFAULT 'pending', -- pending, paid, expired, failed, refunded
+    payment_completed_at TIMESTAMP WITH TIME ZONE,
+    stripe_session_id VARCHAR(255),
+    stripe_payment_intent_id VARCHAR(255),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -113,6 +119,39 @@ CREATE TABLE IF NOT EXISTS transactions (
     shipping_status VARCHAR(20) DEFAULT 'pending', -- pending, shipped, delivered, returned
     payment_method VARCHAR(50),
     transaction_fee DECIMAL(10,2),
+    stripe_session_id VARCHAR(255),
+    stripe_payment_intent_id VARCHAR(255),
+    shipping_address TEXT,
+    tracking_number VARCHAR(100),
+    notes TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Auction ending jobs (for tracking which auctions need to be processed)
+CREATE TABLE IF NOT EXISTS auction_ending_jobs (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    auction_item_id UUID REFERENCES auction_items(id) ON DELETE CASCADE,
+    scheduled_end_time TIMESTAMP WITH TIME ZONE NOT NULL,
+    status VARCHAR(20) DEFAULT 'pending', -- pending, processing, completed, failed
+    processed_at TIMESTAMP WITH TIME ZONE,
+    error_message TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    UNIQUE(auction_item_id)
+);
+
+-- User addresses for shipping
+CREATE TABLE IF NOT EXISTS user_addresses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    is_default BOOLEAN DEFAULT false,
+    address_line_1 VARCHAR(255) NOT NULL,
+    address_line_2 VARCHAR(255),
+    city VARCHAR(100) NOT NULL,
+    state VARCHAR(100) NOT NULL,
+    postal_code VARCHAR(20) NOT NULL,
+    country VARCHAR(100) NOT NULL DEFAULT 'United States',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -123,6 +162,8 @@ CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 CREATE INDEX IF NOT EXISTS idx_auction_items_creator ON auction_items(creator_id);
 CREATE INDEX IF NOT EXISTS idx_auction_items_status ON auction_items(status);
 CREATE INDEX IF NOT EXISTS idx_auction_items_end_time ON auction_items(end_time);
+CREATE INDEX IF NOT EXISTS idx_auction_items_winner ON auction_items(winner_id);
+CREATE INDEX IF NOT EXISTS idx_auction_items_payment_status ON auction_items(payment_status);
 CREATE INDEX IF NOT EXISTS idx_bids_auction_item ON bids(auction_item_id);
 CREATE INDEX IF NOT EXISTS idx_bids_bidder ON bids(bidder_id);
 CREATE INDEX IF NOT EXISTS idx_bids_created_at ON bids(created_at);
@@ -130,6 +171,10 @@ CREATE INDEX IF NOT EXISTS idx_watchlist_user ON watchlist(user_id);
 CREATE INDEX IF NOT EXISTS idx_messages_recipient ON messages(recipient_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_seller ON transactions(seller_id);
 CREATE INDEX IF NOT EXISTS idx_transactions_buyer ON transactions(buyer_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_payment_status ON transactions(payment_status);
+CREATE INDEX IF NOT EXISTS idx_auction_ending_jobs_status ON auction_ending_jobs(status);
+CREATE INDEX IF NOT EXISTS idx_auction_ending_jobs_scheduled_end_time ON auction_ending_jobs(scheduled_end_time);
+CREATE INDEX IF NOT EXISTS idx_user_addresses_user_id ON user_addresses(user_id);
 
 -- Functions and triggers for updated_at timestamps
 CREATE OR REPLACE FUNCTION update_updated_at_column()
@@ -144,6 +189,79 @@ CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECU
 CREATE TRIGGER update_creator_profiles_updated_at BEFORE UPDATE ON creator_profiles FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_auction_items_updated_at BEFORE UPDATE ON auction_items FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_transactions_updated_at BEFORE UPDATE ON transactions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+CREATE TRIGGER update_user_addresses_updated_at BEFORE UPDATE ON user_addresses FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Function to automatically end auctions
+CREATE OR REPLACE FUNCTION end_auction(auction_id UUID)
+RETURNS VOID AS $$
+DECLARE
+    highest_bid_record RECORD;
+    auction_record RECORD;
+BEGIN
+    -- Get auction details
+    SELECT * INTO auction_record FROM auction_items WHERE id = auction_id;
+    
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'Auction not found: %', auction_id;
+    END IF;
+    
+    -- Get the highest bid
+    SELECT b.*, u.email as bidder_email, u.username as bidder_username
+    INTO highest_bid_record
+    FROM bids b
+    JOIN users u ON b.bidder_id = u.id
+    WHERE b.auction_item_id = auction_id
+    ORDER BY b.amount DESC, b.created_at ASC
+    LIMIT 1;
+    
+    -- Update auction status
+    IF FOUND AND highest_bid_record.amount >= COALESCE(auction_record.reserve_price, 0) THEN
+        -- Auction has a winner
+        UPDATE auction_items 
+        SET 
+            status = 'ended',
+            winner_id = highest_bid_record.bidder_id,
+            winner_response = 'pending',
+            current_price = highest_bid_record.amount
+        WHERE id = auction_id;
+    ELSE
+        -- No winner (no bids or reserve not met)
+        UPDATE auction_items 
+        SET status = 'ended'
+        WHERE id = auction_id;
+    END IF;
+    
+    -- Mark the ending job as completed
+    UPDATE auction_ending_jobs 
+    SET status = 'completed', processed_at = NOW()
+    WHERE auction_item_id = auction_id;
+    
+END;
+$$ LANGUAGE plpgsql;
+
+-- Function to create ending job when auction is scheduled
+CREATE OR REPLACE FUNCTION create_auction_ending_job()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Only create job for active auctions with end times
+    IF NEW.status = 'active' AND NEW.end_time IS NOT NULL THEN
+        INSERT INTO auction_ending_jobs (auction_item_id, scheduled_end_time)
+        VALUES (NEW.id, NEW.end_time)
+        ON CONFLICT (auction_item_id) DO UPDATE SET
+            scheduled_end_time = NEW.end_time,
+            status = 'pending',
+            processed_at = NULL,
+            error_message = NULL;
+    END IF;
+    
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER create_auction_ending_job_trigger 
+    AFTER INSERT OR UPDATE ON auction_items 
+    FOR EACH ROW 
+    EXECUTE FUNCTION create_auction_ending_job();
 
 -- Insert some default categories
 INSERT INTO categories (name, description) VALUES 

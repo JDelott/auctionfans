@@ -43,6 +43,10 @@ interface AuctionDetails {
     username: string;
     display_name?: string;
   }>;
+  winner_id?: string;
+  winner_response?: 'pending' | 'accepted' | 'declined' | 'payment_expired';
+  winner_response_at?: string;
+  payment_status?: 'pending' | 'paid' | 'expired';
 }
 
 export default function AuctionDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -57,11 +61,15 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
   const [selectedImage, setSelectedImage] = useState(0);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [winnerAction, setWinnerAction] = useState<'accept' | 'decline' | null>(null);
+  const [buyingNow, setBuyingNow] = useState(false);
 
   // Helper function to safely convert to number
   const toNumber = (value: number | string | undefined | null): number => {
     if (value === null || value === undefined) return 0;
-    return typeof value === 'string' ? parseFloat(value) || 0 : value;
+    if (typeof value === 'number') return value;
+    const parsed = parseFloat(value.toString());
+    return isNaN(parsed) ? 0 : parsed;
   };
 
   const fetchAuction = useCallback(async () => {
@@ -102,31 +110,75 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
     }
   }, []);
 
+  const handleWinnerResponse = async (action: 'accept' | 'decline') => {
+    if (!user || !auction) return;
+
+    setWinnerAction(action);
+    try {
+      const response = await fetch(`/api/auctions/${auction.id}/win`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ action }),
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        if (action === 'accept' && data.checkout_url) {
+          // Redirect to Stripe checkout
+          window.location.href = data.checkout_url;
+        } else {
+          // Refresh auction data
+          fetchAuction();
+        }
+      } else {
+        alert(data.error || 'Failed to process response');
+      }
+    } catch (error) {
+      console.error('Failed to process winner response:', error);
+      alert('Failed to process response');
+    } finally {
+      setWinnerAction(null);
+    }
+  };
+
   const handleBid = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) {
-      router.push('/auth/login');
+    if (!user || !auction) return;
+
+    const amount = parseFloat(bidAmount);
+    if (isNaN(amount) || amount <= 0) {
+      setBidError('Please enter a valid bid amount');
       return;
     }
 
-    setBidError('');
+    const currentPrice = toNumber(auction.current_price);
+    if (amount <= currentPrice) {
+      setBidError(`Bid must be higher than current price of $${currentPrice.toFixed(2)}`);
+      return;
+    }
+
     setBidding(true);
+    setBidError('');
 
     try {
-      const response = await fetch(`/api/auctions/${resolvedParams.id}/bids`, {
+      const response = await fetch(`/api/auctions/${auction.id}/bids`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: parseFloat(bidAmount) })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ amount }),
       });
 
+      const data = await response.json();
+      
       if (response.ok) {
-        await fetchAuction(); // Refresh auction data
-        const startingPrice = toNumber(auction?.starting_price);
-        const newMinBid = Math.max(parseFloat(bidAmount), startingPrice) + 0.01;
-        setBidAmount(newMinBid.toFixed(2));
+        fetchAuction(); // Refresh auction data
+        setBidAmount(''); // Reset bid amount
       } else {
-        const errorData = await response.json();
-        setBidError(errorData.error);
+        setBidError(data.error || 'Failed to place bid');
       }
     } catch {
       setBidError('Failed to place bid');
@@ -135,9 +187,61 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
     }
   };
 
+  const handleBuyNow = async () => {
+    if (!user || !auction) return;
+
+    setBuyingNow(true);
+
+    try {
+      const response = await fetch(`/api/auctions/${auction.id}/buy-now`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+      
+      if (response.ok && data.checkout_url) {
+        window.location.href = data.checkout_url;
+      } else {
+        alert(data.error || 'Failed to process Buy Now');
+      }
+    } catch (error) {
+      console.error('Failed to process Buy Now:', error);
+      alert('Failed to process Buy Now');
+    } finally {
+      setBuyingNow(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!auction) return;
+    
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/auctions/${auction.id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        router.push('/dashboard');
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to delete auction');
+      }
+    } catch (error) {
+      console.error('Failed to delete auction:', error);
+      alert('Failed to delete auction');
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
   const formatTimeRemaining = (endTime: string) => {
-    const end = new Date(endTime);
     const now = new Date();
+    const end = new Date(endTime);
     const diff = end.getTime() - now.getTime();
 
     if (diff <= 0) return 'Ended';
@@ -151,35 +255,6 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
     return `${minutes}m`;
   };
 
-  const getVideoEmbedUrl = (url: string, timestamp?: number) => {
-    if (url.includes('youtube.com/watch?v=')) {
-      const videoId = url.split('v=')[1]?.split('&')[0];
-      return `https://www.youtube.com/embed/${videoId}${timestamp ? `?start=${timestamp}` : ''}`;
-    }
-    return url;
-  };
-
-  const handleDeleteAuction = async () => {
-    try {
-      setDeleting(true);
-      const response = await fetch(`/api/auctions/${resolvedParams.id}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        router.push('/dashboard?deleted=true');
-      } else {
-        const errorData = await response.json();
-        alert(errorData.error || 'Failed to delete auction');
-      }
-    } catch (error) {
-      console.error('Failed to delete auction:', error);
-      alert('Failed to delete auction');
-    } finally {
-      setDeleting(false);
-      setShowDeleteConfirm(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -205,72 +280,59 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
   const currentPrice = toNumber(auction.current_price);
   const startingPrice = toNumber(auction.starting_price);
   const buyNowPrice = toNumber(auction.buy_now_price);
+  const reservePrice = toNumber(auction.reserve_price);
+  const isEnded = auction.status === 'ended';
+  const isWinner = user?.id === auction.winner_id;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4 py-4">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4">
-          <Link href="/auctions" className="text-sm text-gray-500 hover:text-gray-700 flex items-center">
-            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-            Back to Auctions
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50">
+      <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Breadcrumb */}
+        <div className="mb-6">
+          <Link href="/auctions" className="text-caption text-gray-600 hover:text-indigo-600">
+            ← BACK TO AUCTIONS
           </Link>
-          <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-            auction.status === 'active' ? 'bg-green-100 text-green-800' :
-            auction.status === 'ended' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'
-          }`}>
-            {auction.status.toUpperCase()}
-          </span>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left: Images & Info */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Image Gallery */}
-            <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-              <div className="aspect-[4/3] bg-gray-100 relative">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="lg:col-span-2">
+            {/* Images */}
+            <div className="card overflow-hidden mb-6">
+              <div className="aspect-square bg-gray-100 relative">
                 {auction.images.length > 0 ? (
                   <Image
                     src={auction.images[selectedImage]?.image_url}
                     alt={auction.title}
                     fill
                     className="object-cover"
-                    sizes="(max-width: 768px) 100vw, 66vw"
-                    priority
+                    sizes="(max-width: 1024px) 100vw, 66vw"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="w-16 h-16 bg-gray-200 rounded-lg mx-auto mb-2 flex items-center justify-center">
-                        <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                      <p className="text-gray-500 text-sm">No image</p>
+                  <div className="w-full h-full bg-gradient-primary flex items-center justify-center">
+                    <div className="w-24 h-24 bg-white/20 rounded-xl flex items-center justify-center">
+                      <div className="w-8 h-8 bg-white rounded"></div>
                     </div>
                   </div>
                 )}
               </div>
-
-              {/* Thumbnails */}
+              
               {auction.images.length > 1 && (
-                <div className="p-3 border-t bg-gray-50">
+                <div className="p-4 bg-white border-t">
                   <div className="flex space-x-2 overflow-x-auto">
                     {auction.images.map((image, index) => (
                       <button
                         key={image.id}
                         onClick={() => setSelectedImage(index)}
-                        className={`flex-shrink-0 w-12 h-12 rounded overflow-hidden border-2 ${
-                          selectedImage === index ? 'border-indigo-500' : 'border-gray-200'
+                        className={`flex-shrink-0 w-16 h-16 rounded-lg border-2 overflow-hidden ${
+                          selectedImage === index ? 'border-indigo-600' : 'border-gray-200'
                         }`}
                       >
                         <Image
                           src={image.image_url}
-                          alt={`View ${index + 1}`}
-                          width={48}
-                          height={48}
+                          alt={`${auction.title} ${index + 1}`}
+                          width={64}
+                          height={64}
                           className="w-full h-full object-cover"
                         />
                       </button>
@@ -280,89 +342,128 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
               )}
             </div>
 
-            {/* Title & Creator */}
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <h1 className="text-xl font-bold text-gray-900 mb-3">{auction.title}</h1>
-              
-              <Link 
-                href={`/creators/${auction.username}`}
-                className="flex items-center space-x-3 p-2 bg-gray-50 rounded-lg hover:bg-gray-100"
-              >
-                {auction.profile_image_url ? (
-                  <Image
-                    src={auction.profile_image_url}
-                    alt={auction.display_name || auction.username}
-                    width={32}
-                    height={32}
-                    className="rounded-full"
-                  />
-                ) : (
-                  <div className="w-8 h-8 bg-indigo-500 rounded-full flex items-center justify-center text-white text-sm font-semibold">
-                    {(auction.display_name || auction.username).charAt(0).toUpperCase()}
-                  </div>
-                )}
-                <div className="flex-1">
-                  <p className="font-medium text-gray-900 text-sm">{auction.display_name || auction.username}</p>
-                  {auction.is_verified && (
-                    <span className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded">Verified</span>
-                  )}
-                </div>
-              </Link>
-            </div>
-
             {/* Details */}
-            <div className="bg-white rounded-lg shadow-sm p-4">
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                <div>
-                  <p className="text-xs text-gray-500 uppercase">Condition</p>
-                  <p className="font-medium capitalize">{auction.condition}</p>
+            <div className="card p-6">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-caption text-gray-600">{auction.category_name}</span>
+                <div className="flex items-center space-x-3">
+                  {auction.is_verified && (
+                    <span className="creator-badge">VERIFIED</span>
+                  )}
+                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    isActive ? 'bg-green-100 text-green-800' :
+                    isEnded ? 'bg-gray-100 text-gray-800' :
+                    'bg-orange-100 text-orange-800'
+                  }`}>
+                    {auction.status.charAt(0).toUpperCase() + auction.status.slice(1)}
+                  </span>
                 </div>
-                <div>
-                  <p className="text-xs text-gray-500 uppercase">Starting</p>
-                  <p className="font-medium">${startingPrice.toFixed(2)}</p>
-                </div>
-                {auction.category_name && (
-                  <div>
-                    <p className="text-xs text-gray-500 uppercase">Category</p>
-                    <p className="font-medium text-sm">{auction.category_name}</p>
-                  </div>
-                )}
               </div>
+
+              <h1 className="text-heading text-gray-900 mb-4">{auction.title}</h1>
               
-              {auction.description && auction.description !== 'NA' && (
-                <div>
-                  <p className="text-xs text-gray-500 uppercase mb-1">Description</p>
-                  <p className="text-gray-700 text-sm leading-relaxed">{auction.description}</p>
+              <div className="flex items-center space-x-4 mb-6">
+                <Link 
+                  href={`/creators/${auction.username}`}
+                  className="flex items-center space-x-2 hover:text-indigo-600"
+                >
+                  <span className="text-caption text-gray-600">BY</span>
+                  <span className="font-semibold">
+                    {auction.display_name || auction.username}
+                  </span>
+                </Link>
+              </div>
+
+              {auction.description && (
+                <div className="mb-6">
+                  <p className="text-body text-gray-700 whitespace-pre-wrap">{auction.description}</p>
+                </div>
+              )}
+
+              {auction.video_url && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-3">Associated Video</h3>
+                  <div className="bg-gray-100 rounded-lg p-4">
+                    <a 
+                      href={auction.video_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-indigo-600 hover:text-indigo-700 font-medium"
+                    >
+                      View Video →
+                    </a>
+                  </div>
                 </div>
               )}
             </div>
-
-            {/* Video */}
-            {auction.video_url && (
-              <div className="bg-white rounded-lg shadow-sm p-4">
-                <h3 className="font-medium text-gray-900 mb-3">Video</h3>
-                <div className="aspect-video bg-gray-100 rounded overflow-hidden">
-                  <iframe
-                    src={getVideoEmbedUrl(auction.video_url, auction.video_timestamp)}
-                    title="Product video"
-                    className="w-full h-full"
-                    allowFullScreen
-                  />
-                </div>
-              </div>
-            )}
           </div>
 
-          {/* Right: Bidding */}
+          {/* Sidebar */}
           <div className="space-y-4">
+            {/* Winner Response Section */}
+            {isWinner && isEnded && (
+              <div className="card p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">🎉 Congratulations!</h3>
+                <p className="text-gray-600 mb-4">You won this auction!</p>
+                
+                {auction.winner_response === 'pending' && (
+                  <div className="space-y-3">
+                    <p className="text-sm text-gray-500 mb-4">
+                      Please accept or decline this win within 48 hours.
+                    </p>
+                    <div className="flex flex-col space-y-2">
+                      <button
+                        onClick={() => handleWinnerResponse('accept')}
+                        disabled={winnerAction === 'accept'}
+                        className="btn-primary w-full disabled:opacity-50"
+                      >
+                        {winnerAction === 'accept' ? 'Processing...' : `Accept & Pay $${currentPrice.toFixed(2)}`}
+                      </button>
+                      <button
+                        onClick={() => handleWinnerResponse('decline')}
+                        disabled={winnerAction === 'decline'}
+                        className="btn-secondary w-full disabled:opacity-50"
+                      >
+                        {winnerAction === 'decline' ? 'Processing...' : 'Decline'}
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {auction.winner_response === 'accepted' && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                    <p className="text-green-800">
+                      ✅ Win accepted! {auction.payment_status === 'paid' ? 'Payment completed.' : 'Processing payment...'}
+                    </p>
+                  </div>
+                )}
+
+                {auction.winner_response === 'declined' && (
+                  <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                    <p className="text-gray-800">You declined this win.</p>
+                  </div>
+                )}
+
+                {auction.winner_response === 'payment_expired' && (
+                  <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                    <p className="text-red-800">Payment expired. The win has been forfeited.</p>
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* Price & Bidding */}
-            <div className="bg-white rounded-lg shadow-sm p-4">
+            <div className="card p-6">
               <div className="text-center mb-4">
-                <p className="text-sm text-gray-500 mb-1">Current Bid</p>
+                <p className="text-sm text-gray-500 mb-1">
+                  {isEnded ? 'Final Price' : 'Current Bid'}
+                </p>
                 <p className="text-3xl font-bold text-gray-900">${currentPrice.toFixed(2)}</p>
                 <div className="flex justify-between text-sm text-gray-600 mt-2">
-                  <span>{auction.bid_count} bids</span>
-                  <span>{formatTimeRemaining(auction.end_time)}</span>
+                  <span>{auction.bid_count} bid{auction.bid_count !== 1 ? 's' : ''}</span>
+                  <span>
+                    {isEnded ? 'Ended' : formatTimeRemaining(auction.end_time)}
+                  </span>
                 </div>
               </div>
 
@@ -403,95 +504,105 @@ export default function AuctionDetailPage({ params }: { params: Promise<{ id: st
                   )}
 
                   {buyNowPrice > 0 && (
-                    <button className="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-2 px-4 rounded-lg">
-                      Buy Now ${buyNowPrice.toFixed(2)}
+                    <button 
+                      onClick={handleBuyNow}
+                      disabled={buyingNow}
+                      className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg"
+                    >
+                      {buyingNow ? 'Processing...' : `Buy Now $${buyNowPrice.toFixed(2)}`}
                     </button>
                   )}
                 </div>
               )}
 
-              {!isActive && (
+              {!isActive && !isWinner && (
                 <div className="bg-gray-50 rounded-lg p-3 text-center">
                   <p className="text-gray-600 text-sm">
-                    {auction.status === 'ended' ? 'Auction ended' : 'Not active'}
+                    {isEnded ? 'Auction ended' : 'Not active'}
                   </p>
                 </div>
               )}
 
               {/* Owner Actions */}
               {isOwner && (
-                <div className="bg-blue-50 rounded-lg p-3">
-                  <p className="text-blue-800 font-medium text-sm mb-2">Your Auction</p>
-                  <div className="flex space-x-2">
-                    <Link 
-                      href={`/creator/auctions/${auction.id}/edit`}
-                      className="flex-1 text-center py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
-                    >
-                      Edit
-                    </Link>
-                    {(auction.status === 'pending' || auction.status === 'active') && (
-                      <button
-                        onClick={() => setShowDeleteConfirm(true)}
-                        className="flex-1 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                      >
-                        Delete
-                      </button>
-                    )}
-                  </div>
+                <div className="mt-4 space-y-2">
+                  <Link 
+                    href={`/creator/auctions/${auction.id}/edit`}
+                    className="btn-secondary w-full text-center block"
+                  >
+                    Edit Auction
+                  </Link>
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg"
+                  >
+                    Delete Auction
+                  </button>
                 </div>
               )}
             </div>
 
-            {/* Recent Bids */}
-            {auction.recent_bids.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm p-4">
-                <h3 className="font-medium text-gray-900 mb-3">Recent Bids</h3>
-                <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {auction.recent_bids.slice(0, 8).map((bid, index) => (
-                    <div key={bid.id} className="flex justify-between items-center text-sm py-1">
-                      <div>
-                        <p className="font-medium">{bid.display_name || bid.username}</p>
-                        <p className="text-xs text-gray-500">
-                          {new Date(bid.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                        </p>
-                      </div>
-                      <p className={`font-semibold ${index === 0 ? 'text-green-600' : 'text-gray-900'}`}>
-                        ${toNumber(bid.amount).toFixed(2)}
-                      </p>
-                    </div>
-                  ))}
+            {/* Auction Info */}
+            <div className="card p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Auction Details</h3>
+              
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Starting Price:</span>
+                  <span className="font-semibold">${startingPrice.toFixed(2)}</span>
+                </div>
+                
+                {reservePrice > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Reserve Price:</span>
+                    <span className="font-semibold">${reservePrice.toFixed(2)}</span>
+                  </div>
+                )}
+                
+                {buyNowPrice > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Buy Now Price:</span>
+                    <span className="font-semibold">${buyNowPrice.toFixed(2)}</span>
+                  </div>
+                )}
+                
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Ends:</span>
+                  <span className="font-semibold">
+                    {new Date(auction.end_time).toLocaleDateString('en-US', {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
                 </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
 
-        {/* Delete Modal */}
+        {/* Delete Confirmation Modal */}
         {showDeleteConfirm && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg p-6 max-w-sm mx-4">
-              <h3 className="text-lg font-semibold mb-2">Delete Auction</h3>
-              <p className="text-gray-600 mb-4">
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg max-w-md w-full p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Confirm Deletion</h3>
+              <p className="text-gray-600 mb-6">
                 Delete &quot;{auction.title}&quot;? This cannot be undone.
               </p>
-              
-              {auction.status === 'active' && (
-                <div className="bg-red-50 border border-red-200 rounded p-3 mb-4">
-                  <p className="text-red-800 text-sm font-medium">Warning: Active auction with {auction.bid_count} bids!</p>
-                </div>
-              )}
-              
               <div className="flex space-x-3">
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
-                  className="flex-1 py-2 bg-gray-100 text-gray-700 rounded hover:bg-gray-200"
+                  disabled={deleting}
+                  className="btn-secondary flex-1"
                 >
                   Cancel
                 </button>
                 <button
-                  onClick={handleDeleteAuction}
+                  onClick={handleDelete}
                   disabled={deleting}
-                  className="flex-1 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                  className="bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg flex-1"
                 >
                   {deleting ? 'Deleting...' : 'Delete'}
                 </button>
