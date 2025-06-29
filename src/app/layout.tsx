@@ -4,8 +4,8 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import Navigation from '@/components/Navigation';
 
 export const metadata: Metadata = {
-  title: "AuctionFans - Creator Item Auctions",
-  description: "Buy authentic items used by your favorite content creators",
+  title: "FanVault - Creator Item Auctions",
+  description: "Own authentic pieces from your favorite content creators",
 };
 
 export default function RootLayout({
@@ -15,7 +15,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className="antialiased">
+      <body className="antialiased bg-zinc-950">
         <AuthProvider>
           <Navigation />
           <main>

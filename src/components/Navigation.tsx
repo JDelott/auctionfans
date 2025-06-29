@@ -6,111 +6,173 @@ import { useState } from 'react';
 
 export default function Navigation() {
   const { user, logout } = useAuth();
-  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(true); // Start collapsed
 
   const handleLogout = () => {
     logout();
-    setShowUserMenu(false);
   };
 
   return (
-    <nav className="border-b border-gray-200 bg-white/95 backdrop-blur-sm sticky top-0 z-50">
-      <div className="max-w-6xl mx-auto px-6">
-        <div className="flex justify-between items-center h-16">
-          <div className="flex items-center space-x-12">
-            <Link href="/" className="text-xl font-bold text-gradient-primary">
-              AUCTIONFANS
+    <>
+      {/* Mobile/Desktop overlay */}
+      {!isCollapsed && (
+        <div 
+          className="fixed inset-0 bg-black/50 z-40"
+          onClick={() => setIsCollapsed(true)}
+        />
+      )}
+      
+      {/* Sidebar */}
+      <nav className={`fixed left-0 top-0 h-full bg-zinc-900 border-r border-zinc-800 z-50 transition-all duration-300 ${
+        isCollapsed ? '-translate-x-full' : 'translate-x-0'
+      } w-64`}>
+        <div className="flex flex-col h-full">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-zinc-800">
+            <Link href="/" className="text-xl font-black">
+              <span className="text-white">FAN</span>
+              <span className="text-violet-400">VAULT</span>
             </Link>
-            <div className="hidden md:flex space-x-8">
+            <button
+              onClick={() => setIsCollapsed(true)}
+              className="p-2 text-zinc-400 hover:text-white transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Navigation Links */}
+          <div className="flex-1 px-4 py-6">
+            <div className="space-y-2">
               <Link 
-                href="/auctions" 
-                className="text-caption text-gray-600 hover:text-indigo-600 transition-colors"
+                href="/auctions"
+                className="flex items-center space-x-3 text-zinc-300 hover:text-white hover:bg-zinc-800 p-3 rounded-lg transition-all group"
+                onClick={() => setIsCollapsed(true)}
               >
-                AUCTIONS
+                <div className="w-5 h-5 bg-violet-500 rounded flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+                  </svg>
+                </div>
+                <span className="font-mono text-sm font-semibold tracking-wider uppercase">AUCTIONS</span>
               </Link>
+
               <Link 
-                href="/creators" 
-                className="text-caption text-gray-600 hover:text-indigo-600 transition-colors"
+                href="/creators"
+                className="flex items-center space-x-3 text-zinc-300 hover:text-white hover:bg-zinc-800 p-3 rounded-lg transition-all group"
+                onClick={() => setIsCollapsed(true)}
               >
-                CREATORS
+                <div className="w-5 h-5 bg-red-500 rounded flex items-center justify-center">
+                  <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <span className="font-mono text-sm font-semibold tracking-wider uppercase">CREATORS</span>
               </Link>
+
+              {user?.is_creator && (
+                <Link 
+                  href="/creator/auctions"
+                  className="flex items-center space-x-3 text-zinc-300 hover:text-white hover:bg-zinc-800 p-3 rounded-lg transition-all group"
+                  onClick={() => setIsCollapsed(true)}
+                >
+                  <div className="w-5 h-5 bg-white rounded flex items-center justify-center">
+                    <svg className="w-3 h-3 text-black" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
+                    </svg>
+                  </div>
+                  <span className="font-mono text-sm font-semibold tracking-wider uppercase">MY AUCTIONS</span>
+                </Link>
+              )}
+
+              {user && (
+                <Link 
+                  href="/dashboard"
+                  className="flex items-center space-x-3 text-zinc-300 hover:text-white hover:bg-zinc-800 p-3 rounded-lg transition-all group"
+                  onClick={() => setIsCollapsed(true)}
+                >
+                  <div className="w-5 h-5 bg-zinc-600 rounded flex items-center justify-center">
+                    <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                      <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
+                    </svg>
+                  </div>
+                  <span className="font-mono text-sm font-semibold tracking-wider uppercase">DASHBOARD</span>
+                </Link>
+              )}
             </div>
           </div>
-          
-          <div className="flex items-center space-x-4">
+
+          {/* User Section */}
+          <div className="border-t border-zinc-800 p-4">
             {user ? (
-              <div className="relative">
-                <button
-                  onClick={() => setShowUserMenu(!showUserMenu)}
-                  className="flex items-center space-x-3 text-caption text-gray-600 hover:text-gray-900"
-                >
-                  <div className="w-10 h-10 bg-gradient-primary rounded-xl flex items-center justify-center shadow-lg">
-                    <div className="text-white text-sm font-bold">
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3">
+                  <div className="w-8 h-8 bg-gradient-to-br from-violet-500 to-purple-600 rounded-lg flex items-center justify-center">
+                    <span className="text-white text-xs font-bold">
                       {user.display_name?.[0]?.toUpperCase() || user.username[0]?.toUpperCase() || 'U'}
-                    </div>
-                  </div>
-                  <span className="hidden sm:block font-medium">{user.display_name || user.username}</span>
-                  {user.is_creator && (
-                    <span className="creator-badge">
-                      CREATOR
                     </span>
-                  )}
-                </button>
-                
-                {showUserMenu && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-lg shadow-xl overflow-hidden">
-                    <Link
-                      href="/dashboard"
-                      className="block px-6 py-3 text-caption text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
-                      onClick={() => setShowUserMenu(false)}
-                    >
-                      Dashboard
-                    </Link>
-                    <Link
-                      href="/profile"
-                      className="block px-6 py-3 text-caption text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
-                      onClick={() => setShowUserMenu(false)}
-                    >
-                      Profile
-                    </Link>
-                    {user.is_creator && (
-                      <Link
-                        href="/creator/auctions"
-                        className="block px-6 py-3 text-caption text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
-                        onClick={() => setShowUserMenu(false)}
-                      >
-                        My Auctions
-                      </Link>
-                    )}
-                    <hr className="border-gray-200" />
-                    <button
-                      onClick={handleLogout}
-                      className="block w-full text-left px-6 py-3 text-caption text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-colors"
-                    >
-                      Sign Out
-                    </button>
                   </div>
-                )}
+                  <div className="flex-1 min-w-0">
+                    <div className="text-white font-medium text-sm truncate">
+                      {user.display_name || user.username}
+                    </div>
+                    {user.is_creator && (
+                      <div className="text-xs text-violet-400 font-mono uppercase tracking-wider">
+                        CREATOR
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="space-y-1">
+                  <Link
+                    href="/profile"
+                    className="block text-zinc-400 hover:text-white text-xs font-mono uppercase tracking-wider transition-colors"
+                    onClick={() => setIsCollapsed(true)}
+                  >
+                    Profile
+                  </Link>
+                  <button
+                    onClick={handleLogout}
+                    className="block text-zinc-400 hover:text-white text-xs font-mono uppercase tracking-wider transition-colors"
+                  >
+                    Sign Out
+                  </button>
+                </div>
               </div>
             ) : (
-              <>
+              <div className="space-y-3">
                 <Link 
-                  href="/auth/login" 
-                  className="text-caption text-gray-600 hover:text-indigo-600 transition-colors"
+                  href="/auth/login"
+                  className="block w-full text-center py-2 text-zinc-300 hover:text-white font-mono text-xs uppercase tracking-wider transition-colors"
+                  onClick={() => setIsCollapsed(true)}
                 >
                   SIGN IN
                 </Link>
                 <Link 
-                  href="/auth/register" 
-                  className="btn-primary"
+                  href="/auth/register"
+                  className="block w-full text-center py-2 bg-violet-500 text-white font-mono text-xs uppercase tracking-wider hover:bg-violet-600 transition-colors rounded"
+                  onClick={() => setIsCollapsed(true)}
                 >
                   SIGN UP
                 </Link>
-              </>
+              </div>
             )}
           </div>
         </div>
-      </div>
-    </nav>
+      </nav>
+
+      {/* Burger Menu Button */}
+      <button
+        onClick={() => setIsCollapsed(false)}
+        className="fixed top-6 left-6 z-30 p-3 bg-zinc-900/90 backdrop-blur-sm text-white rounded-lg border border-zinc-800 hover:bg-zinc-800 transition-all duration-300"
+      >
+        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+        </svg>
+      </button>
+    </>
   );
 }
