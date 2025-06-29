@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -65,11 +65,7 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ usern
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'auctions' | 'about' | 'activity'>('auctions');
 
-  useEffect(() => {
-    fetchCreatorData();
-  }, [resolvedParams.username]);
-
-  const fetchCreatorData = async () => {
+  const fetchCreatorData = useCallback(async () => {
     try {
       const response = await fetch(`/api/creators/${resolvedParams.username}`);
       if (response.ok) {
@@ -83,7 +79,11 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ usern
     } finally {
       setLoading(false);
     }
-  };
+  }, [resolvedParams.username, router]);
+
+  useEffect(() => {
+    fetchCreatorData();
+  }, [fetchCreatorData]);
 
   const formatPrice = (price: number | string | null | undefined): string => {
     const numPrice = Number(price) || 0;
