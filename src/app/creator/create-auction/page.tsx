@@ -96,6 +96,7 @@ export default function CreateAuctionPage() {
   const [transcript, setTranscript] = useState('');
   const [isProcessingVoice, setIsProcessingVoice] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
+  const [voiceProcessed, setVoiceProcessed] = useState(false);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   
   const [formData, setFormData] = useState({
@@ -182,18 +183,7 @@ export default function CreateAuctionPage() {
     }
   };
 
-  const applyAiSuggestion = (field: string, value: string | number) => {
-    if (field === 'category' && typeof value === 'string') {
-      const category = categories.find(cat => cat.name.toLowerCase() === value.toLowerCase());
-      if (category) {
-        setFormData(prev => ({ ...prev, category_id: category.id }));
-      }
-    } else {
-      setFormData(prev => ({ ...prev, [field]: value.toString() }));
-    }
-  };
-
-  // Voice Recognition Functions (Browser Speech API)
+  // Simplified voice recognition
   const startListening = () => {
     if (!speechSupported) {
       setError('Speech recognition is not supported in your browser');
@@ -213,20 +203,22 @@ export default function CreateAuctionPage() {
       recognition.interimResults = true;
       recognition.lang = 'en-US';
       
+      let finalTranscript = '';
+      
       recognition.onstart = () => {
         setIsListening(true);
         setTranscript('');
         setError('');
+        setVoiceProcessed(false);
       };
       
       recognition.onresult = (event: SpeechRecognitionEvent) => {
-        let finalTranscript = '';
         let interimTranscript = '';
         
         for (let i = event.resultIndex; i < event.results.length; i++) {
           const transcriptPart = event.results[i][0].transcript;
           if (event.results[i].isFinal) {
-            finalTranscript += transcriptPart;
+            finalTranscript += transcriptPart + ' ';
           } else {
             interimTranscript += transcriptPart;
           }
@@ -243,6 +235,11 @@ export default function CreateAuctionPage() {
       
       recognition.onend = () => {
         setIsListening(false);
+        // Auto-process if we have enough transcript
+        if (finalTranscript.trim().length > 10) {
+          setTranscript(finalTranscript.trim());
+          processVoiceTranscript(finalTranscript.trim());
+        }
       };
       
       recognition.start();
@@ -261,8 +258,11 @@ export default function CreateAuctionPage() {
     setIsListening(false);
   };
 
-  const processVoiceInput = async () => {
-    if (!transcript.trim()) {
+  // Direct voice transcript processing
+  const processVoiceTranscript = async (transcriptText?: string) => {
+    const textToProcess = transcriptText || transcript;
+    
+    if (!textToProcess.trim()) {
       setError('No voice input to process');
       return;
     }
@@ -271,11 +271,13 @@ export default function CreateAuctionPage() {
     setError('');
     
     try {
+      console.log('Processing transcript:', textToProcess);
+      
       const response = await fetch('/api/ai/enhance-listing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          rawInput: transcript,
+          rawInput: textToProcess,
           enhancementType: 'voice_parse'
         })
       });
@@ -284,24 +286,33 @@ export default function CreateAuctionPage() {
         const result = await response.json();
         const data = result.data;
         
-        // Auto-populate form with AI suggestions
-        if (data.title) setFormData(prev => ({ ...prev, title: data.title }));
-        if (data.description) setFormData(prev => ({ ...prev, description: data.description }));
-        if (data.suggested_condition) setFormData(prev => ({ ...prev, condition: data.suggested_condition }));
-        if (data.suggested_starting_price) setFormData(prev => ({ ...prev, starting_price: data.suggested_starting_price.toString() }));
-        if (data.suggested_buy_now_price) setFormData(prev => ({ ...prev, buy_now_price: data.suggested_buy_now_price.toString() }));
+        console.log('AI Response:', data);
         
-        // Set category if found
-        if (data.suggested_category) {
-          const category = categories.find(cat => cat.name.toLowerCase() === data.suggested_category.toLowerCase());
-          if (category) {
-            setFormData(prev => ({ ...prev, category_id: category.id }));
-          }
-        }
+        // Direct form population - override existing values
+        setFormData(prev => ({
+          ...prev,
+          title: data.title || prev.title,
+          description: data.description || prev.description,
+          condition: data.suggested_condition || prev.condition,
+          starting_price: data.suggested_starting_price ? data.suggested_starting_price.toString() : prev.starting_price,
+          buy_now_price: data.suggested_buy_now_price ? data.suggested_buy_now_price.toString() : prev.buy_now_price,
+          category_id: (() => {
+            if (data.suggested_category) {
+              const category = categories.find(cat => 
+                cat.name.toLowerCase().includes(data.suggested_category.toLowerCase()) ||
+                data.suggested_category.toLowerCase().includes(cat.name.toLowerCase())
+              );
+              return category ? category.id : prev.category_id;
+            }
+            return prev.category_id;
+          })(),
+        }));
         
         setAiSuggestions(data);
         setShowAiSuggestions(true);
-        setTranscript(''); // Clear transcript after processing
+        setVoiceProcessed(true);
+        setTranscript(''); // Clear transcript after successful processing
+        
       } else {
         const errorData = await response.json();
         setError(errorData.error || 'Failed to process voice input');
@@ -314,10 +325,12 @@ export default function CreateAuctionPage() {
     }
   };
 
-  const clearTranscript = () => {
+  const clearVoiceInput = () => {
     setTranscript('');
     setAiSuggestions(null);
     setShowAiSuggestions(false);
+    setVoiceProcessed(false);
+    setError('');
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -408,109 +421,105 @@ export default function CreateAuctionPage() {
           </div>
         </div>
 
-        {/* AI Voice Input Section */}
+        {/* Simplified Voice Input Section */}
         <div className="bg-gradient-to-r from-violet-900/20 to-red-900/20 border border-violet-800/30 rounded-lg p-8 mb-10">
-          <div className="flex items-center justify-between mb-6">
-            <div>
-              <h2 className="text-2xl font-semibold text-white mb-2 flex items-center">
-                <div className="w-2 h-2 bg-violet-400 rounded-full mr-3"></div>
-                AI Voice Assistant
-                {!speechSupported && (
-                  <span className="ml-3 text-xs bg-amber-600 text-white px-2 py-1 rounded">
-                    Not Supported
-                  </span>
-                )}
-              </h2>
-              <p className="text-zinc-300">
-                {speechSupported 
-                  ? "Describe your item by voice and let AI help fill out the form"
-                  : "Voice recognition not supported in your browser. Use manual form below."
-                }
-              </p>
-            </div>
-            
-            {speechSupported && (
-              <div className="flex items-center space-x-3">
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-semibold text-white mb-2 flex items-center justify-center">
+              <div className="w-2 h-2 bg-violet-400 rounded-full mr-3"></div>
+              🎙️ Voice to Form
+            </h2>
+            <p className="text-zinc-300 max-w-2xl mx-auto">
+              Describe your item and let AI automatically fill out the auction form below
+            </p>
+          </div>
+
+          {/* Voice Control */}
+          <div className="flex flex-col items-center space-y-4">
+            {speechSupported ? (
+              <>
                 {!isListening && !isProcessingVoice && (
                   <button
                     onClick={startListening}
-                    className="group relative bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 flex items-center space-x-2"
+                    className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-lg font-bold text-lg transition-all duration-300 transform hover:scale-105 flex items-center space-x-3"
                   >
-                    <div className="w-3 h-3 bg-white rounded-full"></div>
-                    <span>Start Speaking</span>
+                    <div className="w-4 h-4 bg-white rounded-full"></div>
+                    <span>Start Recording</span>
                   </button>
                 )}
                 
                 {isListening && (
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center space-x-2 text-red-400">
-                      <div className="w-3 h-3 bg-red-400 rounded-full animate-pulse"></div>
-                      <span className="font-mono">Listening...</span>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center space-x-3 mb-4">
+                      <div className="w-4 h-4 bg-red-500 rounded-full animate-pulse"></div>
+                      <span className="text-red-400 font-mono text-lg">Recording...</span>
                     </div>
                     <button
                       onClick={stopListening}
-                      className="bg-zinc-700 hover:bg-zinc-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                      className="bg-zinc-700 hover:bg-zinc-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
                     >
-                      Stop
+                      Stop & Process
                     </button>
                   </div>
                 )}
                 
                 {isProcessingVoice && (
-                  <div className="flex items-center space-x-2 text-violet-400">
-                    <div className="w-4 h-4 border-2 border-violet-400 border-t-transparent rounded-full animate-spin"></div>
-                    <span>Processing voice...</span>
+                  <div className="flex items-center space-x-3 text-violet-400">
+                    <div className="w-6 h-6 border-2 border-violet-400 border-t-transparent rounded-full animate-spin"></div>
+                    <span className="text-lg">AI is processing your voice...</span>
                   </div>
                 )}
+
+                {voiceProcessed && (
+                  <div className="bg-green-900/30 border border-green-700 rounded-lg p-4 max-w-md text-center">
+                    <div className="text-green-400 mb-2">✅ Voice Processed!</div>
+                    <p className="text-sm text-green-300">Check the form below - it should be automatically filled out.</p>
+                    <button
+                      onClick={clearVoiceInput}
+                      className="mt-2 text-xs text-green-400 hover:text-green-300 underline"
+                    >
+                      Record Again
+                    </button>
+                  </div>
+                )}
+
+                {/* Live Transcript Display */}
+                {transcript && !voiceProcessed && (
+                  <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4 max-w-2xl w-full">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-sm text-zinc-400">Live Transcript:</span>
+                      {!isListening && !isProcessingVoice && (
+                        <button
+                          onClick={() => processVoiceTranscript()}
+                          className="bg-violet-600 hover:bg-violet-700 text-white px-3 py-1 rounded text-sm font-medium"
+                        >
+                          Process Now
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-white text-sm leading-relaxed bg-zinc-900/50 p-3 rounded">
+                      {transcript}
+                    </p>
+                  </div>
+                )}
+
+                {/* Example */}
+                {!transcript && !isListening && !voiceProcessed && (
+                  <div className="bg-zinc-800/30 border border-zinc-700/50 rounded-lg p-4 max-w-2xl text-center">
+                    <p className="text-zinc-400 text-sm mb-2">💡 <strong>Example:</strong></p>
+                    <p className="text-zinc-300 text-sm italic">
+                      &quot;This is the gaming mouse I used in my Valorant videos. It&apos;s a Logitech G Pro X Superlight, 
+                      white color, in good condition. I used it for about 8 months. Start the bidding at $75.&quot;
+                    </p>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center text-zinc-400">
+                <p>Voice recognition not supported in your browser.</p>
+                <p className="text-sm">Please fill out the form manually below.</p>
               </div>
             )}
           </div>
-          
-          {/* Transcript Display */}
-          {transcript && (
-            <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4 mb-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-zinc-300">Voice Transcript:</span>
-                <div className="flex space-x-2">
-                  <button
-                    onClick={processVoiceInput}
-                    disabled={isProcessingVoice}
-                    className="bg-violet-600 hover:bg-violet-700 disabled:bg-zinc-600 text-white px-3 py-1 rounded text-sm font-medium transition-colors flex items-center space-x-1"
-                  >
-                    {isProcessingVoice ? (
-                      <>
-                        <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span>Processing...</span>
-                      </>
-                    ) : (
-                      <>
-                        <span>✨</span>
-                        <span>Process with AI</span>
-                      </>
-                    )}
-                  </button>
-                  <button
-                    onClick={clearTranscript}
-                    className="text-zinc-400 hover:text-white text-sm"
-                  >
-                    Clear
-                  </button>
-                </div>
-              </div>
-              <p className="text-white text-sm leading-relaxed">{transcript}</p>
-            </div>
-          )}
-          
-          {(aiEnhancing || isProcessingVoice) && (
-            <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-5 h-5 border-2 border-violet-400 border-t-transparent rounded-full animate-spin"></div>
-                <span className="text-violet-300">
-                  {isProcessingVoice ? 'Converting speech and enhancing listing...' : 'AI is enhancing your listing...'}
-                </span>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Form */}
@@ -521,18 +530,12 @@ export default function CreateAuctionPage() {
             </div>
           )}
 
-          {/* AI Suggestions Panel */}
+          {/* Show AI suggestions only as additional info */}
           {showAiSuggestions && aiSuggestions && (
             <div className="bg-violet-950/30 border border-violet-800/50 rounded-lg p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-violet-300 flex items-center">
-                  <div className="w-2 h-2 bg-violet-400 rounded-full mr-2"></div>
-                  AI Suggestions
-                  {aiSuggestions.confidence_score && (
-                    <span className="ml-2 text-sm text-zinc-400">
-                      ({aiSuggestions.confidence_score}% confidence)
-                    </span>
-                  )}
+                <h3 className="text-lg font-semibold text-violet-300">
+                  ✨ Additional AI Suggestions
                 </h3>
                 <button
                   type="button"
@@ -543,89 +546,23 @@ export default function CreateAuctionPage() {
                 </button>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                {(aiSuggestions.enhanced_title || aiSuggestions.title) && (
-                  <div className="bg-zinc-800/50 rounded p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-zinc-400 uppercase tracking-wide">Enhanced Title</span>
-                      <button
-                        type="button"
-                        onClick={() => applyAiSuggestion('title', aiSuggestions.enhanced_title || aiSuggestions.title!)}
-                        className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
-                      >
-                        Apply
-                      </button>
-                    </div>
-                    <p className="text-white text-sm">{aiSuggestions.enhanced_title || aiSuggestions.title}</p>
-                  </div>
-                )}
-                
-                {aiSuggestions.suggested_starting_price && (
-                  <div className="bg-zinc-800/50 rounded p-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs text-zinc-400 uppercase tracking-wide">Starting Price</span>
-                      <button
-                        type="button"
-                        onClick={() => applyAiSuggestion('starting_price', aiSuggestions.suggested_starting_price!)}
-                        className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
-                      >
-                        Apply
-                      </button>
-                    </div>
-                    <p className="text-white text-sm">${aiSuggestions.suggested_starting_price}</p>
-                  </div>
-                )}
-              </div>
-              
-              {(aiSuggestions.enhanced_description || aiSuggestions.description) && (
-                <div className="mb-4 bg-zinc-800/50 rounded p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs text-zinc-400 uppercase tracking-wide">Enhanced Description</span>
-                    <button
-                      type="button"
-                      onClick={() => applyAiSuggestion('description', aiSuggestions.enhanced_description || aiSuggestions.description!)}
-                      className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
-                    >
-                      Apply
-                    </button>
-                  </div>
-                  <p className="text-white text-sm leading-relaxed">{aiSuggestions.enhanced_description || aiSuggestions.description}</p>
+              {aiSuggestions.authenticity_highlights && (
+                <div className="mb-4">
+                  <h4 className="text-sm font-medium text-violet-400 mb-2">Consider Adding to Description:</h4>
+                  <ul className="space-y-1">
+                    {aiSuggestions.authenticity_highlights.map((highlight, index) => (
+                      <li key={index} className="text-sm text-zinc-300 flex items-start">
+                        <span className="text-violet-400 mr-2">•</span>
+                        {highlight}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
-              
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {aiSuggestions.authenticity_highlights && aiSuggestions.authenticity_highlights.length > 0 && (
-                  <div>
-                    <span className="text-xs text-zinc-400 uppercase tracking-wide block mb-2">Authenticity Highlights</span>
-                    <ul className="space-y-1">
-                      {aiSuggestions.authenticity_highlights.map((highlight, index) => (
-                        <li key={index} className="text-sm text-zinc-300 flex items-start">
-                          <span className="text-violet-400 mr-2">•</span>
-                          {highlight}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                
-                {aiSuggestions.collector_appeal && aiSuggestions.collector_appeal.length > 0 && (
-                  <div>
-                    <span className="text-xs text-zinc-400 uppercase tracking-wide block mb-2">Collector Appeal</span>
-                    <ul className="space-y-1">
-                      {aiSuggestions.collector_appeal.map((appeal, index) => (
-                        <li key={index} className="text-sm text-zinc-300 flex items-start">
-                          <span className="text-green-400 mr-2">•</span>
-                          {appeal}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-              
-              {aiSuggestions.suggested_improvements && aiSuggestions.suggested_improvements.length > 0 && (
-                <div className="mt-4">
-                  <span className="text-xs text-zinc-400 uppercase tracking-wide block mb-2">Suggestions</span>
+
+              {aiSuggestions.suggested_improvements && (
+                <div>
+                  <h4 className="text-sm font-medium text-amber-400 mb-2">Suggestions to Improve Listing:</h4>
                   <ul className="space-y-1">
                     {aiSuggestions.suggested_improvements.map((suggestion, index) => (
                       <li key={index} className="text-sm text-zinc-300 flex items-start">
@@ -636,13 +573,6 @@ export default function CreateAuctionPage() {
                   </ul>
                 </div>
               )}
-
-              {aiSuggestions.pricing_advice && (
-                <div className="mt-4 bg-green-900/20 border border-green-800/30 rounded p-3">
-                  <span className="text-xs text-green-400 uppercase tracking-wide block mb-2">Pricing Advice</span>
-                  <p className="text-sm text-green-300">{aiSuggestions.pricing_advice}</p>
-                </div>
-              )}
             </div>
           )}
 
@@ -650,7 +580,7 @@ export default function CreateAuctionPage() {
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold text-white">Basic Information</h2>
-              {(formData.title || formData.description) && (
+              {(formData.title || formData.description) && !voiceProcessed && (
                 <button
                   type="button"
                   onClick={handleAiEnhance}
