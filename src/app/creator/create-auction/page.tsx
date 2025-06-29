@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
@@ -11,12 +11,92 @@ interface Category {
   description: string;
 }
 
+interface AIEnhancedData {
+  title?: string;
+  enhanced_title?: string;
+  description?: string;
+  enhanced_description?: string;
+  suggested_category?: string;
+  suggested_condition?: string;
+  suggested_starting_price?: number;
+  suggested_buy_now_price?: number;
+  suggested_improvements?: string[];
+  marketing_keywords?: string[];
+  authenticity_highlights?: string[];
+  collector_appeal?: string[];
+  confidence_score?: number;
+  pricing_advice?: string;
+}
+
+// TypeScript interfaces for Speech Recognition API
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+  resultIndex: number;
+}
+
+interface SpeechRecognitionErrorEvent extends Event {
+  error: string;
+}
+
+interface SpeechRecognitionResult {
+  0: { transcript: string };
+  isFinal: boolean;
+  length: number;
+}
+
+interface SpeechRecognitionResultList {
+  length: number;
+  item(index: number): SpeechRecognitionResult;
+  [index: number]: SpeechRecognitionResult;
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start(): void;
+  stop(): void;
+  onstart: ((this: SpeechRecognition, ev: Event) => void) | null;
+  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null;
+  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null;
+  onend: ((this: SpeechRecognition, ev: Event) => void) | null;
+}
+
+interface SpeechRecognitionConstructor {
+  new (): SpeechRecognition;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  }
+}
+
+// Check if browser supports speech recognition
+const isSpeechRecognitionSupported = () => {
+  return typeof window !== 'undefined' && 
+         (window.webkitSpeechRecognition !== undefined || window.SpeechRecognition !== undefined);
+};
+
 export default function CreateAuctionPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const [categories, setCategories] = useState<Category[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  
+  // AI Enhancement States
+  const [aiEnhancing, setAiEnhancing] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<AIEnhancedData | null>(null);
+  const [showAiSuggestions, setShowAiSuggestions] = useState(false);
+  
+  // Voice Recording States
+  const [isListening, setIsListening] = useState(false);
+  const [transcript, setTranscript] = useState('');
+  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
+  const [speechSupported, setSpeechSupported] = useState(false);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -40,6 +120,7 @@ export default function CreateAuctionPage() {
 
   useEffect(() => {
     fetchCategories();
+    setSpeechSupported(isSpeechRecognitionSupported());
   }, []);
 
   const fetchCategories = async () => {
@@ -61,9 +142,182 @@ export default function CreateAuctionPage() {
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const files = Array.from(e.target.files).slice(0, 5); // Max 5 images
+      const files = Array.from(e.target.files).slice(0, 5);
       setFormData(prev => ({ ...prev, images: files }));
     }
+  };
+
+  // AI Enhancement Functions
+  const handleAiEnhance = async () => {
+    setAiEnhancing(true);
+    setError('');
+    
+    try {
+      const response = await fetch('/api/ai/enhance-listing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: formData.title,
+          description: formData.description,
+          category: categories.find(cat => cat.id === formData.category_id)?.name,
+          condition: formData.condition,
+          videoUrl: formData.video_url,
+          enhancementType: 'existing_enhance'
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setAiSuggestions(result.data);
+        setShowAiSuggestions(true);
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to enhance listing');
+      }
+    } catch (error) {
+      console.error('AI enhancement failed:', error);
+      setError('Failed to enhance listing');
+    } finally {
+      setAiEnhancing(false);
+    }
+  };
+
+  const applyAiSuggestion = (field: string, value: string | number) => {
+    if (field === 'category' && typeof value === 'string') {
+      const category = categories.find(cat => cat.name.toLowerCase() === value.toLowerCase());
+      if (category) {
+        setFormData(prev => ({ ...prev, category_id: category.id }));
+      }
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value.toString() }));
+    }
+  };
+
+  // Voice Recognition Functions (Browser Speech API)
+  const startListening = () => {
+    if (!speechSupported) {
+      setError('Speech recognition is not supported in your browser');
+      return;
+    }
+
+    try {
+      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SpeechRecognition) {
+        setError('Speech recognition is not available');
+        return;
+      }
+
+      const recognition = new SpeechRecognition();
+      
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+      
+      recognition.onstart = () => {
+        setIsListening(true);
+        setTranscript('');
+        setError('');
+      };
+      
+      recognition.onresult = (event: SpeechRecognitionEvent) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+        
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcriptPart = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcriptPart;
+          } else {
+            interimTranscript += transcriptPart;
+          }
+        }
+        
+        setTranscript(finalTranscript + interimTranscript);
+      };
+      
+      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
+        console.error('Speech recognition error:', event.error);
+        setError(`Speech recognition error: ${event.error}`);
+        setIsListening(false);
+      };
+      
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+      
+      recognition.start();
+      recognitionRef.current = recognition;
+      
+    } catch (error) {
+      console.error('Failed to start speech recognition:', error);
+      setError('Failed to start speech recognition');
+    }
+  };
+
+  const stopListening = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+    }
+    setIsListening(false);
+  };
+
+  const processVoiceInput = async () => {
+    if (!transcript.trim()) {
+      setError('No voice input to process');
+      return;
+    }
+
+    setIsProcessingVoice(true);
+    setError('');
+    
+    try {
+      const response = await fetch('/api/ai/enhance-listing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          rawInput: transcript,
+          enhancementType: 'voice_parse'
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const data = result.data;
+        
+        // Auto-populate form with AI suggestions
+        if (data.title) setFormData(prev => ({ ...prev, title: data.title }));
+        if (data.description) setFormData(prev => ({ ...prev, description: data.description }));
+        if (data.suggested_condition) setFormData(prev => ({ ...prev, condition: data.suggested_condition }));
+        if (data.suggested_starting_price) setFormData(prev => ({ ...prev, starting_price: data.suggested_starting_price.toString() }));
+        if (data.suggested_buy_now_price) setFormData(prev => ({ ...prev, buy_now_price: data.suggested_buy_now_price.toString() }));
+        
+        // Set category if found
+        if (data.suggested_category) {
+          const category = categories.find(cat => cat.name.toLowerCase() === data.suggested_category.toLowerCase());
+          if (category) {
+            setFormData(prev => ({ ...prev, category_id: category.id }));
+          }
+        }
+        
+        setAiSuggestions(data);
+        setShowAiSuggestions(true);
+        setTranscript(''); // Clear transcript after processing
+      } else {
+        const errorData = await response.json();
+        setError(errorData.error || 'Failed to process voice input');
+      }
+    } catch (error) {
+      console.error('Failed to process voice input:', error);
+      setError('Failed to process voice input');
+    } finally {
+      setIsProcessingVoice(false);
+    }
+  };
+
+  const clearTranscript = () => {
+    setTranscript('');
+    setAiSuggestions(null);
+    setShowAiSuggestions(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -72,7 +326,6 @@ export default function CreateAuctionPage() {
     setSubmitting(true);
 
     try {
-      // Create the auction first
       const auctionData = {
         title: formData.title,
         description: formData.description,
@@ -100,7 +353,6 @@ export default function CreateAuctionPage() {
       const result = await response.json();
       const auctionId = result.auction.id;
 
-      // Upload images if any
       if (formData.images.length > 0) {
         const imageFormData = new FormData();
         formData.images.forEach(file => {
@@ -114,8 +366,9 @@ export default function CreateAuctionPage() {
       }
 
       router.push(`/auctions/${auctionId}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'An error occurred');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
+      setError(errorMessage);
     } finally {
       setSubmitting(false);
     }
@@ -134,7 +387,7 @@ export default function CreateAuctionPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
-      <div className="max-w-3xl mx-auto px-6 py-12">
+      <div className="max-w-4xl mx-auto px-6 py-12">
         {/* Header */}
         <div className="mb-12">
           <Link 
@@ -150,9 +403,114 @@ export default function CreateAuctionPage() {
               Create New Auction
             </h1>
             <p className="text-lg text-zinc-300">
-              List an authentic item from your content
+              List an authentic item from your content with AI assistance
             </p>
           </div>
+        </div>
+
+        {/* AI Voice Input Section */}
+        <div className="bg-gradient-to-r from-violet-900/20 to-red-900/20 border border-violet-800/30 rounded-lg p-8 mb-10">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-2xl font-semibold text-white mb-2 flex items-center">
+                <div className="w-2 h-2 bg-violet-400 rounded-full mr-3"></div>
+                AI Voice Assistant
+                {!speechSupported && (
+                  <span className="ml-3 text-xs bg-amber-600 text-white px-2 py-1 rounded">
+                    Not Supported
+                  </span>
+                )}
+              </h2>
+              <p className="text-zinc-300">
+                {speechSupported 
+                  ? "Describe your item by voice and let AI help fill out the form"
+                  : "Voice recognition not supported in your browser. Use manual form below."
+                }
+              </p>
+            </div>
+            
+            {speechSupported && (
+              <div className="flex items-center space-x-3">
+                {!isListening && !isProcessingVoice && (
+                  <button
+                    onClick={startListening}
+                    className="group relative bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 flex items-center space-x-2"
+                  >
+                    <div className="w-3 h-3 bg-white rounded-full"></div>
+                    <span>Start Speaking</span>
+                  </button>
+                )}
+                
+                {isListening && (
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2 text-red-400">
+                      <div className="w-3 h-3 bg-red-400 rounded-full animate-pulse"></div>
+                      <span className="font-mono">Listening...</span>
+                    </div>
+                    <button
+                      onClick={stopListening}
+                      className="bg-zinc-700 hover:bg-zinc-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                    >
+                      Stop
+                    </button>
+                  </div>
+                )}
+                
+                {isProcessingVoice && (
+                  <div className="flex items-center space-x-2 text-violet-400">
+                    <div className="w-4 h-4 border-2 border-violet-400 border-t-transparent rounded-full animate-spin"></div>
+                    <span>Processing voice...</span>
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+          
+          {/* Transcript Display */}
+          {transcript && (
+            <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4 mb-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-zinc-300">Voice Transcript:</span>
+                <div className="flex space-x-2">
+                  <button
+                    onClick={processVoiceInput}
+                    disabled={isProcessingVoice}
+                    className="bg-violet-600 hover:bg-violet-700 disabled:bg-zinc-600 text-white px-3 py-1 rounded text-sm font-medium transition-colors flex items-center space-x-1"
+                  >
+                    {isProcessingVoice ? (
+                      <>
+                        <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Processing...</span>
+                      </>
+                    ) : (
+                      <>
+                        <span>✨</span>
+                        <span>Process with AI</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={clearTranscript}
+                    className="text-zinc-400 hover:text-white text-sm"
+                  >
+                    Clear
+                  </button>
+                </div>
+              </div>
+              <p className="text-white text-sm leading-relaxed">{transcript}</p>
+            </div>
+          )}
+          
+          {(aiEnhancing || isProcessingVoice) && (
+            <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-5 h-5 border-2 border-violet-400 border-t-transparent rounded-full animate-spin"></div>
+                <span className="text-violet-300">
+                  {isProcessingVoice ? 'Converting speech and enhancing listing...' : 'AI is enhancing your listing...'}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Form */}
@@ -163,9 +521,156 @@ export default function CreateAuctionPage() {
             </div>
           )}
 
+          {/* AI Suggestions Panel */}
+          {showAiSuggestions && aiSuggestions && (
+            <div className="bg-violet-950/30 border border-violet-800/50 rounded-lg p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-violet-300 flex items-center">
+                  <div className="w-2 h-2 bg-violet-400 rounded-full mr-2"></div>
+                  AI Suggestions
+                  {aiSuggestions.confidence_score && (
+                    <span className="ml-2 text-sm text-zinc-400">
+                      ({aiSuggestions.confidence_score}% confidence)
+                    </span>
+                  )}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() => setShowAiSuggestions(false)}
+                  className="text-zinc-400 hover:text-white text-sm"
+                >
+                  Dismiss
+                </button>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                {(aiSuggestions.enhanced_title || aiSuggestions.title) && (
+                  <div className="bg-zinc-800/50 rounded p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-zinc-400 uppercase tracking-wide">Enhanced Title</span>
+                      <button
+                        type="button"
+                        onClick={() => applyAiSuggestion('title', aiSuggestions.enhanced_title || aiSuggestions.title!)}
+                        className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                    <p className="text-white text-sm">{aiSuggestions.enhanced_title || aiSuggestions.title}</p>
+                  </div>
+                )}
+                
+                {aiSuggestions.suggested_starting_price && (
+                  <div className="bg-zinc-800/50 rounded p-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-zinc-400 uppercase tracking-wide">Starting Price</span>
+                      <button
+                        type="button"
+                        onClick={() => applyAiSuggestion('starting_price', aiSuggestions.suggested_starting_price!)}
+                        className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                    <p className="text-white text-sm">${aiSuggestions.suggested_starting_price}</p>
+                  </div>
+                )}
+              </div>
+              
+              {(aiSuggestions.enhanced_description || aiSuggestions.description) && (
+                <div className="mb-4 bg-zinc-800/50 rounded p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs text-zinc-400 uppercase tracking-wide">Enhanced Description</span>
+                    <button
+                      type="button"
+                      onClick={() => applyAiSuggestion('description', aiSuggestions.enhanced_description || aiSuggestions.description!)}
+                      className="text-xs text-violet-400 hover:text-violet-300 transition-colors"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                  <p className="text-white text-sm leading-relaxed">{aiSuggestions.enhanced_description || aiSuggestions.description}</p>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {aiSuggestions.authenticity_highlights && aiSuggestions.authenticity_highlights.length > 0 && (
+                  <div>
+                    <span className="text-xs text-zinc-400 uppercase tracking-wide block mb-2">Authenticity Highlights</span>
+                    <ul className="space-y-1">
+                      {aiSuggestions.authenticity_highlights.map((highlight, index) => (
+                        <li key={index} className="text-sm text-zinc-300 flex items-start">
+                          <span className="text-violet-400 mr-2">•</span>
+                          {highlight}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+                
+                {aiSuggestions.collector_appeal && aiSuggestions.collector_appeal.length > 0 && (
+                  <div>
+                    <span className="text-xs text-zinc-400 uppercase tracking-wide block mb-2">Collector Appeal</span>
+                    <ul className="space-y-1">
+                      {aiSuggestions.collector_appeal.map((appeal, index) => (
+                        <li key={index} className="text-sm text-zinc-300 flex items-start">
+                          <span className="text-green-400 mr-2">•</span>
+                          {appeal}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+              
+              {aiSuggestions.suggested_improvements && aiSuggestions.suggested_improvements.length > 0 && (
+                <div className="mt-4">
+                  <span className="text-xs text-zinc-400 uppercase tracking-wide block mb-2">Suggestions</span>
+                  <ul className="space-y-1">
+                    {aiSuggestions.suggested_improvements.map((suggestion, index) => (
+                      <li key={index} className="text-sm text-zinc-300 flex items-start">
+                        <span className="text-amber-400 mr-2">→</span>
+                        {suggestion}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {aiSuggestions.pricing_advice && (
+                <div className="mt-4 bg-green-900/20 border border-green-800/30 rounded p-3">
+                  <span className="text-xs text-green-400 uppercase tracking-wide block mb-2">Pricing Advice</span>
+                  <p className="text-sm text-green-300">{aiSuggestions.pricing_advice}</p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Basic Information */}
           <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-8">
-            <h2 className="text-xl font-semibold text-white mb-6">Basic Information</h2>
+            <div className="flex items-center justify-between mb-6">
+              <h2 className="text-xl font-semibold text-white">Basic Information</h2>
+              {(formData.title || formData.description) && (
+                <button
+                  type="button"
+                  onClick={handleAiEnhance}
+                  disabled={aiEnhancing}
+                  className="bg-violet-600 hover:bg-violet-700 disabled:bg-zinc-600 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center space-x-2"
+                >
+                  {aiEnhancing ? (
+                    <>
+                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                      <span>Enhancing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>✨</span>
+                      <span>AI Enhance</span>
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
             
             <div className="space-y-6">
               <div>
@@ -432,4 +937,4 @@ export default function CreateAuctionPage() {
       </div>
     </div>
   );
-} 
+}
