@@ -356,10 +356,10 @@ export default function DashboardPage() {
                 <div className="w-1 h-16 bg-violet-400"></div>
                 <div>
                   <h1 className="text-5xl font-black text-white tracking-tight">
-                    {user.display_name || user.username}
+                    {user?.display_name || user?.username}
                   </h1>
                   <p className="text-sm text-zinc-400 font-mono uppercase tracking-[0.2em] mt-2">
-                    {user.is_creator ? 'CREATOR INTERFACE' : 'COLLECTOR INTERFACE'}
+                    {user?.is_creator ? 'CREATOR INTERFACE' : 'COLLECTOR INTERFACE'}
                   </p>
                 </div>
               </div>
@@ -374,7 +374,7 @@ export default function DashboardPage() {
           </div>
         </header>
 
-        {user.is_creator ? (
+        {user?.is_creator ? (
           // CREATOR DASHBOARD
           <div className="space-y-16">
             {/* Performance Grid */}
@@ -435,7 +435,7 @@ export default function DashboardPage() {
               </div>
             </section>
 
-            {/* Active Auctions */}
+            {/* Active Auctions - IMPROVED LAYOUT */}
             <section>
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center space-x-4">
@@ -481,69 +481,82 @@ export default function DashboardPage() {
                   </Link>
                 </div>
               ) : (
-                <div className="grid gap-4">
+                <div className="space-y-4">
                   {userAuctions.map((auction, index) => {
                     const now = new Date();
                     const endTime = new Date(auction.end_time);
                     const isActive = auction.status === 'active' && endTime > now;
                     const isExpired = auction.status === 'active' && endTime <= now;
+                    const isPending = auction.status === 'pending';
                     
                     return (
                       <div key={auction.id} className="relative group">
                         <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"></div>
                         <div className="relative bg-zinc-900/80 border border-zinc-800 rounded-lg p-6 backdrop-blur-sm">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center space-x-6">
-                              <div className="flex items-center space-x-4">
-                                <div className="text-xs text-zinc-500 font-mono w-8">
-                                  {String(index + 1).padStart(2, '0')}
-                                </div>
-                                <ItemImage 
-                                  item={auction}
-                                  size={64}
-                                  className="w-16 h-16 rounded-lg flex-shrink-0"
-                                />
-                              </div>
-                              
-                              <div className="flex-1">
-                                <h3 className="text-lg font-bold text-white mb-2">{auction.title}</h3>
-                                <div className="grid grid-cols-4 gap-6 text-sm">
-                                  <div>
-                                    <div className="text-xs text-zinc-500 font-mono mb-1">CURRENT BID</div>
-                                    <div className="text-white font-mono">${formatPrice(auction.current_price)}</div>
-                                  </div>
-                                  <div>
-                                    <div className="text-xs text-zinc-500 font-mono mb-1">TOTAL BIDS</div>
-                                    <div className="text-white font-mono">{auction.bid_count || 0}</div>
-                                  </div>
-                                  <div>
-                                    <div className="text-xs text-zinc-500 font-mono mb-1">ENDS</div>
-                                    <div className="text-white font-mono text-xs">
-                                      {new Date(auction.end_time).toLocaleDateString()}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <div className="text-xs text-zinc-500 font-mono mb-1">STATUS</div>
-                                    <div className={`inline-flex items-center px-2 py-1 rounded text-xs font-mono ${
-                                      isActive ? 'bg-green-600 text-white border-green-500' :
-                                      isExpired ? 'bg-amber-600 text-white border-amber-500' :
-                                      getStatusColor(auction.status)
-                                    }`}>
-                                      {isActive ? 'ACTIVE' : isExpired ? 'EXPIRED' : auction.status.toUpperCase()}
-                                    </div>
-                                  </div>
-                                </div>
+                          {/* IMPROVED GRID LAYOUT */}
+                          <div className="grid grid-cols-12 gap-4 items-center">
+                            {/* Index + Image */}
+                            <div className="col-span-1 flex items-center justify-center">
+                              <div className="text-xs text-zinc-500 font-mono">
+                                {String(index + 1).padStart(2, '0')}
                               </div>
                             </div>
                             
-                            <div className="flex items-center space-x-3">
+                            <div className="col-span-1">
+                              <ItemImage 
+                                item={auction}
+                                size={64}
+                                className="w-16 h-16 rounded-lg"
+                              />
+                            </div>
+                            
+                            {/* Title - Fixed width to prevent shifting */}
+                            <div className="col-span-4">
+                              <h3 className="text-lg font-bold text-white leading-tight line-clamp-2">
+                                {auction.title}
+                              </h3>
+                            </div>
+                            
+                            {/* Stats - Fixed width columns */}
+                            <div className="col-span-1 text-center">
+                              <div className="text-xs text-zinc-500 font-mono mb-1">BID</div>
+                              <div className="text-white font-mono text-sm">${formatPrice(auction.current_price)}</div>
+                            </div>
+                            
+                            <div className="col-span-1 text-center">
+                              <div className="text-xs text-zinc-500 font-mono mb-1">BIDS</div>
+                              <div className="text-white font-mono text-sm">{auction.bid_count || 0}</div>
+                            </div>
+                            
+                            <div className="col-span-1 text-center">
+                              <div className="text-xs text-zinc-500 font-mono mb-1">ENDS</div>
+                              <div className="text-white font-mono text-xs">
+                                {new Date(auction.end_time).toLocaleDateString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric' 
+                                })}
+                              </div>
+                            </div>
+                            
+                            <div className="col-span-1 flex justify-center">
+                              <div className={`inline-flex items-center px-2 py-1 rounded text-xs font-mono ${
+                                isActive ? 'bg-green-600 text-white' :
+                                isExpired ? 'bg-amber-600 text-white' :
+                                getStatusColor(auction.status)
+                              }`}>
+                                {isActive ? 'ACTIVE' : isExpired ? 'EXPIRED' : auction.status.toUpperCase()}
+                              </div>
+                            </div>
+                            
+                            {/* Actions - Fixed width */}
+                            <div className="col-span-2 flex items-center justify-end space-x-3">
                               <Link 
                                 href={`/auctions/${auction.id}`}
                                 className="text-xs text-zinc-400 hover:text-white font-mono transition-colors"
                               >
                                 VIEW
                               </Link>
-                              {isActive && (
+                              {(isActive || isPending) && (
                                 <>
                                   <div className="w-px h-4 bg-zinc-700"></div>
                                   <Link 
@@ -557,7 +570,7 @@ export default function DashboardPage() {
                                     className="text-xs text-red-400 hover:text-red-300 font-mono transition-colors"
                                     disabled={deletingId === auction.id}
                                   >
-                                    {deletingId === auction.id ? 'DELETING...' : 'DELETE'}
+                                    {deletingId === auction.id ? 'DEL...' : 'DELETE'}
                                   </button>
                                 </>
                               )}
@@ -592,7 +605,7 @@ export default function DashboardPage() {
               )}
             </section>
 
-            {/* Sales History */}
+            {/* Sales History - IMPROVED LAYOUT */}
             <section>
               <div className="flex items-center space-x-4 mb-8">
                 <div className="w-8 h-px bg-violet-400"></div>
@@ -613,35 +626,45 @@ export default function DashboardPage() {
                 <div className="space-y-3">
                   {sales.slice(0, 5).map((sale, index) => (
                     <div key={sale.id} className="bg-zinc-900/80 border border-zinc-800 rounded-lg p-4 backdrop-blur-sm">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-4">
-                          <div className="text-xs text-zinc-500 font-mono w-8">
+                      {/* IMPROVED SALES GRID */}
+                      <div className="grid grid-cols-12 gap-4 items-center">
+                        <div className="col-span-1 flex items-center justify-center">
+                          <div className="text-xs text-zinc-500 font-mono">
                             {String(index + 1).padStart(2, '0')}
                           </div>
+                        </div>
+                        
+                        <div className="col-span-1">
                           <ItemImage 
                             item={sale}
                             size={48}
                             className="w-12 h-12 rounded"
                           />
-                          <div>
-                            <h4 className="text-white font-medium">{sale.auction_title}</h4>
-                            <p className="text-xs text-zinc-400 font-mono">
-                              BUYER: {sale.buyer_display_name || sale.buyer_username}
-                            </p>
+                        </div>
+                        
+                        <div className="col-span-5">
+                          <h4 className="text-white font-medium leading-tight line-clamp-1">{sale.auction_title}</h4>
+                          <p className="text-xs text-zinc-400 font-mono">
+                            BUYER: {sale.buyer_display_name || sale.buyer_username}
+                          </p>
+                        </div>
+                        
+                        <div className="col-span-2 text-center">
+                          <div className="text-xs text-zinc-500 font-mono mb-1">FINAL PRICE</div>
+                          <div className="text-emerald-400 font-mono text-lg">${formatPrice(sale.final_price)}</div>
+                        </div>
+                        
+                        <div className="col-span-2 text-center">
+                          <div className="text-xs text-zinc-500 font-mono mb-1">DATE</div>
+                          <div className="text-zinc-300 font-mono text-sm">
+                            {new Date(sale.created_at).toLocaleDateString('en-US', { 
+                              month: 'short', 
+                              day: 'numeric' 
+                            })}
                           </div>
                         </div>
                         
-                        <div className="flex items-center space-x-8">
-                          <div className="text-right">
-                            <div className="text-xs text-zinc-500 font-mono">FINAL PRICE</div>
-                            <div className="text-emerald-400 font-mono text-lg">${formatPrice(sale.final_price)}</div>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-xs text-zinc-500 font-mono">DATE</div>
-                            <div className="text-zinc-300 font-mono text-sm">
-                              {new Date(sale.created_at).toLocaleDateString()}
-                            </div>
-                          </div>
+                        <div className="col-span-1 flex justify-center">
                           <div className={`px-2 py-1 rounded text-xs font-mono ${getStatusColor(sale.shipping_status)}`}>
                             {sale.shipping_status.toUpperCase()}
                           </div>
