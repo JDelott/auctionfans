@@ -1,6 +1,191 @@
 import { AuctionFormData, Category } from '../auction-forms/types';
+import Anthropic from '@anthropic-ai/sdk';
 
-export function extractFormUpdates(
+// Initialize Anthropic client
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+});
+
+export async function extractFormUpdates(
+  userMessage: string, 
+  currentFormData: AuctionFormData, 
+  categories: Category[],
+  currentStep: string = 'basic_info'
+): Promise<Record<string, string>> {
+  console.log('extractFormUpdates called:', { userMessage, currentStep });
+  
+  // Step-specific extraction
+  switch (currentStep) {
+    case 'basic_info':
+      return extractBasicInfo(userMessage, currentFormData, categories);
+    
+    case 'pricing':
+      return await extractPricingInfoWithAI(userMessage, currentFormData);
+    
+    case 'video':
+      return await extractVideoInfoWithAI(userMessage, currentFormData);
+    
+    case 'images':
+    case 'review':
+      // For images and review, enhance any field mentioned
+      return extractGeneralUpdates(userMessage, currentFormData, categories);
+    
+    default:
+      return extractBasicInfo(userMessage, currentFormData, categories);
+  }
+}
+
+// AI-powered pricing extraction
+export async function extractPricingInfoWithAI(
+  userMessage: string, 
+  currentFormData: AuctionFormData
+): Promise<Record<string, string>> {
+  const formUpdates: Record<string, string> = {};
+  
+  try {
+    console.log('Using AI to extract pricing from:', userMessage);
+
+    const prompt = `Parse this auction pricing information from speech: "${userMessage}"
+
+Extract the following pricing details and return as JSON:
+- starting_price: The starting bid amount (required)
+- reserve_price: The minimum sale price (optional)
+- buy_now_price: The instant purchase price (optional)  
+- duration_days: Auction duration in days (optional, common values: 1, 3, 7, 10, 14)
+
+Instructions:
+- Extract only numeric values (no dollar signs)
+- If someone says "twenty-five" convert to "25"
+- Handle speech recognition errors (e.g. "their price" might mean "reserve price")
+- If a field isn't mentioned, don't include it in the response
+- For duration, convert "week" to 7 days
+
+Current form data context:
+- Current starting price: "${currentFormData.starting_price || 'not set'}"
+- Current reserve price: "${currentFormData.reserve_price || 'not set'}"
+- Current buy now price: "${currentFormData.buy_now_price || 'not set'}"
+- Current duration: "${currentFormData.duration_days || '7'}" days
+
+Return ONLY valid JSON like: {"starting_price": "25", "reserve_price": "50"}`;
+
+    const completion = await anthropic.messages.create({
+      model: 'claude-3-sonnet-20240229',
+      max_tokens: 200,
+      messages: [
+        {
+          role: 'user',
+          content: prompt
+        }
+      ]
+    });
+
+    const aiResponse = completion.content[0].type === 'text' ? completion.content[0].text.trim() : '';
+    console.log('AI pricing response:', aiResponse);
+
+    // Parse the JSON response
+    try {
+      const parsed = JSON.parse(aiResponse);
+      
+      // Only update fields that aren't already set
+      if (parsed.starting_price && !currentFormData.starting_price) {
+        formUpdates.starting_price = parsed.starting_price;
+      }
+      if (parsed.reserve_price && !currentFormData.reserve_price) {
+        formUpdates.reserve_price = parsed.reserve_price;
+      }
+      if (parsed.buy_now_price && !currentFormData.buy_now_price) {
+        formUpdates.buy_now_price = parsed.buy_now_price;
+      }
+      if (parsed.duration_days && (!currentFormData.duration_days || currentFormData.duration_days === '7')) {
+        formUpdates.duration_days = parsed.duration_days;
+      }
+
+      console.log('AI extracted pricing:', formUpdates);
+    } catch (parseError) {
+      console.error('Failed to parse AI response as JSON:', parseError);
+      
+      // Fallback: extract any numbers mentioned
+      const numbers = userMessage.match(/\d+/g);
+      if (numbers && numbers.length > 0 && !currentFormData.starting_price) {
+        formUpdates.starting_price = numbers[0];
+        console.log('Fallback: extracted starting price:', numbers[0]);
+      }
+    }
+
+  } catch (error) {
+    console.error('AI pricing extraction error:', error);
+    
+    // Ultimate fallback: basic number extraction
+    const numbers = userMessage.match(/\d+/g);
+    if (numbers && numbers.length > 0 && !currentFormData.starting_price) {
+      formUpdates.starting_price = numbers[0];
+      console.log('Fallback: extracted starting price:', numbers[0]);
+    }
+  }
+
+  return formUpdates;
+}
+
+// AI-powered video extraction
+export async function extractVideoInfoWithAI(
+  userMessage: string, 
+  currentFormData: AuctionFormData
+): Promise<Record<string, string>> {
+  const formUpdates: Record<string, string> = {};
+  
+  try {
+    console.log('Using AI to extract video info from:', userMessage);
+
+    const prompt = `Parse this video information from speech: "${userMessage}"
+
+Extract video details and return as JSON:
+- video_url: Any YouTube, Vimeo, or other video URL mentioned
+- video_timestamp: Start time in seconds (convert "2 minutes" to 120, "1:30" to 90)
+
+Instructions:
+- Clean up URLs (add https:// if missing)
+- Convert time references to seconds
+- If no video info is mentioned, return empty object {}
+
+Return ONLY valid JSON like: {"video_url": "https://youtube.com/watch?v=abc123", "video_timestamp": "120"}`;
+
+    const completion = await anthropic.messages.create({
+      model: 'claude-3-sonnet-20240229',
+      max_tokens: 150,
+      messages: [
+        {
+          role: 'user',
+          content: prompt
+        }
+      ]
+    });
+
+    const aiResponse = completion.content[0].type === 'text' ? completion.content[0].text.trim() : '';
+    console.log('AI video response:', aiResponse);
+
+    try {
+      const parsed = JSON.parse(aiResponse);
+      
+      if (parsed.video_url && !currentFormData.video_url) {
+        formUpdates.video_url = parsed.video_url;
+      }
+      if (parsed.video_timestamp && !currentFormData.video_timestamp) {
+        formUpdates.video_timestamp = parsed.video_timestamp;
+      }
+
+      console.log('AI extracted video info:', formUpdates);
+    } catch (parseError) {
+      console.error('Failed to parse AI video response:', parseError);
+    }
+
+  } catch (error) {
+    console.error('AI video extraction error:', error);
+  }
+
+  return formUpdates;
+}
+
+function extractBasicInfo(
   userMessage: string, 
   currentFormData: AuctionFormData, 
   categories: Category[]
@@ -26,17 +211,50 @@ export function extractFormUpdates(
   }
 
   // Simple condition
-  if (!currentFormData.condition) {
-    formUpdates.condition = 'Used - Good';
-  }
-
-  // Extract pricing if mentioned
-  const priceMatch = userMessage.match(/\$(\d+)/);
-  if (priceMatch && !currentFormData.starting_price) {
-    formUpdates.starting_price = priceMatch[1];
+  if (!currentFormData.condition || currentFormData.condition === 'new') {
+    const condition = extractCondition(userMessage);
+    if (condition) formUpdates.condition = condition;
   }
 
   return formUpdates;
+}
+
+function extractGeneralUpdates(
+  userMessage: string, 
+  currentFormData: AuctionFormData, 
+  categories: Category[]
+): Record <string, string> {
+  const formUpdates: Record<string, string> = {};
+  const message = userMessage.toLowerCase();
+
+  // Handle field-specific update requests
+  if (message.includes('change title') || message.includes('update title')) {
+    const titleMatch = message.match(/(?:change|update)\s+title\s+to\s+(.+)/i);
+    if (titleMatch) {
+      formUpdates.title = titleMatch[1].trim();
+    }
+  }
+
+  if (message.includes('change price') || message.includes('update price')) {
+    const priceMatch = message.match(/(?:change|update)\s+price\s+to\s+\$?(\d+(?:\.\d{2})?)/i);
+    if (priceMatch) {
+      formUpdates.starting_price = priceMatch[1];
+    }
+  }
+
+  // Fallback to basic extraction for any other content
+  return { ...formUpdates, ...extractBasicInfo(userMessage, currentFormData, categories) };
+}
+
+function extractCondition(userMessage: string): string | null {
+  const message = userMessage.toLowerCase();
+  
+  if (message.includes('new') || message.includes('brand new')) return 'New';
+  if (message.includes('excellent')) return 'Used - Excellent';
+  if (message.includes('good') || message.includes('decent')) return 'Used - Good';
+  if (message.includes('fair') || message.includes('worn')) return 'Used - Fair';
+  
+  return 'Used - Good'; // Default
 }
 
 export function extractSimpleTitle(userMessage: string): string | null {

@@ -108,6 +108,8 @@ export async function extractFormUpdatesWithReasons(
   const formUpdates: Record<string, string> = {};
   const fieldUpdates: FieldUpdate[] = [];
 
+  console.log('extractFormUpdatesWithReasons called:', { userMessage, currentStep, iterationField });
+
   // Handle field iteration with real AI enhancement
   if (iterationField) {
     const currentValue = currentFormData[iterationField as keyof AuctionFormData] as string;
@@ -124,8 +126,10 @@ export async function extractFormUpdatesWithReasons(
     return { formUpdates, fieldUpdates };
   }
 
-  // Simple extraction for initial form filling
-  const updates = extractFormUpdates(userMessage, currentFormData, categories);
+  // FIXED: Use async extractFormUpdates
+  const updates = await extractFormUpdates(userMessage, currentFormData, categories, currentStep);
+  
+  console.log('Extracted updates:', updates);
   
   // Convert to field updates with simple reasons
   Object.entries(updates).forEach(([field, value]) => {
@@ -134,13 +138,43 @@ export async function extractFormUpdatesWithReasons(
       fieldUpdates.push({
         field,
         value,
-        reason: getSimpleReason(field),
+        reason: getStepSpecificReason(field, currentStep),
         current: currentFormData[field as keyof AuctionFormData] as string
       });
     }
   });
 
   return { formUpdates, fieldUpdates };
+}
+
+function getStepSpecificReason(field: string, step: string): string {
+  const stepReasons: Record<string, Record<string, string>> = {
+    'basic_info': {
+      'title': 'Generated title from your description',
+      'description': 'Enhanced your description',
+      'category_id': 'Selected matching category',
+      'condition': 'Set condition based on item details'
+    },
+    'pricing': {
+      'starting_price': 'Set starting bid price',
+      'reserve_price': 'Set reserve price',
+      'buy_now_price': 'Added buy now option',
+      'duration_days': 'Set auction duration'
+    },
+    'video': {
+      'video_url': 'Added video URL',
+      'video_timestamp': 'Set video start time'
+    },
+    'images': {
+      'description': 'Enhanced description with image details'
+    },
+    'review': {
+      'title': 'Updated title as requested',
+      'starting_price': 'Updated price as requested'
+    }
+  };
+  
+  return stepReasons[step]?.[field] || getSimpleReason(field);
 }
 
 // Keep the old iterateOnField function as fallback but it won't be used now
@@ -197,6 +231,19 @@ export function iterateOnField(
             reason: 'Updated category based on your feedback'
           };
         }
+      }
+      break;
+      
+    case 'starting_price':
+    case 'reserve_price':
+    case 'buy_now_price':
+      // Extract price from user message
+      const priceMatch = message.match(/\$?(\d+(?:\.\d{2})?)/);
+      if (priceMatch) {
+        return {
+          value: priceMatch[1],
+          reason: `Updated ${field.replace('_', ' ')} based on your input`
+        };
       }
       break;
   }

@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
-import Link from 'next/link';
 import Image from 'next/image';
 import { VoiceMicButton } from '@/components/auction/VoiceMicButton';
 import { SmartFormField } from '@/components/auction/SmartFormField';
@@ -63,7 +62,7 @@ export default function CreateAuctionPage() {
     }));
   };
 
-  // Handle form updates from voice input
+  // Handle form updates from voice input - ENHANCED for all steps
   const handleFormUpdate = (updates: Partial<AuctionFormData>) => {
     setFormData(prev => ({ ...prev, ...updates }));
     // Clear any validation errors when voice input successfully updates the form
@@ -198,24 +197,19 @@ export default function CreateAuctionPage() {
             linear-gradient(90deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px)
           `,
           backgroundSize: '32px 32px'
-        }} />
+        }}></div>
       </div>
 
-      <div className="relative z-10 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="relative max-w-4xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <Link href="/dashboard" className="inline-flex items-center text-zinc-400 hover:text-white transition-colors mb-4">
-            ← Back to Dashboard
-          </Link>
-          <h1 className="text-3xl font-bold mb-2">Create New Auction</h1>
-          <p className="text-zinc-400">List an authentic item from your content</p>
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent mb-4">
+            Create New Auction
+          </h1>
+          <p className="text-zinc-400">
+            Tell us about your item and we&apos;ll help you create the perfect listing
+          </p>
         </div>
-
-        {error && (
-          <div className="mb-6 p-4 bg-red-600/20 border border-red-600/30 rounded-lg text-red-400">
-            {error}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Progress Indicator */}
@@ -262,6 +256,7 @@ export default function CreateAuctionPage() {
                   onFormUpdate={handleFormUpdate}
                   categories={categories}
                   currentFormData={formData}
+                  currentStep={currentStep}
                 />
               </div>
 
@@ -325,10 +320,23 @@ export default function CreateAuctionPage() {
             </div>
           )}
 
-          {/* Pricing Step */}
+          {/* Pricing Step - ENHANCED with Voice */}
           {currentStep === 'pricing' && (
-            <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6">
+            <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6 relative">
+              {/* Voice Mic Button in corner */}
+              <div className="absolute top-4 right-4">
+                <VoiceMicButton 
+                  onFormUpdate={handleFormUpdate}
+                  categories={categories}
+                  currentFormData={formData}
+                  currentStep={currentStep}
+                />
+              </div>
+
               <h3 className="text-xl font-semibold mb-6">Auction Pricing</h3>
+              <p className="text-zinc-400 text-sm mb-4">
+                💡 Try voice: &quot;Starting price 25 dollars, reserve 50, buy now 100&quot;
+              </p>
               
               <div className="space-y-4">
                 <SmartFormField
@@ -365,31 +373,45 @@ export default function CreateAuctionPage() {
                   currentFormData={formData}
                 />
 
-                <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-2">
-                    Auction Duration
-                  </label>
-                  <select
-                    name="duration_days"
-                    value={formData.duration_days}
-                    onChange={(e) => handleInputChange('duration_days', e.target.value)}
-                    className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
-                  >
-                    <option value="1">1 Day</option>
-                    <option value="3">3 Days</option>
-                    <option value="7">7 Days</option>
-                    <option value="10">10 Days</option>
-                    <option value="14">14 Days</option>
-                  </select>
-                </div>
+                {/* Duration field as SmartFormField with select type - NO AI enhancement */}
+                <SmartFormField
+                  label="Auction Duration"
+                  name="duration_days"
+                  value={formData.duration_days}
+                  onChange={(value) => handleInputChange('duration_days', value)}
+                  type="select"
+                  required
+                  options={[
+                    { value: '1', label: '1 Day' },
+                    { value: '3', label: '3 Days' },
+                    { value: '7', label: '7 Days' },
+                    { value: '10', label: '10 Days' },
+                    { value: '14', label: '14 Days' }
+                  ]}
+                  categories={categories}
+                  currentFormData={formData}
+                />
               </div>
             </div>
           )}
 
-          {/* Video Information Step */}
+          {/* Video Information Step - ENHANCED with Voice */}
           {currentStep === 'video' && (
-            <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6">
+            <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6 relative">
+              {/* Voice Mic Button in corner */}
+              <div className="absolute top-4 right-4">
+                <VoiceMicButton 
+                  onFormUpdate={handleFormUpdate}
+                  categories={categories}
+                  currentFormData={formData}
+                  currentStep={currentStep}
+                />
+              </div>
+
               <h3 className="text-xl font-semibold mb-6">Video Information (Optional)</h3>
+              <p className="text-zinc-400 text-sm mb-4">
+                💡 Try voice: &quot;YouTube video at youtube.com/watch?v=abc123, start at 2 minutes&quot;
+              </p>
               
               <div className="space-y-4">
                 <SmartFormField
@@ -416,10 +438,23 @@ export default function CreateAuctionPage() {
             </div>
           )}
 
-          {/* Images Step */}
+          {/* Images Step - ENHANCED with Voice for descriptions */}
           {currentStep === 'images' && (
-            <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6">
+            <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6 relative">
+              {/* Voice Mic Button in corner */}
+              <div className="absolute top-4 right-4">
+                <VoiceMicButton 
+                  onFormUpdate={handleFormUpdate}
+                  categories={categories}
+                  currentFormData={formData}
+                  currentStep={currentStep}
+                />
+              </div>
+
               <h3 className="text-xl font-semibold mb-6">Images</h3>
+              <p className="text-zinc-400 text-sm mb-4">
+                💡 Upload your images below. Use voice to enhance your listing description while here.
+              </p>
               
               <div className="space-y-4">
                 <div>
@@ -460,10 +495,23 @@ export default function CreateAuctionPage() {
             </div>
           )}
 
-          {/* Review Step */}
+          {/* Review Step - ENHANCED with Voice for final touches */}
           {currentStep === 'review' && (
-            <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6">
+            <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6 relative">
+              {/* Voice Mic Button in corner */}
+              <div className="absolute top-4 right-4">
+                <VoiceMicButton 
+                  onFormUpdate={handleFormUpdate}
+                  categories={categories}
+                  currentFormData={formData}
+                  currentStep={currentStep}
+                />
+              </div>
+
               <h3 className="text-xl font-semibold mb-6">Review & Submit</h3>
+              <p className="text-zinc-400 text-sm mb-4">
+                💡 Use voice to make final adjustments: &quot;Change the title to...&quot; or &quot;Update description to...&quot;
+              </p>
               
               <div className="space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
@@ -483,8 +531,44 @@ export default function CreateAuctionPage() {
                     <span className="text-zinc-400">Condition:</span>
                     <p className="text-white">{formData.condition}</p>
                   </div>
+                  {formData.reserve_price && (
+                    <div>
+                      <span className="text-zinc-400">Reserve Price:</span>
+                      <p className="text-white">${formData.reserve_price}</p>
+                    </div>
+                  )}
+                  {formData.buy_now_price && (
+                    <div>
+                      <span className="text-zinc-400">Buy Now Price:</span>
+                      <p className="text-white">${formData.buy_now_price}</p>
+                    </div>
+                  )}
+                  {formData.video_url && (
+                    <div>
+                      <span className="text-zinc-400">Video:</span>
+                      <p className="text-white truncate">{formData.video_url}</p>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-zinc-400">Duration:</span>
+                    <p className="text-white">{formData.duration_days} days</p>
+                  </div>
                 </div>
+                
+                {formData.description && (
+                  <div className="mt-4">
+                    <span className="text-zinc-400">Description:</span>
+                    <p className="text-white mt-1">{formData.description}</p>
+                  </div>
+                )}
               </div>
+            </div>
+          )}
+
+          {/* Error Display */}
+          {error && (
+            <div className="bg-red-950/50 border border-red-800 rounded-2xl p-4">
+              <p className="text-red-200 text-sm">{error}</p>
             </div>
           )}
 

@@ -34,8 +34,14 @@ export function SmartFormField({
 
   const baseClassName = `w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors ${className}`;
 
-  // Only show AI enhancer for text inputs and textareas, not selects
-  const showAIEnhancer = type !== 'select';
+  // Only show AI enhancer for text inputs and textareas, NOT for selects, numbers, or pricing fields
+  const showAIEnhancer = type !== 'select' && type !== 'number' && !isPricingField(name);
+
+  // Helper function to identify pricing-related fields
+  function isPricingField(fieldName: string): boolean {
+    const pricingFields = ['starting_price', 'reserve_price', 'buy_now_price', 'duration_days'];
+    return pricingFields.includes(fieldName);
+  }
 
   const renderField = () => {
     switch (type) {

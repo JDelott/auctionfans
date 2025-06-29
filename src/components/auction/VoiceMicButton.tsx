@@ -6,9 +6,10 @@ interface VoiceMicButtonProps {
   onFormUpdate: (updates: Partial<AuctionFormData>) => void;
   categories: Category[];
   currentFormData: AuctionFormData;
+  currentStep?: string;
 }
 
-export function VoiceMicButton({ onFormUpdate, categories, currentFormData }: VoiceMicButtonProps) {
+export function VoiceMicButton({ onFormUpdate, categories, currentFormData, currentStep }: VoiceMicButtonProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const {
     isListening,
@@ -39,6 +40,7 @@ export function VoiceMicButton({ onFormUpdate, categories, currentFormData }: Vo
               body: JSON.stringify({
                 userMessage: transcript,
                 currentFormData,
+                currentStep: currentStep || 'basic_info', // Pass current step
                 categories: categories.map(c => ({ id: c.id, name: c.name })),
                 rejectedFields: []
               })
@@ -70,6 +72,24 @@ export function VoiceMicButton({ onFormUpdate, categories, currentFormData }: Vo
 
   if (!isSupported) return null;
 
+  // Get step-specific tooltip
+  const getTooltip = () => {
+    switch (currentStep) {
+      case 'basic_info':
+        return 'Record voice input to fill basic information';
+      case 'pricing':
+        return 'Record pricing information: "starting price 25, reserve 50"';
+      case 'video':
+        return 'Record video details: "YouTube link at ..." or "start at 2 minutes"';
+      case 'images':
+        return 'Record description improvements for your images';
+      case 'review':
+        return 'Record final adjustments: "change title to..." or "update price to..."';
+      default:
+        return 'Record voice input to fill form';
+    }
+  };
+
   return (
     <button
       type="button" // Explicitly set as button to prevent form submission
@@ -82,7 +102,7 @@ export function VoiceMicButton({ onFormUpdate, categories, currentFormData }: Vo
           ? 'bg-violet-600/50'
           : 'bg-violet-600 hover:bg-violet-700 hover:scale-105'
       } text-white shadow-lg`}
-      title={isListening ? 'Stop recording and fill form' : isProcessing ? 'Processing...' : 'Record voice input to fill form'}
+      title={isListening ? 'Stop recording and fill form' : isProcessing ? 'Processing...' : getTooltip()}
     >
       {isProcessing ? (
         <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
