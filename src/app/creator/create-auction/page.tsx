@@ -1186,7 +1186,7 @@ Let me know what you'd like to revise or improve in this section.`,
                 )}
               </div>
 
-              {/* Enhanced Chat Input - Fixed Styling */}
+              {/* Enhanced Chat Input - Perfect Alignment */}
               <div className="space-y-3">
                 {/* Speech Status Indicator */}
                 {isListening && (
@@ -1197,14 +1197,14 @@ Let me know what you'd like to revise or improve in this section.`,
                 )}
                 
                 {/* Input Row - Fixed Alignment */}
-                <div className="flex gap-2">
-                  {/* Text Input - Much Better Styling */}
+                <div className="flex gap-2 items-start">
+                  {/* Text Input */}
                   <div className="flex-1">
                     <textarea
                       value={userInput}
                       onChange={(e) => setUserInput(e.target.value)}
-                      placeholder={isListening ? "🎤 Listening..." : "Describe your item in detail..."}
-                      className={`w-full bg-zinc-800/50 border rounded-lg px-3 py-3 text-sm focus:outline-none transition-colors resize-none min-h-[44px] leading-relaxed ${
+                      placeholder={isListening ? "🎤 Listening..." : "Tell me about your item..."}
+                      className={`w-full bg-zinc-800/50 border rounded-lg px-3 py-2.5 text-sm focus:outline-none transition-colors resize-none min-h-[42px] max-h-24 leading-normal ${
                         isListening 
                           ? 'border-red-500 focus:border-red-400 bg-red-600/5' 
                           : 'border-zinc-700 focus:border-violet-500'
@@ -1216,15 +1216,15 @@ Let me know what you'd like to revise or improve in this section.`,
                         }
                       }}
                       disabled={isListening}
+                      rows={1}
                       style={{ 
                         overflow: 'hidden',
-                        lineHeight: '1.5',
-                        fontFamily: 'system-ui, -apple-system, sans-serif'
+                        lineHeight: '1.4'
                       }}
                       onInput={(e) => {
                         const target = e.target as HTMLTextAreaElement;
-                        target.style.height = '44px';
-                        target.style.height = `${Math.min(target.scrollHeight, 120)}px`;
+                        target.style.height = '42px';
+                        target.style.height = `${Math.min(target.scrollHeight, 96)}px`;
                       }}
                     />
                   </div>
@@ -1233,7 +1233,7 @@ Let me know what you'd like to revise or improve in this section.`,
                   <button
                     onClick={isListening ? stopListening : startListening}
                     disabled={!isSpeechRecognitionSupported}
-                    className={`w-11 h-11 rounded-lg transition-colors flex items-center justify-center ${
+                    className={`w-10 h-10 rounded-lg transition-colors flex items-center justify-center flex-shrink-0 ${
                       isListening 
                         ? 'bg-red-600 hover:bg-red-700 text-white' 
                         : 'bg-zinc-700 hover:bg-zinc-600 disabled:bg-zinc-800 text-white disabled:text-zinc-500'
@@ -1249,13 +1249,10 @@ Let me know what you'd like to revise or improve in this section.`,
                   <button
                     onClick={() => sendMessage()}
                     disabled={!userInput.trim() || aiProcessing || isListening}
-                    className="bg-violet-600 hover:bg-violet-700 disabled:bg-zinc-700 disabled:text-zinc-400 text-white px-4 h-11 rounded-lg transition-colors text-sm font-medium flex items-center justify-center"
+                    className="bg-violet-600 hover:bg-violet-700 disabled:bg-zinc-700 disabled:text-zinc-400 text-white px-4 h-10 rounded-lg transition-colors text-sm font-medium flex items-center justify-center flex-shrink-0"
                   >
                     {aiProcessing ? (
-                      <div className="flex items-center gap-1">
-                        <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        <span>AI</span>
-                      </div>
+                      <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     ) : (
                       'Send'
                     )}
