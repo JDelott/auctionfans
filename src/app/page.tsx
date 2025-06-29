@@ -4,108 +4,113 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
       {/* Hero Section */}
-      <section className="relative">
-        <div className="max-w-6xl mx-auto px-8 py-24">
-          <div className="grid grid-cols-12 gap-12 items-center min-h-[70vh]">
-            <div className="col-span-8">
-              <div className="space-y-8">
-                <div className="w-8 h-1 bg-gradient-to-r from-purple-500 to-coral-500"></div>
-                
-                <h1 className="text-6xl font-black leading-tight tracking-tight text-white">
-                  VERIFIED CREATOR
-                  <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-coral-300">
-                    MARKETPLACE
-                  </span>
-                </h1>
-                
-                <p className="text-xl text-zinc-200 max-w-lg leading-relaxed font-medium">
-                  Authenticated items from content creators. Each piece verified through cryptographic proof of origin.
-                </p>
-                
-                <div className="flex space-x-6 pt-6">
-                  <Link 
-                    href="/auctions"
-                    className="bg-white text-black font-bold px-8 py-4 hover:bg-purple-500 hover:text-white transition-all duration-300 text-sm tracking-wide"
-                  >
-                    EXPLORE AUCTIONS
-                  </Link>
-                  <Link 
-                    href="/auth/register?creator=true"
-                    className="border-2 border-zinc-600 text-white font-bold px-8 py-4 hover:border-purple-400 hover:text-purple-300 transition-all duration-300 text-sm tracking-wide"
-                  >
-                    JOIN AS CREATOR
-                  </Link>
-                </div>
+      <section className="relative min-h-screen flex items-center">
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-20 left-1/4 w-px h-32 bg-gradient-to-b from-transparent via-violet-500/30 to-transparent"></div>
+          <div className="absolute bottom-1/3 right-1/4 w-px h-24 bg-gradient-to-b from-transparent via-red-500/20 to-transparent"></div>
+        </div>
+        
+        <div className="relative max-w-5xl mx-auto px-8 py-24 z-10">
+          <div className="space-y-16">
+            <div className="space-y-12">
+              <div className="space-y-4">
+                <div className="w-20 h-1 bg-gradient-to-r from-violet-500 to-red-500"></div>
+                <div className="font-mono text-sm text-violet-400 tracking-widest uppercase">AUTHENTICATED MARKETPLACE</div>
               </div>
+              
+              <h1 className="text-8xl font-black leading-none tracking-tighter">
+                <span className="text-white">FAN</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-br from-violet-300 via-purple-400 to-indigo-500 drop-shadow-lg">VAULT</span>
+              </h1>
+              
+              <p className="text-2xl text-zinc-200 max-w-3xl leading-relaxed font-light">
+                Own authentic pieces from your favorite creators. Every item cryptographically verified 
+                and linked to original content.
+              </p>
             </div>
             
-            <div className="col-span-4">
-              <div className="w-64 h-64 border-2 border-zinc-700 relative">
-                <div className="absolute top-4 right-4 w-4 h-4 bg-purple-400"></div>
-                <div className="absolute bottom-4 left-4 w-4 h-4 bg-coral-400"></div>
-                <div className="absolute inset-8 border border-zinc-600"></div>
-              </div>
+            <div className="flex space-x-8 pt-8">
+              <Link 
+                href="/auctions"
+                className="inline-block bg-white text-black font-bold px-16 py-6 text-sm tracking-wider uppercase transition-all duration-300 hover:bg-violet-500 hover:text-white hover:-translate-y-1 hover:shadow-lg hover:shadow-violet-500/25"
+              >
+                EXPLORE VAULT
+              </Link>
+              <Link 
+                href="/auth/register?creator=true"
+                className="inline-block border-2 border-zinc-600 text-white font-bold px-16 py-6 text-sm tracking-wider uppercase transition-all duration-300 hover:border-violet-400 hover:text-violet-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-violet-400/15"
+              >
+                CREATOR ACCESS
+              </Link>
             </div>
           </div>
         </div>
       </section>
 
       {/* Stats */}
-      <section className="border-t border-zinc-700">
-        <div className="max-w-6xl mx-auto px-8 py-16">
-          <div className="grid grid-cols-3 gap-16">
-            <div>
-              <div className="text-4xl font-black text-purple-300 mb-2">2,847</div>
-              <div className="text-sm font-mono text-zinc-300 uppercase tracking-wider font-semibold">Items Verified</div>
+      <section className="border-t border-zinc-800">
+        <div className="max-w-6xl mx-auto px-8 py-24">
+          <div className="grid grid-cols-3 gap-20 text-center">
+            <div className="space-y-4">
+              <div className="text-6xl font-black text-violet-400">2,847</div>
+              <div className="text-sm font-mono text-zinc-300 uppercase tracking-widest">Items Verified</div>
             </div>
-            <div>
-              <div className="text-4xl font-black text-coral-300 mb-2">163</div>
-              <div className="text-sm font-mono text-zinc-300 uppercase tracking-wider font-semibold">Active Creators</div>
+            <div className="space-y-4">
+              <div className="text-6xl font-black text-red-400">163</div>
+              <div className="text-sm font-mono text-zinc-300 uppercase tracking-widest">Active Creators</div>
             </div>
-            <div>
-              <div className="text-4xl font-black text-white mb-2">99.7%</div>
-              <div className="text-sm font-mono text-zinc-300 uppercase tracking-wider font-semibold">Success Rate</div>
+            <div className="space-y-4">
+              <div className="text-6xl font-black text-white">99.7%</div>
+              <div className="text-sm font-mono text-zinc-300 uppercase tracking-widest">Success Rate</div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Process */}
-      <section className="py-24">
+      <section className="py-32 bg-zinc-900/50">
         <div className="max-w-6xl mx-auto px-8">
-          <div className="space-y-16">
-            <div>
-              <div className="w-12 h-1 bg-gradient-to-r from-coral-400 to-purple-400 mb-6"></div>
-              <h2 className="text-4xl font-black mb-4 text-white">VERIFICATION PROCESS</h2>
-              <p className="text-zinc-200 text-lg max-w-2xl font-medium leading-relaxed">
+          <div className="space-y-24">
+            <div className="text-center space-y-8">
+              <div className="space-y-4">
+                <div className="w-20 h-1 bg-violet-500 mx-auto"></div>
+                <div className="font-mono text-sm text-violet-400 tracking-widest uppercase">VERIFICATION PROTOCOL</div>
+              </div>
+              <h2 className="text-6xl font-black text-white">HOW IT WORKS</h2>
+              <p className="text-xl text-zinc-200 max-w-3xl mx-auto font-light leading-relaxed">
                 Three-step authentication ensures every item has verifiable provenance from creator to collector.
               </p>
             </div>
 
-            <div className="grid grid-cols-3 gap-8">
-              <div className="space-y-6">
-                <div className="w-12 h-12 bg-purple-400 text-black font-mono font-black flex items-center justify-center text-lg">1</div>
-                <h3 className="text-xl font-bold text-white">DIGITAL PROOF</h3>
-                <p className="text-zinc-200 leading-relaxed">
-                  Cryptographic signatures link items to specific video content and timestamps.
-                </p>
+            <div className="grid grid-cols-3 gap-16">
+              <div className="text-center space-y-8">
+                <div className="w-20 h-20 bg-violet-500 text-black font-mono font-black flex items-center justify-center text-3xl mx-auto">1</div>
+                <div className="space-y-4">
+                  <h3 className="text-2xl font-bold text-white">DIGITAL PROOF</h3>
+                  <p className="text-zinc-200 leading-relaxed text-lg">
+                    Cryptographic signatures link items to specific video content and timestamps.
+                  </p>
+                </div>
               </div>
 
-              <div className="space-y-6">
-                <div className="w-12 h-12 bg-coral-400 text-black font-mono font-black flex items-center justify-center text-lg">2</div>
-                <h3 className="text-xl font-bold text-white">CREATOR AUTH</h3>
-                <p className="text-zinc-200 leading-relaxed">
-                  Multi-factor verification confirms creator identity through platform APIs.
-                </p>
+              <div className="text-center space-y-8">
+                <div className="w-20 h-20 bg-red-500 text-white font-mono font-black flex items-center justify-center text-3xl mx-auto">2</div>
+                <div className="space-y-4">
+                  <h3 className="text-2xl font-bold text-white">CREATOR AUTH</h3>
+                  <p className="text-zinc-200 leading-relaxed text-lg">
+                    Multi-factor verification confirms creator identity through platform APIs.
+                  </p>
+                </div>
               </div>
 
-              <div className="space-y-6">
-                <div className="w-12 h-12 bg-white text-black font-mono font-black flex items-center justify-center text-lg">3</div>
-                <h3 className="text-xl font-bold text-white">SECURE TRANSFER</h3>
-                <p className="text-zinc-200 leading-relaxed">
-                  Encrypted transactions with immutable ownership records.
-                </p>
+              <div className="text-center space-y-8">
+                <div className="w-20 h-20 bg-white text-black font-mono font-black flex items-center justify-center text-3xl mx-auto">3</div>
+                <div className="space-y-4">
+                  <h3 className="text-2xl font-bold text-white">SECURE TRANSFER</h3>
+                  <p className="text-zinc-200 leading-relaxed text-lg">
+                    Encrypted transactions with immutable ownership records.
+                  </p>
+                </div>
               </div>
             </div>
           </div>
@@ -113,18 +118,22 @@ export default function Home() {
       </section>
 
       {/* CTA */}
-      <section className="border-t border-zinc-700 py-24">
+      <section className="border-t border-zinc-800 py-32">
         <div className="max-w-4xl mx-auto px-8 text-center">
-          <h2 className="text-4xl font-black mb-6 text-white">START YOUR COLLECTION</h2>
-          <p className="text-xl text-zinc-200 mb-8 max-w-2xl mx-auto font-medium leading-relaxed">
-            Join the authenticated marketplace for creator artifacts. Verify, collect, own.
-          </p>
-          <Link 
-            href="/auth/register"
-            className="bg-gradient-to-r from-purple-500 to-coral-500 text-white font-bold px-12 py-4 hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-300 text-sm tracking-wide"
-          >
-            GET STARTED NOW
-          </Link>
+          <div className="space-y-16">
+            <div className="space-y-8">
+              <h2 className="text-6xl font-black text-white">ENTER THE VAULT</h2>
+              <p className="text-xl text-zinc-200 max-w-2xl mx-auto font-light leading-relaxed">
+                Join thousands of collectors in the authenticated creator marketplace.
+              </p>
+            </div>
+            <Link 
+              href="/auth/register"
+              className="inline-block bg-violet-500 text-white font-bold px-20 py-6 text-sm tracking-wider uppercase transition-all duration-300 hover:bg-violet-600 hover:-translate-y-1 hover:shadow-xl hover:shadow-violet-500/25"
+            >
+              GET ACCESS NOW
+            </Link>
+          </div>
         </div>
       </section>
     </div>

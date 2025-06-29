@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  /* Dark theme with better contrast */
+  /* Dark theme - 60% of design */
   --background: #09090b;
   --foreground: #ffffff;
   
@@ -18,13 +18,14 @@
   --zinc-900: #18181b;
   --zinc-950: #09090b;
   
-  /* Accessible color palette */
-  --purple-300: #c084fc;
+  /* Purple - 20% of design */
   --purple-400: #a855f7;
   --purple-500: #8b5cf6;
-  --coral-300: #ff8a80;
-  --coral-400: #ff6b6b;
-  --coral-500: #ff4d6d;
+  --purple-600: #7c3aed;
+  
+  /* Coral - 10% of design (subtle accent) */
+  --coral-400: #ff7b7b;
+  --coral-500: #ff6666;
   
   /* Text colors for better accessibility */
   --text-primary: #ffffff;
@@ -49,7 +50,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Improved Typography with better contrast */
+/* Clean Typography */
 .text-display {
   font-size: 3.5rem;
   font-weight: 900;
@@ -90,92 +91,86 @@ body {
   color: var(--text-muted);
 }
 
-/* High contrast buttons */
+/* Button Base Styles */
+.btn-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem 4rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  text-decoration: none;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+  border: none;
+  outline: none;
+}
+
+/* Primary Button - White with purple hover */
 .btn-primary {
   background: white;
   color: black;
-  border: none;
-  padding: 1rem 2rem;
-  font-size: 0.875rem;
-  font-weight: 700;
-  letter-spacing: 0.025em;
-  text-transform: uppercase;
-  transition: all 0.3s ease;
+  border: 2px solid white;
 }
 
 .btn-primary:hover {
   background: var(--purple-500);
   color: white;
-  transform: translateY(-1px);
+  border-color: var(--purple-500);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(139, 92, 246, 0.25);
 }
 
+/* Secondary Button - Outlined */
 .btn-secondary {
   background: transparent;
   color: white;
   border: 2px solid var(--zinc-600);
-  padding: 1rem 2rem;
-  font-size: 0.875rem;
-  font-weight: 700;
-  letter-spacing: 0.025em;
-  text-transform: uppercase;
-  transition: all 0.3s ease;
 }
 
 .btn-secondary:hover {
   border-color: var(--purple-400);
-  color: var(--purple-300);
+  color: var(--purple-400);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(168, 85, 247, 0.15);
 }
 
+/* Accent Button - Purple */
 .btn-accent {
-  background: linear-gradient(135deg, var(--purple-500) 0%, var(--coral-500) 100%);
+  background: var(--purple-500);
   color: white;
-  border: none;
-  padding: 1rem 2rem;
-  font-size: 0.875rem;
-  font-weight: 700;
-  letter-spacing: 0.025em;
-  text-transform: uppercase;
-  transition: all 0.3s ease;
+  border: 2px solid var(--purple-500);
 }
 
 .btn-accent:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 8px 25px rgba(139, 92, 246, 0.3);
+  background: var(--purple-600);
+  border-color: var(--purple-600);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(139, 92, 246, 0.3);
 }
 
-/* Improved cards with better contrast */
+/* Cards */
 .card {
   background: var(--zinc-900);
-  border: 1px solid var(--zinc-700);
+  border: 1px solid var(--zinc-800);
   transition: all 0.3s ease;
 }
 
 .card:hover {
-  border-color: var(--zinc-600);
+  border-color: var(--zinc-700);
   transform: translateY(-2px);
 }
 
 .card-featured {
   background: var(--zinc-900);
-  border-left: 4px solid var(--purple-400);
+  border-left: 4px solid var(--purple-500);
 }
 
-/* Better gradient visibility */
-.bg-gradient-primary {
-  background: linear-gradient(135deg, var(--purple-500) 0%, var(--coral-500) 100%);
-}
-
-.text-gradient-primary {
-  background: linear-gradient(135deg, var(--purple-300) 0%, var(--coral-300) 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  color: transparent;
-}
-
-/* High contrast status indicators */
+/* Status indicators */
 .status-active {
-  background: var(--purple-400);
+  background: var(--purple-500);
   color: white;
   padding: 0.25rem 0.75rem;
   font-size: 0.75rem;
@@ -186,7 +181,7 @@ body {
 }
 
 .status-pending {
-  background: var(--coral-400);
+  background: var(--coral-500);
   color: white;
   padding: 0.25rem 0.75rem;
   font-size: 0.75rem;
@@ -197,7 +192,7 @@ body {
 }
 
 .status-ended {
-  background: var(--zinc-600);
+  background: var(--zinc-700);
   color: var(--text-primary);
   padding: 0.25rem 0.75rem;
   font-size: 0.75rem;
@@ -210,11 +205,11 @@ body {
 /* Accent elements */
 .accent-bar {
   height: 2px;
-  background: linear-gradient(90deg, var(--purple-400) 0%, var(--coral-400) 100%);
+  background: var(--purple-500);
 }
 
 .creator-badge {
-  background: linear-gradient(135deg, var(--purple-400) 0%, var(--coral-400) 100%);
+  background: var(--purple-500);
   color: white;
   padding: 0.25rem 0.75rem;
   font-size: 0.75rem;
@@ -224,26 +219,23 @@ body {
   letter-spacing: 0.05em;
 }
 
-/* Custom Tailwind colors with better contrast */
+/* Tailwind custom colors */
 .text-zinc-200 { color: var(--text-secondary); }
 .text-zinc-300 { color: var(--text-muted); }
-.text-coral-300 { color: var(--coral-300); }
-.text-coral-400 { color: var(--coral-400); }
-.text-coral-500 { color: var(--coral-500); }
-.text-purple-300 { color: var(--purple-300); }
 .text-purple-400 { color: var(--purple-400); }
 .text-purple-500 { color: var(--purple-500); }
+.text-coral-400 { color: var(--coral-400); }
+.text-coral-500 { color: var(--coral-500); }
 
-.bg-coral-300 { background-color: var(--coral-300); }
-.bg-coral-400 { background-color: var(--coral-400); }
-.bg-coral-500 { background-color: var(--coral-500); }
-.bg-purple-300 { background-color: var(--purple-300); }
 .bg-purple-400 { background-color: var(--purple-400); }
 .bg-purple-500 { background-color: var(--purple-500); }
+.bg-purple-600 { background-color: var(--purple-600); }
+.bg-coral-400 { background-color: var(--coral-400); }
+.bg-coral-500 { background-color: var(--coral-500); }
 
 .border-zinc-600 { border-color: var(--zinc-600); }
 .border-zinc-700 { border-color: var(--zinc-700); }
-.border-coral-400 { border-color: var(--coral-400); }
+.border-zinc-800 { border-color: var(--zinc-800); }
 .border-purple-400 { border-color: var(--purple-400); }
 
 /* Focus states for accessibility */
