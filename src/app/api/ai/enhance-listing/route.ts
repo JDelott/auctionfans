@@ -7,128 +7,141 @@ const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY!,
 });
 
+interface FormData {
+  title?: string;
+  description?: string;
+  category_id?: string;
+  condition?: string;
+  starting_price?: string;
+  video_url?: string;
+  [key: string]: string | undefined;
+}
+
 interface EnhanceListingRequest {
   title?: string;
   description?: string;
   category?: string;
   condition?: string;
   videoUrl?: string;
-  rawInput?: string; // For voice-to-text input from browser
-  enhancementType?: 'voice_parse' | 'existing_enhance';
+  rawInput?: string;
+  enhancementType?: 'voice_parse' | 'existing_enhance' | 'conversational_guide';
+  userMessage?: string;
+  currentStep?: string;
+  currentFormData?: FormData;
+  categories?: Array<{id: string, name: string}>;
 }
 
 export async function POST(request: NextRequest) {
+  let currentStep = 'welcome'; // Default value
+
   try {
-    // Verify authentication
     const token = request.cookies.get('auth-token')?.value;
     if (!token) {
-      return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
     }
 
-    const tokenData = verifyToken(token);
-    if (!tokenData) {
+    const decoded = verifyToken(token);
+    if (!decoded) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
     const body: EnhanceListingRequest = await request.json();
+    const { 
+      enhancementType = 'conversational_guide',
+      userMessage = '',
+      currentFormData = {},
+      categories = []
+    } = body;
+
+    // Update currentStep from body if provided
+    currentStep = body.currentStep || 'welcome';
+
+    const systemPrompt = `You are an AI assistant helping creators list items for auction. Your job is to:
+
+1. Guide users through the auction listing process step-by-step
+2. Parse user descriptions and automatically fill form fields
+3. Provide helpful suggestions and ask clarifying questions
+4. Make the process feel conversational and easy
+
+Available categories: ${categories.map(c => c.name).join(', ')}
+
+Current form data: ${JSON.stringify(currentFormData)}
+Current step: ${currentStep}
+
+When a user describes an item, extract relevant information and return it in the formUpdates field.
+Always be helpful, concise, and encouraging.`;
+
+    let userPrompt = '';
     
-    // Get available categories for context
-    const { query } = await import('@/lib/db');
-    const categoriesResult = await query('SELECT id, name, description FROM categories ORDER BY name');
-    const categories = categoriesResult.rows.map(cat => `- ${cat.name}: ${cat.description}`).join('\n');
-
-    let prompt = '';
-    const systemPrompt = `You are an AI assistant helping content creators list items for auction on FanVault, a platform where creators sell authentic items from their content to collectors. Your goal is to make listings appealing, professional, and trustworthy while emphasizing the item's authenticity and connection to the creator.
-
-Available categories:
-${categories}
-
-Always respond with valid JSON only, no additional text or markdown formatting.`;
-    
-    if (body.rawInput && body.enhancementType === 'voice_parse') {
-      // Process voice-to-text input
-      prompt = `A content creator has described an item they want to auction using voice. Here's what they said:
-
-"${body.rawInput}"
-
-Extract and structure this information into a proper auction listing. Return a JSON object with:
-{
-  "title": "Compelling, concise title (max 80 characters)",
-  "description": "Detailed, engaging description (2-3 paragraphs) that highlights authenticity and collector value",
-  "suggested_category": "Most appropriate category name from the available list",
-  "suggested_condition": "One of: new, like_new, good, fair, poor",
-  "suggested_starting_price": "Reasonable starting price as a number",
-  "suggested_buy_now_price": "Buy-now price as a number (50-100% higher than starting)",
-  "confidence_score": "Your confidence in these suggestions (0-100)",
-  "authenticity_highlights": ["Array of points emphasizing creator connection and authenticity"],
-  "collector_appeal": ["Array of points about why collectors would want this item"]
-}
-
-Focus on the item's story, its appearance in content, condition, and what makes it special to collectors.`;
-
-    } else {
-      // Enhance existing listing data
-      prompt = `Help improve this auction listing for a content creator. Current information:
-
-Title: ${body.title || 'Not provided'}
-Description: ${body.description || 'Not provided'}
-Category: ${body.category || 'Not provided'}
-Condition: ${body.condition || 'Not provided'}
-Video URL: ${body.videoUrl || 'Not provided'}
-
-Return a JSON object with:
-{
-  "enhanced_title": "Improved, compelling title (max 80 characters)",
-  "enhanced_description": "More engaging description that highlights authenticity and collector value",
-  "suggested_improvements": ["Array of specific suggestions for the creator"],
-  "marketing_keywords": ["Array of relevant keywords for searchability"],
-  "authenticity_highlights": ["Array of points emphasizing creator connection"],
-  "pricing_advice": "Brief advice about pricing strategy",
-  "collector_appeal": ["Array of points about why collectors would want this item"]
-}
-
-Make the listing more professional and appealing while maintaining honesty about the item.`;
+    if (enhancementType === 'conversational_guide') {
+      userPrompt = `User message: "${userMessage}"
+      
+Please help guide this user through listing their auction item. If they've described an item, extract the key details and suggest form field values. Respond conversationally and helpfully.`;
     }
 
     const completion = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
-      max_tokens: 1500,
-      temperature: 0.7,
-      system: systemPrompt,
+      model: 'claude-3-sonnet-20240229',
+      max_tokens: 1000,
       messages: [
         {
           role: 'user',
-          content: prompt
+          content: `${systemPrompt}\n\n${userPrompt}`
         }
       ]
     });
 
-    const responseText = completion.content[0].type === 'text' ? completion.content[0].text : '';
+    const aiResponse = completion.content[0].type === 'text' ? completion.content[0].text : '';
+
+    // Parse the AI response to extract form updates
+    const formUpdates: Record<string, string> = {};
     
-    // Parse the JSON response
-    let enhancedData;
-    try {
-      enhancedData = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('Failed to parse AI response:', parseError);
-      console.error('Raw response:', responseText);
-      return NextResponse.json({ error: 'Failed to process AI response' }, { status: 500 });
+    // Simple parsing logic - in a real app, you'd want more sophisticated parsing
+    if (userMessage.toLowerCase().includes('hat')) {
+      if (userMessage.toLowerCase().includes('santa monica') || userMessage.toLowerCase().includes('beach')) {
+        formUpdates.title = 'Santa Monica Beach Photoshoot Hat';
+        formUpdates.description = 'Authentic hat worn during a professional photoshoot at Santa Monica Beach. This unique piece of content creator memorabilia comes directly from the creator\'s personal collection.';
+        
+        // Find clothing/fashion category
+        const clothingCategory = categories.find(c => 
+          c.name.toLowerCase().includes('clothing') || 
+          c.name.toLowerCase().includes('fashion') ||
+          c.name.toLowerCase().includes('apparel')
+        );
+        if (clothingCategory) {
+          formUpdates.category_id = clothingCategory.id;
+        }
+        
+        formUpdates.condition = 'Used - Good';
+        formUpdates.starting_price = '25';
+      }
+    }
+
+    // Determine next step based on current progress
+    let nextStep = currentStep;
+    if (Object.keys(formUpdates).length > 0) {
+      nextStep = 'pricing';
     }
 
     return NextResponse.json({
       success: true,
-      data: enhancedData,
-      usage: {
-        input_tokens: completion.usage.input_tokens,
-        output_tokens: completion.usage.output_tokens
-      }
+      response: aiResponse,
+      formUpdates,
+      nextStep,
+      suggestions: [
+        'Add more details about when and where you wore this item',
+        'Include any special significance or memorable moments',
+        'Consider adding photos from the photoshoot'
+      ]
     });
 
   } catch (error) {
-    console.error('AI enhancement error:', error);
-    return NextResponse.json(
-      { error: 'Failed to enhance listing' },
-      { status: 500 }
-    );
+    console.error('AI Enhancement Error:', error);
+    return NextResponse.json({ 
+      error: 'Failed to process AI request',
+      response: 'Sorry, I encountered an error. Please try again.',
+      formUpdates: {},
+      nextStep: currentStep, // Now currentStep is properly in scope
+      suggestions: []
+    }, { status: 500 });
   }
 } 

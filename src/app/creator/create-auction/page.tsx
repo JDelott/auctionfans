@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import Image from 'next/image';
 
 interface Category {
   id: string;
@@ -11,37 +12,52 @@ interface Category {
   description: string;
 }
 
-interface AIEnhancedData {
-  title?: string;
-  enhanced_title?: string;
-  description?: string;
-  enhanced_description?: string;
-  suggested_category?: string;
-  suggested_condition?: string;
-  suggested_starting_price?: number;
-  suggested_buy_now_price?: number;
-  suggested_improvements?: string[];
-  marketing_keywords?: string[];
-  authenticity_highlights?: string[];
-  collector_appeal?: string[];
-  confidence_score?: number;
-  pricing_advice?: string;
+interface AIMessage {
+  role: 'assistant' | 'user';
+  content: string;
+  timestamp: Date;
+  suggestions?: string[];
+  formUpdates?: Record<string, string>;
 }
 
-// TypeScript interfaces for Speech Recognition API
-interface SpeechRecognitionEvent extends Event {
-  results: SpeechRecognitionResultList;
+type FormStep = 'welcome' | 'basic_info' | 'pricing' | 'video' | 'images' | 'review';
+
+interface FormData {
+  title: string;
+  description: string;
+  category_id: string;
+  condition: string;
+  starting_price: string;
+  reserve_price: string;
+  buy_now_price: string;
+  video_url: string;
+  video_timestamp: string;
+  duration_days: string;
+  images: boolean;
+}
+
+// Speech Recognition interfaces
+declare global {
+  interface Window {
+    SpeechRecognition: new() => SpeechRecognition;
+    webkitSpeechRecognition: new() => SpeechRecognition;
+  }
+}
+
+interface SpeechRecognition extends EventTarget {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: (event: SpeechRecognitionEvent) => void;
+  onerror: (event: Event) => void;
+  onend: () => void;
+  start: () => void;
+  stop: () => void;
+}
+
+interface SpeechRecognitionEvent {
   resultIndex: number;
-}
-
-interface SpeechRecognitionErrorEvent extends Event {
-  error: string;
-}
-
-interface SpeechRecognitionResult {
-  0: { transcript: string };
-  isFinal: boolean;
-  length: number;
+  results: SpeechRecognitionResultList;
 }
 
 interface SpeechRecognitionResultList {
@@ -50,34 +66,17 @@ interface SpeechRecognitionResultList {
   [index: number]: SpeechRecognitionResult;
 }
 
-interface SpeechRecognition extends EventTarget {
-  continuous: boolean;
-  interimResults: boolean;
-  lang: string;
-  start(): void;
-  stop(): void;
-  onstart: ((this: SpeechRecognition, ev: Event) => void) | null;
-  onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null;
-  onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null;
-  onend: ((this: SpeechRecognition, ev: Event) => void) | null;
+interface SpeechRecognitionResult {
+  length: number;
+  item(index: number): SpeechRecognitionAlternative;
+  [index: number]: SpeechRecognitionAlternative;
+  isFinal: boolean;
 }
 
-interface SpeechRecognitionConstructor {
-  new (): SpeechRecognition;
+interface SpeechRecognitionAlternative {
+  transcript: string;
+  confidence: number;
 }
-
-declare global {
-  interface Window {
-    SpeechRecognition?: SpeechRecognitionConstructor;
-    webkitSpeechRecognition?: SpeechRecognitionConstructor;
-  }
-}
-
-// Check if browser supports speech recognition
-const isSpeechRecognitionSupported = () => {
-  return typeof window !== 'undefined' && 
-         (window.webkitSpeechRecognition !== undefined || window.SpeechRecognition !== undefined);
-};
 
 export default function CreateAuctionPage() {
   const { user, loading } = useAuth();
@@ -87,783 +86,761 @@ export default function CreateAuctionPage() {
   const [error, setError] = useState('');
   
   // AI Enhancement States
-  const [aiEnhancing, setAiEnhancing] = useState(false);
-  const [aiSuggestions, setAiSuggestions] = useState<AIEnhancedData | null>(null);
-  const [showAiSuggestions, setShowAiSuggestions] = useState(false);
+  const [aiMessages, setAiMessages] = useState<AIMessage[]>([]);
+  const [aiProcessing, setAiProcessing] = useState(false);
+  const [userInput, setUserInput] = useState('');
+  const [currentStep, setCurrentStep] = useState<FormStep>('welcome');
   
-  // Voice Recording States
+  // Voice Recognition States
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const [isProcessingVoice, setIsProcessingVoice] = useState(false);
-  const [speechSupported, setSpeechSupported] = useState(false);
-  const [voiceProcessed, setVoiceProcessed] = useState(false);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
-  
-  const [formData, setFormData] = useState({
+  const recognition = useRef<SpeechRecognition | null>(null);
+
+  // Form States
+  const [formData, setFormData] = useState<FormData>({
     title: '',
     description: '',
     category_id: '',
+    condition: 'new',
+    starting_price: '',
+    reserve_price: '',
+    buy_now_price: '',
     video_url: '',
     video_timestamp: '',
-    starting_price: '',
-    buy_now_price: '',
-    reserve_price: '',
-    condition: 'good',
     duration_days: '7',
-    images: [] as File[]
+    images: false
   });
 
-  useEffect(() => {
-    if (!loading && (!user || !user.is_creator)) {
-      router.push('/dashboard');
-    }
-  }, [user, loading, router]);
+  const [selectedImages, setSelectedImages] = useState<FileList | null>(null);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
+  // Step configuration
+  const stepConfig = {
+    welcome: { title: 'Welcome', progress: 0 },
+    basic_info: { title: 'Basic Information', progress: 20 },
+    pricing: { title: 'Pricing', progress: 40 },
+    video: { title: 'Video Information', progress: 60 },
+    images: { title: 'Images', progress: 80 },
+    review: { title: 'Review & Submit', progress: 100 }
+  };
+
+  // Check if speech recognition is supported
+  const isSpeechRecognitionSupported = typeof window !== 'undefined' && 
+    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
+
+  // Initialize AI with welcome message
   useEffect(() => {
+    if (user && !loading && aiMessages.length === 0) {
+      setAiMessages([{
+        role: 'assistant',
+        content: `Hi ${user.username}! 👋 I'm your AI listing assistant. I'll guide you step-by-step to create an amazing auction listing.\n\nLet's start with the basics - what item are you looking to auction?`,
+        timestamp: new Date(),
+        suggestions: [
+          'Gaming equipment from my videos',
+          'Clothing/merch I wore in content',
+          'Collectible from my collection',
+          'Tech gear I used for streaming'
+        ]
+      }]);
+    }
+  }, [user, loading, aiMessages.length]);
+
+  // Initialize speech recognition
+  useEffect(() => {
+    if (isSpeechRecognitionSupported) {
+      const SpeechRecognitionConstructor = window.webkitSpeechRecognition || window.SpeechRecognition;
+      if (SpeechRecognitionConstructor) {
+        recognition.current = new SpeechRecognitionConstructor();
+        if (recognition.current) {
+          recognition.current.continuous = true;
+          recognition.current.interimResults = true;
+          recognition.current.lang = 'en-US';
+
+          recognition.current.onresult = (event) => {
+            let finalTranscript = '';
+            for (let i = event.resultIndex; i < event.results.length; i++) {
+              if (event.results[i].isFinal) {
+                finalTranscript += event.results[i][0].transcript;
+              }
+            }
+            if (finalTranscript) {
+              setTranscript(finalTranscript);
+            }
+          };
+
+          recognition.current.onerror = () => {
+            setIsListening(false);
+            setError('Voice recognition error. Please try again.');
+          };
+
+          recognition.current.onend = () => {
+            setIsListening(false);
+          };
+        }
+      }
+    }
+  }, [isSpeechRecognitionSupported]);
+
+  // Fetch categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/categories');
+        if (response.ok) {
+          const data = await response.json();
+          setCategories(data.categories || []);
+        }
+      } catch (error) {
+        console.error('Error fetching categories:', error);
+      }
+    };
+
     fetchCategories();
-    setSpeechSupported(isSpeechRecognitionSupported());
   }, []);
 
-  const fetchCategories = async () => {
-    try {
-      const response = await fetch('/api/categories');
-      if (response.ok) {
-        const data = await response.json();
-        setCategories(data.categories);
-      }
-    } catch (error) {
-      console.error('Failed to fetch categories:', error);
-    }
-  };
-
+  // Handle input changes
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
+  // Handle image changes  
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files) {
-      const files = Array.from(e.target.files).slice(0, 5);
-      setFormData(prev => ({ ...prev, images: files }));
+    const files = e.target.files;
+    if (files) {
+      setSelectedImages(files);
+      setFormData(prev => ({ ...prev, images: files.length > 0 }));
+      
+      // Create image previews
+      const previews: string[] = [];
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (e.target?.result) {
+            previews.push(e.target.result as string);
+            if (previews.length === files.length) {
+              setImagePreviews(previews);
+            }
+          }
+        };
+        reader.readAsDataURL(file);
+      });
     }
   };
 
-  // AI Enhancement Functions
-  const handleAiEnhance = async () => {
-    setAiEnhancing(true);
-    setError('');
-    
+  // Start listening for voice input
+  const startListening = () => {
+    if (recognition.current && !isListening) {
+      setIsListening(true);
+      setTranscript('');
+      recognition.current.start();
+    }
+  };
+
+  // Stop listening
+  const stopListening = () => {
+    if (recognition.current && isListening) {
+      recognition.current.stop();
+      setIsListening(false);
+    }
+  };
+
+  // Send message to AI
+  const sendMessage = async (message?: string) => {
+    const messageToSend = message || userInput.trim();
+    if (!messageToSend) return;
+
+    setUserInput('');
+    setAiProcessing(true);
+
+    // Add user message
+    setAiMessages(prev => [...prev, {
+      role: 'user',
+      content: messageToSend,
+      timestamp: new Date()
+    }]);
+
     try {
       const response = await fetch('/api/ai/enhance-listing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: formData.title,
-          description: formData.description,
-          category: categories.find(cat => cat.id === formData.category_id)?.name,
-          condition: formData.condition,
-          videoUrl: formData.video_url,
-          enhancementType: 'existing_enhance'
-        })
+          enhancementType: 'conversational_guide',
+          userMessage: messageToSend,
+          currentFormData: formData,
+          currentStep,
+          categories: categories.map(cat => ({ id: cat.id, name: cat.name }))
+        }),
       });
 
       if (response.ok) {
         const result = await response.json();
-        setAiSuggestions(result.data);
-        setShowAiSuggestions(true);
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to enhance listing');
+        
+        // Add AI response
+        const messageContent = result.message || result.response || 'I\'m here to help!';
+        
+        setAiMessages(prev => [...prev, {
+          role: 'assistant',
+          content: messageContent,
+          timestamp: new Date(),
+          suggestions: result.suggestions,
+          formUpdates: result.formUpdates
+        }]);
+
+        // Apply form updates if any
+        if (result.formUpdates) {
+          setFormData(prev => ({ ...prev, ...result.formUpdates }));
+        }
+
+        // Progress to next step if appropriate
+        if (result.nextStep && result.nextStep !== currentStep) {
+          setCurrentStep(result.nextStep);
+        }
       }
     } catch (error) {
-      console.error('AI enhancement failed:', error);
-      setError('Failed to enhance listing');
-    } finally {
-      setAiEnhancing(false);
+      console.error('Error sending message:', error);
+      setAiMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again.',
+        timestamp: new Date()
+      }]);
     }
+    setAiProcessing(false);
   };
 
-  // Simplified voice recognition
-  const startListening = () => {
-    if (!speechSupported) {
-      setError('Speech recognition is not supported in your browser');
+  // Process voice input
+  const processVoiceInput = async () => {
+    if (!transcript.trim()) {
+      setError('No voice input detected. Please try speaking again.');
       return;
     }
 
-    try {
-      const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-      if (!SpeechRecognition) {
-        setError('Speech recognition is not available');
-        return;
-      }
-
-      const recognition = new SpeechRecognition();
-      
-      recognition.continuous = true;
-      recognition.interimResults = true;
-      recognition.lang = 'en-US';
-      
-      let finalTranscript = '';
-      
-      recognition.onstart = () => {
-        setIsListening(true);
-        setTranscript('');
-        setError('');
-        setVoiceProcessed(false);
-      };
-      
-      recognition.onresult = (event: SpeechRecognitionEvent) => {
-        let interimTranscript = '';
-        
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          const transcriptPart = event.results[i][0].transcript;
-          if (event.results[i].isFinal) {
-            finalTranscript += transcriptPart + ' ';
-          } else {
-            interimTranscript += transcriptPart;
-          }
-        }
-        
-        setTranscript(finalTranscript + interimTranscript);
-      };
-      
-      recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error('Speech recognition error:', event.error);
-        setError(`Speech recognition error: ${event.error}`);
-        setIsListening(false);
-      };
-      
-      recognition.onend = () => {
-        setIsListening(false);
-        // Auto-process if we have enough transcript
-        if (finalTranscript.trim().length > 10) {
-          setTranscript(finalTranscript.trim());
-          processVoiceTranscript(finalTranscript.trim());
-        }
-      };
-      
-      recognition.start();
-      recognitionRef.current = recognition;
-      
-    } catch (error) {
-      console.error('Failed to start speech recognition:', error);
-      setError('Failed to start speech recognition');
-    }
-  };
-
-  const stopListening = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-    }
-    setIsListening(false);
-  };
-
-  // Direct voice transcript processing
-  const processVoiceTranscript = async (transcriptText?: string) => {
-    const textToProcess = transcriptText || transcript;
-    
-    if (!textToProcess.trim()) {
-      setError('No voice input to process');
-      return;
-    }
-
-    setIsProcessingVoice(true);
-    setError('');
-    
-    try {
-      console.log('Processing transcript:', textToProcess);
-      
-      const response = await fetch('/api/ai/enhance-listing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          rawInput: textToProcess,
-          enhancementType: 'voice_parse'
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const data = result.data;
-        
-        console.log('AI Response:', data);
-        
-        // Direct form population - override existing values
-        setFormData(prev => ({
-          ...prev,
-          title: data.title || prev.title,
-          description: data.description || prev.description,
-          condition: data.suggested_condition || prev.condition,
-          starting_price: data.suggested_starting_price ? data.suggested_starting_price.toString() : prev.starting_price,
-          buy_now_price: data.suggested_buy_now_price ? data.suggested_buy_now_price.toString() : prev.buy_now_price,
-          category_id: (() => {
-            if (data.suggested_category) {
-              const category = categories.find(cat => 
-                cat.name.toLowerCase().includes(data.suggested_category.toLowerCase()) ||
-                data.suggested_category.toLowerCase().includes(cat.name.toLowerCase())
-              );
-              return category ? category.id : prev.category_id;
-            }
-            return prev.category_id;
-          })(),
-        }));
-        
-        setAiSuggestions(data);
-        setShowAiSuggestions(true);
-        setVoiceProcessed(true);
-        setTranscript(''); // Clear transcript after successful processing
-        
-      } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Failed to process voice input');
-      }
-    } catch (error) {
-      console.error('Failed to process voice input:', error);
-      setError('Failed to process voice input');
-    } finally {
-      setIsProcessingVoice(false);
-    }
-  };
-
-  const clearVoiceInput = () => {
+    await sendMessage(transcript);
     setTranscript('');
-    setAiSuggestions(null);
-    setShowAiSuggestions(false);
-    setVoiceProcessed(false);
-    setError('');
   };
 
+  // Move to next step
+  const nextStep = () => {
+    const steps: FormStep[] = ['welcome', 'basic_info', 'pricing', 'video', 'images', 'review'];
+    const currentIndex = steps.indexOf(currentStep);
+    if (currentIndex < steps.length - 1) {
+      const next = steps[currentIndex + 1];
+      setCurrentStep(next);
+      
+      // Send step transition message to AI
+      sendMessage(`I'm ready to move to the ${stepConfig[next].title} section.`);
+    }
+  };
+
+  // Move to previous step
+  const prevStep = () => {
+    const steps: FormStep[] = ['welcome', 'basic_info', 'pricing', 'video', 'images', 'review'];
+    const currentIndex = steps.indexOf(currentStep);
+    if (currentIndex > 0) {
+      setCurrentStep(steps[currentIndex - 1]);
+    }
+  };
+
+  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
+    if (submitting) return;
+
     setSubmitting(true);
+    setError('');
 
     try {
+      // Create auction
       const auctionData = {
         title: formData.title,
         description: formData.description,
         category_id: formData.category_id,
-        video_url: formData.video_url,
-        video_timestamp: formData.video_timestamp ? parseInt(formData.video_timestamp) : null,
-        starting_price: parseFloat(formData.starting_price),
-        buy_now_price: formData.buy_now_price ? parseFloat(formData.buy_now_price) : null,
-        reserve_price: formData.reserve_price ? parseFloat(formData.reserve_price) : null,
         condition: formData.condition,
-        duration_days: parseInt(formData.duration_days)
+        starting_price: parseFloat(formData.starting_price),
+        reserve_price: formData.reserve_price ? parseFloat(formData.reserve_price) : null,
+        buy_now_price: formData.buy_now_price ? parseFloat(formData.buy_now_price) : null,
+        video_url: formData.video_url || null,
+        video_timestamp: formData.video_timestamp ? parseInt(formData.video_timestamp) : null,
+        duration_days: parseInt(formData.duration_days) || 7
       };
 
       const response = await fetch('/api/auctions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(auctionData)
+        body: JSON.stringify(auctionData),
       });
 
-      if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create auction');
+      if (response.ok) {
+        const { auction } = await response.json();
+
+        // Upload images if any
+        if (selectedImages && selectedImages.length > 0) {
+          const imageFormData = new FormData();
+          Array.from(selectedImages).forEach((file, index) => {
+            imageFormData.append('images', file);
+            imageFormData.append(`isPrimary_${index}`, index === 0 ? 'true' : 'false');
+          });
+
+          await fetch(`/api/auctions/${auction.id}/images`, {
+            method: 'POST',
+            body: imageFormData,
+          });
+        }
+
+        router.push(`/auctions/${auction.id}`);
+      } else {
+        const data = await response.json();
+        setError(data.error || 'Failed to create auction');
       }
-
-      const result = await response.json();
-      const auctionId = result.auction.id;
-
-      if (formData.images.length > 0) {
-        const imageFormData = new FormData();
-        formData.images.forEach(file => {
-          imageFormData.append('images', file);
-        });
-
-        await fetch(`/api/auctions/${auctionId}/images`, {
-          method: 'POST',
-          body: imageFormData
-        });
-      }
-
-      router.push(`/auctions/${auctionId}`);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'An error occurred';
-      setError(errorMessage);
-    } finally {
-      setSubmitting(false);
+      console.error('Error creating auction:', error);
+      setError('Failed to create auction. Please try again.');
     }
+
+    setSubmitting(false);
   };
 
-  if (loading || !user) {
-    return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="relative">
-          <div className="w-12 h-12 border-2 border-violet-400 border-t-transparent rounded-full animate-spin"></div>
-          <div className="absolute inset-0 w-12 h-12 border-2 border-red-400/20 rounded-full animate-ping"></div>
-        </div>
-      </div>
-    );
+  // Redirect if not authenticated
+  if (loading) {
+    return <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+      <div className="text-white">Loading...</div>
+    </div>;
+  }
+
+  if (!user) {
+    router.push('/auth/login');
+    return null;
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
-      <div className="max-w-4xl mx-auto px-6 py-12">
+    <div className="min-h-screen bg-zinc-950 text-white relative overflow-hidden">
+      {/* Background Effects */}
+      <div className="absolute inset-0 opacity-[0.02]">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `
+            linear-gradient(rgba(139, 92, 246, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px)
+          `,
+          backgroundSize: '32px 32px'
+        }} />
+      </div>
+
+      <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-12">
-          <Link 
-            href="/dashboard" 
-            className="inline-flex items-center text-zinc-400 hover:text-white text-sm mb-8 transition-colors"
-          >
+        <div className="mb-8">
+          <Link href="/dashboard" className="inline-flex items-center text-zinc-400 hover:text-white transition-colors mb-4">
             ← Back to Dashboard
           </Link>
-          
-          <div className="mb-8">
-            <div className="w-12 h-1 bg-violet-400 mb-4"></div>
-            <h1 className="text-4xl font-bold text-white mb-2">
-              Create New Auction
-            </h1>
-            <p className="text-lg text-zinc-300">
-              List an authentic item from your content with AI assistance
-            </p>
-          </div>
+          <h1 className="text-3xl font-bold mb-2">Create New Auction</h1>
+          <p className="text-zinc-400">List an authentic item from your content with AI assistance</p>
         </div>
 
-        {/* Simplified Voice Input Section */}
-        <div className="bg-gradient-to-r from-violet-900/20 to-red-900/20 border border-violet-800/30 rounded-lg p-8 mb-10">
-          <div className="text-center mb-6">
-            <h2 className="text-2xl font-semibold text-white mb-2 flex items-center justify-center">
-              <div className="w-2 h-2 bg-violet-400 rounded-full mr-3"></div>
-              🎙️ Voice to Form
-            </h2>
-            <p className="text-zinc-300 max-w-2xl mx-auto">
-              Describe your item and let AI automatically fill out the auction form below
-            </p>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Form - Left Side */}
+          <div className="lg:col-span-2">
+            {error && (
+              <div className="mb-6 p-4 bg-red-600/20 border border-red-600/30 rounded-lg text-red-400">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-8">
+              {/* Step Content */}
+              {currentStep === 'welcome' && (
+                <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-8 text-center">
+                  <div className="mb-6">
+                    <div className="w-20 h-20 bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <span className="text-3xl">🚀</span>
+                    </div>
+                    <h2 className="text-2xl font-bold mb-4">Welcome to AI-Powered Listing</h2>
+                    <p className="text-zinc-400">I&apos;ll help you create an amazing auction listing step by step. Let&apos;s start by telling me about your item!</p>
+                  </div>
+                </div>
+              )}
+
+              {currentStep === 'basic_info' && (
+                <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6">
+                  <h3 className="text-xl font-semibold mb-6">Basic Information</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">Item Title *</label>
+                      <input
+                        type="text"
+                        name="title"
+                        value={formData.title}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
+                        placeholder="Enter a descriptive title for your item"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">Description *</label>
+                      <textarea
+                        name="description"
+                        value={formData.description}
+                        onChange={handleInputChange}
+                        required
+                        rows={4}
+                        className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors resize-none"
+                        placeholder="Describe your item in detail..."
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-300 mb-2">Category *</label>
+                        <select
+                          name="category_id"
+                          value={formData.category_id}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
+                        >
+                          <option value="">Select a category</option>
+                          {categories.map((category) => (
+                            <option key={category.id} value={category.id}>{category.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-300 mb-2">Condition *</label>
+                        <select
+                          name="condition"
+                          value={formData.condition}
+                          onChange={handleInputChange}
+                          required
+                          className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
+                        >
+                          <option value="new">New</option>
+                          <option value="like-new">Like New</option>
+                          <option value="good">Good</option>
+                          <option value="fair">Fair</option>
+                          <option value="poor">Poor</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {currentStep === 'pricing' && (
+                <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6">
+                  <h3 className="text-xl font-semibold mb-6">Pricing</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">Starting Price ($) *</label>
+                      <input
+                        type="number"
+                        name="starting_price"
+                        value={formData.starting_price}
+                        onChange={handleInputChange}
+                        required
+                        min="0"
+                        step="0.01"
+                        className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
+                        placeholder="25.00"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-300 mb-2">Reserve Price ($)</label>
+                        <input
+                          type="number"
+                          name="reserve_price"
+                          value={formData.reserve_price}
+                          onChange={handleInputChange}
+                          min="0"
+                          step="0.01"
+                          className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
+                          placeholder="50.00"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-300 mb-2">Buy Now Price ($)</label>
+                        <input
+                          type="number"
+                          name="buy_now_price"
+                          value={formData.buy_now_price}
+                          onChange={handleInputChange}
+                          min="0"
+                          step="0.01"
+                          className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
+                          placeholder="100.00"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">Auction Duration</label>
+                      <select
+                        name="duration_days"
+                        value={formData.duration_days}
+                        onChange={handleInputChange}
+                        className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
+                      >
+                        <option value="1">1 Day</option>
+                        <option value="3">3 Days</option>
+                        <option value="7">7 Days</option>
+                        <option value="10">10 Days</option>
+                        <option value="14">14 Days</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {currentStep === 'video' && (
+                <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6">
+                  <h3 className="text-xl font-semibold mb-6">Video Information</h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">Video URL</label>
+                      <input
+                        type="url"
+                        name="video_url"
+                        value={formData.video_url}
+                        onChange={handleInputChange}
+                        className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
+                        placeholder="https://youtube.com/watch?v=..."
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">Video Timestamp (seconds)</label>
+                      <input
+                        type="number"
+                        name="video_timestamp"
+                        value={formData.video_timestamp}
+                        onChange={handleInputChange}
+                        min="0"
+                        className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
+                        placeholder="120"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {currentStep === 'images' && (
+                <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6">
+                  <h3 className="text-xl font-semibold mb-6">Images</h3>
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-300 mb-2">Upload Images</label>
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleImageChange}
+                      className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:bg-violet-600 file:text-white file:cursor-pointer hover:file:bg-violet-700"
+                    />
+
+                    {imagePreviews.length > 0 && (
+                      <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                        {imagePreviews.map((preview, index) => (
+                          <div key={index} className="relative">
+                            <Image
+                              src={preview}
+                              alt={`Preview ${index + 1}`}
+                              width={150}
+                              height={150}
+                              className="w-full h-24 object-cover rounded-lg border border-zinc-700"
+                            />
+                            {index === 0 && (
+                              <span className="absolute top-1 left-1 bg-violet-600 text-white text-xs px-2 py-1 rounded">
+                                Primary
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {currentStep === 'review' && (
+                <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6">
+                  <h3 className="text-xl font-semibold mb-6">Review & Submit</h3>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <span className="text-zinc-400">Title:</span>
+                        <p className="text-white">{formData.title || 'Not set'}</p>
+                      </div>
+                      <div>
+                        <span className="text-zinc-400">Starting Price:</span>
+                        <p className="text-white">${formData.starting_price || '0.00'}</p>
+                      </div>
+                      <div>
+                        <span className="text-zinc-400">Category:</span>
+                        <p className="text-white">{categories.find(c => c.id === formData.category_id)?.name || 'Not set'}</p>
+                      </div>
+                      <div>
+                        <span className="text-zinc-400">Condition:</span>
+                        <p className="text-white">{formData.condition}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Navigation Buttons */}
+              <div className="flex justify-between">
+                <button
+                  type="button"
+                  onClick={prevStep}
+                  disabled={currentStep === 'welcome'}
+                  className="bg-zinc-700 hover:bg-zinc-600 disabled:bg-zinc-800 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg transition-colors"
+                >
+                  Previous
+                </button>
+
+                {currentStep === 'review' ? (
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 disabled:from-zinc-700 disabled:to-zinc-700 text-white px-8 py-3 rounded-lg font-medium transition-all duration-200 flex items-center gap-2"
+                  >
+                    {submitting ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                        <span>Creating...</span>
+                      </>
+                    ) : (
+                      <span>Create Auction</span>
+                    )}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={nextStep}
+                    className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-6 py-3 rounded-lg transition-colors"
+                  >
+                    Next
+                  </button>
+                )}
+              </div>
+            </form>
           </div>
 
-          {/* Voice Control */}
-          <div className="flex flex-col items-center space-y-4">
-            {speechSupported ? (
-              <>
-                {!isListening && !isProcessingVoice && (
+          {/* AI Chat Assistant - Right Side */}
+          <div className="lg:col-span-1">
+            <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6 sticky top-8 h-fit">
+              {/* Chat Header */}
+              <div className="flex items-center gap-3 mb-6 pb-4 border-b border-zinc-800/50">
+                <div className="w-10 h-10 bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full flex items-center justify-center">
+                  <span className="text-lg">🤖</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white">AI Guide</h3>
+                  <p className="text-xs text-zinc-400">{stepConfig[currentStep].title}</p>
+                </div>
+              </div>
+
+              {/* Voice Transcript Display (only show when we have transcript) */}
+              {transcript && (
+                <div className="mb-4 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50">
+                  <p className="text-sm text-zinc-300 mb-2">Voice Input:</p>
+                  <p className="text-sm text-white">{transcript}</p>
+                  <button
+                    onClick={processVoiceInput}
+                    disabled={aiProcessing}
+                    className="mt-2 w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-zinc-700 text-white px-3 py-1 rounded text-xs transition-colors"
+                  >
+                    {aiProcessing ? 'Processing...' : 'Process Voice Input'}
+                  </button>
+                </div>
+              )}
+
+              {/* Chat Messages */}
+              <div className="space-y-4 max-h-96 overflow-y-auto mb-4">
+                {aiMessages.map((message, index) => (
+                  <div key={index} className={`${
+                    message.role === 'assistant' 
+                      ? 'bg-violet-600/10 border-violet-600/20' 
+                      : 'bg-zinc-800/50 border-zinc-700/50'
+                  } border rounded-lg p-3`}>
+                    <p className="text-sm text-zinc-200 whitespace-pre-line mb-2">
+                      {message.content}
+                    </p>
+                    {message.suggestions && (
+                      <div className="space-y-1">
+                        {message.suggestions.map((suggestion, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => sendMessage(suggestion)}
+                            disabled={aiProcessing}
+                            className="block w-full text-left text-xs bg-zinc-700/50 hover:bg-zinc-700 disabled:hover:bg-zinc-700/50 text-zinc-300 hover:text-white px-2 py-1 rounded transition-colors"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+                
+                {aiProcessing && (
+                  <div className="bg-violet-600/10 border-violet-600/20 border rounded-lg p-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 border-2 border-violet-400/30 border-t-violet-400 rounded-full animate-spin"></div>
+                      <span className="text-sm text-zinc-300">AI is thinking...</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Chat Input with Microphone */}
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
+                  placeholder="Ask me anything..."
+                  className="flex-1 bg-zinc-800/50 border border-zinc-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-violet-500 transition-colors"
+                  onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
+                />
+                
+                {/* Microphone Button */}
+                {!isListening ? (
                   <button
                     onClick={startListening}
-                    className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-lg font-bold text-lg transition-all duration-300 transform hover:scale-105 flex items-center space-x-3"
+                    disabled={!isSpeechRecognitionSupported}
+                    className="bg-zinc-700 hover:bg-zinc-600 disabled:bg-zinc-800 text-white px-3 py-2 rounded-lg transition-colors flex items-center justify-center"
+                    title="Voice input"
                   >
-                    <div className="w-4 h-4 bg-white rounded-full"></div>
-                    <span>Start Recording</span>
+                    <span className="text-sm">🎤</span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={stopListening}
+                    className="bg-red-600 hover:bg-red-700 text-white px-3 py-2 rounded-lg transition-colors flex items-center justify-center animate-pulse"
+                    title="Stop recording"
+                  >
+                    <span className="text-sm">⏹</span>
                   </button>
                 )}
                 
-                {isListening && (
-                  <div className="text-center">
-                    <div className="flex items-center justify-center space-x-3 mb-4">
-                      <div className="w-4 h-4 bg-red-500 rounded-full animate-pulse"></div>
-                      <span className="text-red-400 font-mono text-lg">Recording...</span>
-                    </div>
-                    <button
-                      onClick={stopListening}
-                      className="bg-zinc-700 hover:bg-zinc-600 text-white px-6 py-3 rounded-lg font-medium transition-colors"
-                    >
-                      Stop & Process
-                    </button>
-                  </div>
-                )}
-                
-                {isProcessingVoice && (
-                  <div className="flex items-center space-x-3 text-violet-400">
-                    <div className="w-6 h-6 border-2 border-violet-400 border-t-transparent rounded-full animate-spin"></div>
-                    <span className="text-lg">AI is processing your voice...</span>
-                  </div>
-                )}
-
-                {voiceProcessed && (
-                  <div className="bg-green-900/30 border border-green-700 rounded-lg p-4 max-w-md text-center">
-                    <div className="text-green-400 mb-2">✅ Voice Processed!</div>
-                    <p className="text-sm text-green-300">Check the form below - it should be automatically filled out.</p>
-                    <button
-                      onClick={clearVoiceInput}
-                      className="mt-2 text-xs text-green-400 hover:text-green-300 underline"
-                    >
-                      Record Again
-                    </button>
-                  </div>
-                )}
-
-                {/* Live Transcript Display */}
-                {transcript && !voiceProcessed && (
-                  <div className="bg-zinc-800/50 border border-zinc-700 rounded-lg p-4 max-w-2xl w-full">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm text-zinc-400">Live Transcript:</span>
-                      {!isListening && !isProcessingVoice && (
-                        <button
-                          onClick={() => processVoiceTranscript()}
-                          className="bg-violet-600 hover:bg-violet-700 text-white px-3 py-1 rounded text-sm font-medium"
-                        >
-                          Process Now
-                        </button>
-                      )}
-                    </div>
-                    <p className="text-white text-sm leading-relaxed bg-zinc-900/50 p-3 rounded">
-                      {transcript}
-                    </p>
-                  </div>
-                )}
-
-                {/* Example */}
-                {!transcript && !isListening && !voiceProcessed && (
-                  <div className="bg-zinc-800/30 border border-zinc-700/50 rounded-lg p-4 max-w-2xl text-center">
-                    <p className="text-zinc-400 text-sm mb-2">💡 <strong>Example:</strong></p>
-                    <p className="text-zinc-300 text-sm italic">
-                      &quot;This is the gaming mouse I used in my Valorant videos. It&apos;s a Logitech G Pro X Superlight, 
-                      white color, in good condition. I used it for about 8 months. Start the bidding at $75.&quot;
-                    </p>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center text-zinc-400">
-                <p>Voice recognition not supported in your browser.</p>
-                <p className="text-sm">Please fill out the form manually below.</p>
+                {/* Send Button */}
+                <button
+                  onClick={() => sendMessage()}
+                  disabled={!userInput.trim() || aiProcessing}
+                  className="bg-violet-600 hover:bg-violet-700 disabled:bg-zinc-700 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  Send
+                </button>
               </div>
-            )}
+            </div>
           </div>
         </div>
-
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-10">
-          {error && (
-            <div className="bg-red-950/50 border border-red-800 rounded-lg p-4">
-              <p className="text-red-200 text-sm">{error}</p>
-            </div>
-          )}
-
-          {/* Show AI suggestions only as additional info */}
-          {showAiSuggestions && aiSuggestions && (
-            <div className="bg-violet-950/30 border border-violet-800/50 rounded-lg p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-violet-300">
-                  ✨ Additional AI Suggestions
-                </h3>
-                <button
-                  type="button"
-                  onClick={() => setShowAiSuggestions(false)}
-                  className="text-zinc-400 hover:text-white text-sm"
-                >
-                  Dismiss
-                </button>
-              </div>
-              
-              {aiSuggestions.authenticity_highlights && (
-                <div className="mb-4">
-                  <h4 className="text-sm font-medium text-violet-400 mb-2">Consider Adding to Description:</h4>
-                  <ul className="space-y-1">
-                    {aiSuggestions.authenticity_highlights.map((highlight, index) => (
-                      <li key={index} className="text-sm text-zinc-300 flex items-start">
-                        <span className="text-violet-400 mr-2">•</span>
-                        {highlight}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {aiSuggestions.suggested_improvements && (
-                <div>
-                  <h4 className="text-sm font-medium text-amber-400 mb-2">Suggestions to Improve Listing:</h4>
-                  <ul className="space-y-1">
-                    {aiSuggestions.suggested_improvements.map((suggestion, index) => (
-                      <li key={index} className="text-sm text-zinc-300 flex items-start">
-                        <span className="text-amber-400 mr-2">→</span>
-                        {suggestion}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Basic Information */}
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-8">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-xl font-semibold text-white">Basic Information</h2>
-              {(formData.title || formData.description) && !voiceProcessed && (
-                <button
-                  type="button"
-                  onClick={handleAiEnhance}
-                  disabled={aiEnhancing}
-                  className="bg-violet-600 hover:bg-violet-700 disabled:bg-zinc-600 text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors flex items-center space-x-2"
-                >
-                  {aiEnhancing ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      <span>Enhancing...</span>
-                    </>
-                  ) : (
-                    <>
-                      <span>✨</span>
-                      <span>AI Enhance</span>
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-            
-            <div className="space-y-6">
-              <div>
-                <label htmlFor="title" className="block text-sm font-medium text-zinc-300 mb-2">
-                  Item Title *
-                </label>
-                <input
-                  id="title"
-                  name="title"
-                  type="text"
-                  required
-                  value={formData.title}
-                  onChange={handleInputChange}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
-                  placeholder="Gaming headset used in stream setup"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="description" className="block text-sm font-medium text-zinc-300 mb-2">
-                  Description *
-                </label>
-                <textarea
-                  id="description"
-                  name="description"
-                  required
-                  rows={4}
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors resize-none"
-                  placeholder="Describe the item's condition, usage, and any special significance..."
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="category_id" className="block text-sm font-medium text-zinc-300 mb-2">
-                    Category *
-                  </label>
-                  <select
-                    id="category_id"
-                    name="category_id"
-                    required
-                    value={formData.category_id}
-                    onChange={handleInputChange}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
-                  >
-                    <option value="" className="bg-zinc-800 text-zinc-400">Select a category</option>
-                    {categories.map(category => (
-                      <option key={category.id} value={category.id} className="bg-zinc-800 text-white">
-                        {category.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label htmlFor="condition" className="block text-sm font-medium text-zinc-300 mb-2">
-                    Condition *
-                  </label>
-                  <select
-                    id="condition"
-                    name="condition"
-                    required
-                    value={formData.condition}
-                    onChange={handleInputChange}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
-                  >
-                    <option value="new" className="bg-zinc-800 text-white">New</option>
-                    <option value="like_new" className="bg-zinc-800 text-white">Like New</option>
-                    <option value="good" className="bg-zinc-800 text-white">Good</option>
-                    <option value="fair" className="bg-zinc-800 text-white">Fair</option>
-                    <option value="poor" className="bg-zinc-800 text-white">Poor</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Video Information */}
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-8">
-            <h2 className="text-xl font-semibold text-white mb-6">Video Information</h2>
-            
-            <div className="space-y-6">
-              <div>
-                <label htmlFor="video_url" className="block text-sm font-medium text-zinc-300 mb-2">
-                  Video URL *
-                </label>
-                <input
-                  id="video_url"
-                  name="video_url"
-                  type="url"
-                  required
-                  value={formData.video_url}
-                  onChange={handleInputChange}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
-                  placeholder="https://youtube.com/watch?v=..."
-                />
-                <p className="text-sm text-zinc-500 mt-2">
-                  Link to the video where this item appears
-                </p>
-              </div>
-
-              <div>
-                <label htmlFor="video_timestamp" className="block text-sm font-medium text-zinc-300 mb-2">
-                  Video Timestamp (seconds)
-                </label>
-                <input
-                  id="video_timestamp"
-                  name="video_timestamp"
-                  type="number"
-                  value={formData.video_timestamp}
-                  onChange={handleInputChange}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
-                  placeholder="120"
-                />
-                <p className="text-sm text-zinc-500 mt-2">
-                  When the item appears in the video (optional)
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Pricing */}
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-8">
-            <h2 className="text-xl font-semibold text-white mb-6">Pricing</h2>
-            
-            <div className="space-y-6">
-              <div>
-                <label htmlFor="starting_price" className="block text-sm font-medium text-zinc-300 mb-2">
-                  Starting Price ($) *
-                </label>
-                <input
-                  id="starting_price"
-                  name="starting_price"
-                  type="number"
-                  step="0.01"
-                  min="1"
-                  required
-                  value={formData.starting_price}
-                  onChange={handleInputChange}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
-                  placeholder="25.00"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label htmlFor="reserve_price" className="block text-sm font-medium text-zinc-300 mb-2">
-                    Reserve Price ($)
-                  </label>
-                  <input
-                    id="reserve_price"
-                    name="reserve_price"
-                    type="number"
-                    step="0.01"
-                    min="1"
-                    value={formData.reserve_price}
-                    onChange={handleInputChange}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
-                    placeholder="50.00"
-                  />
-                  <p className="text-xs text-zinc-500 mt-2">
-                    Minimum price to sell
-                  </p>
-                </div>
-
-                <div>
-                  <label htmlFor="buy_now_price" className="block text-sm font-medium text-zinc-300 mb-2">
-                    Buy Now Price ($)
-                  </label>
-                  <input
-                    id="buy_now_price"
-                    name="buy_now_price"
-                    type="number"
-                    step="0.01"
-                    min="1"
-                    value={formData.buy_now_price}
-                    onChange={handleInputChange}
-                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
-                    placeholder="100.00"
-                  />
-                  <p className="text-xs text-zinc-500 mt-2">
-                    Instant purchase price
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Images & Duration */}
-          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-8">
-            <h2 className="text-xl font-semibold text-white mb-6">Images & Duration</h2>
-            
-            <div className="space-y-6">
-              <div>
-                <label htmlFor="images" className="block text-sm font-medium text-zinc-300 mb-2">
-                  Images (max 5)
-                </label>
-                <input
-                  id="images"
-                  name="images"
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-violet-600 file:text-white hover:file:bg-violet-700 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
-                />
-                {formData.images.length > 0 && (
-                  <div className="mt-3 flex items-center space-x-2">
-                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                    <p className="text-green-400 text-sm">
-                      {formData.images.length} file(s) selected
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              <div>
-                <label htmlFor="duration_days" className="block text-sm font-medium text-zinc-300 mb-2">
-                  Auction Duration
-                </label>
-                <select
-                  id="duration_days"
-                  name="duration_days"
-                  value={formData.duration_days}
-                  onChange={handleInputChange}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
-                >
-                  <option value="1" className="bg-zinc-800 text-white">1 Day</option>
-                  <option value="3" className="bg-zinc-800 text-white">3 Days</option>
-                  <option value="7" className="bg-zinc-800 text-white">7 Days</option>
-                  <option value="10" className="bg-zinc-800 text-white">10 Days</option>
-                  <option value="14" className="bg-zinc-800 text-white">14 Days</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Form Actions */}
-          <div className="flex justify-end space-x-4 pt-6">
-            <Link
-              href="/dashboard"
-              className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-600"
-            >
-              Cancel
-            </Link>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-violet-500 flex items-center space-x-2"
-            >
-              {submitting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                  <span>Creating...</span>
-                </>
-              ) : (
-                <span>Create Auction</span>
-              )}
-            </button>
-          </div>
-        </form>
       </div>
     </div>
   );
