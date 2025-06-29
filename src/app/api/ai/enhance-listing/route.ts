@@ -51,25 +51,33 @@ export async function POST(request: NextRequest) {
 
     currentStep = body.currentStep || 'welcome';
 
-    const systemPrompt = `You are an AI that parses user descriptions of items they want to auction and extracts structured form data.
+    const systemPrompt = `You are an AI that helps users create auction listings. You can:
+1. Parse initial item descriptions and fill form fields
+2. Handle revisions and updates to existing fields
+3. Focus on step-specific information
 
 Current step: ${currentStep}
 Available categories: ${categories.map(c => `${c.id}: ${c.name}`).join('\n')}
 
-Parse the user's message and extract form field values. Respond with helpful confirmation of what you understood, then the system will auto-fill the form.
+STEP FOCUS:
+${currentStep === 'basic_info' ? 'Focus on: title, description, category, condition' : 
+  currentStep === 'pricing' ? 'Focus on: starting_price, reserve_price, buy_now_price, duration_days' :
+  currentStep === 'video' ? 'Focus on: video_url, video_timestamp' :
+  currentStep === 'images' ? 'Focus on: image-related guidance' :
+  'Focus on: final review and validation'}
 
-Focus on extracting:
-- Item type and descriptive title
-- Detailed description with context
-- Appropriate category
-- Reasonable condition assessment
-- Any pricing mentioned`;
+Parse the user's message for:
+- New information to add
+- Revisions/changes to existing fields
+- Step-specific details
 
-    const userPrompt = `Parse this item description: "${userMessage}"
+Respond conversationally and confirm what changes you're making.`;
 
-Current form: ${JSON.stringify(currentFormData)}
+    const userPrompt = `User message: "${userMessage}"
+Current step: ${currentStep}
+Current form data: ${JSON.stringify(currentFormData)}
 
-Extract and fill appropriate form fields based on what the user described.`;
+Parse for new data or revisions appropriate for the current step.`;
 
     const completion = await anthropic.messages.create({
       model: 'claude-3-sonnet-20240229',
@@ -84,8 +92,8 @@ Extract and fill appropriate form fields based on what the user described.`;
 
     const aiResponse = completion.content[0].type === 'text' ? completion.content[0].text : '';
 
-    // Comprehensive parsing and form filling
-    const formUpdates = extractFormUpdates(userMessage, currentFormData, categories);
+    // Enhanced parsing with step awareness and revision detection
+    const formUpdates = extractFormUpdates(userMessage, currentFormData, categories, currentStep);
     
     return NextResponse.json({
       success: true,
@@ -169,127 +177,197 @@ export function generateSuggestions(missingFields: string[], currentStep: string
   return suggestions;
 }
 
-// Comprehensive extraction function
-function extractFormUpdates(userMessage: string, currentFormData: FormData, categories: Array<{id: string, name: string}>): Record<string, string> {
+// General-purpose extraction function
+function extractFormUpdates(userMessage: string, currentFormData: FormData, categories: Array<{id: string, name: string}>, currentStep: string): Record<string, string> {
   const formUpdates: Record<string, string> = {};
-  const message = userMessage.toLowerCase();
 
-  // Item type detection with comprehensive patterns
-  let itemType = '';
-  let artist = '';
-  let event = '';
-  let context = '';
-
-  // Detect item types
-  const itemTypes = {
-    'shoes': ['shoes', 'sneakers', 'boots', 'sandals', 'heels', 'footwear'],
-    'shirt': ['shirt', 'tee', 't-shirt', 'top', 'blouse', 'jersey', 'tank'],
-    'hat': ['hat', 'cap', 'beanie', 'helmet', 'headwear'],
-    'jacket': ['jacket', 'coat', 'hoodie', 'sweater', 'cardigan'],
-    'pants': ['pants', 'jeans', 'shorts', 'trousers', 'leggings'],
-    'dress': ['dress', 'gown', 'skirt'],
-    'sunglasses': ['sunglasses', 'glasses', 'shades'],
-    'jewelry': ['necklace', 'bracelet', 'ring', 'earrings', 'jewelry', 'watch'],
-    'bag': ['bag', 'purse', 'backpack', 'tote', 'handbag']
-  };
-
-  for (const [type, patterns] of Object.entries(itemTypes)) {
-    if (patterns.some(pattern => message.includes(pattern))) {
-      itemType = type;
-      break;
-    }
-  }
-
-  // Detect artists/bands
-  const artists = ['metallica', 'taylor swift', 'drake', 'beyonce', 'kanye', 'eminem', 'rihanna', 'adele', 'billie eilish', 'post malone'];
-  for (const artistName of artists) {
-    if (message.includes(artistName)) {
-      artist = artistName.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
-      break;
-    }
-  }
-
-  // Detect events
-  if (message.includes('summer metal festival')) event = 'Summer Metal Festival';
-  else if (message.includes('coachella')) event = 'Coachella';
-  else if (message.includes('lollapalooza')) event = 'Lollapalooza';
-
-  // Detect context
-  if (message.includes('concert') || message.includes('show') || message.includes('festival')) {
-    context = 'concert';
-  } else if (message.includes('video') || message.includes('youtube')) {
-    context = 'video';
-  } else if (message.includes('photo') || message.includes('shoot')) {
-    context = 'photoshoot';
-  }
-
-  // Generate title
-  if (!currentFormData.title || currentFormData.title === 'Creator Item') {
-    let title = '';
-    
-    if (context === 'concert' && artist && itemType) {
-      title = `${artist} Concert Worn ${itemType.charAt(0).toUpperCase() + itemType.slice(1)}`;
-      if (event) title += ` - ${event}`;
-    } else if (context === 'video' && itemType) {
-      title = `${itemType.charAt(0).toUpperCase() + itemType.slice(1)} from YouTube Video`;
-    } else if (itemType) {
-      title = `Creator ${itemType.charAt(0).toUpperCase() + itemType.slice(1)}`;
-    }
-    
-    if (title) formUpdates.title = title;
-  }
-
-  // Generate description
-  if (!currentFormData.description || currentFormData.description.includes('Authentic item worn by creator')) {
-    let description = '';
-    
-    if (context === 'concert' && artist) {
-      description = `Authentic ${itemType || 'item'} worn to ${artist} concert`;
-      if (event) description += ` at ${event}`;
-      description += '. This unique piece of concert memorabilia was personally worn by the creator and captured in their YouTube video coverage of the event.';
-    } else if (context === 'video') {
-      description = `Authentic ${itemType || 'item'} worn by creator in a YouTube video`;
-      if (artist || event) {
-        description += ` featuring ${artist || event}`;
-      }
-      description += '. This unique piece of creator memorabilia comes directly from their personal collection.';
-    } else {
-      description = `Authentic ${itemType || 'item'} from creator's personal collection. This unique piece of memorabilia represents a special moment and comes with the story behind it.`;
-    }
-    
-    if (description) formUpdates.description = description;
-  }
-
-  // Set category
-  if (!currentFormData.category_id) {
-    let categoryName = '';
-    
-    if (['shoes', 'shirt', 'hat', 'jacket', 'pants', 'dress', 'sunglasses', 'jewelry', 'bag'].includes(itemType)) {
-      categoryName = 'fashion';
-    } else if (context === 'concert') {
-      categoryName = 'music';
-    }
-    
-    const category = categories.find(c => 
-      c.name.toLowerCase().includes(categoryName) ||
-      c.name.toLowerCase().includes('fashion') ||
-      c.name.toLowerCase().includes('accessories') ||
-      c.name.toLowerCase().includes('clothing')
-    );
-    
-    if (category) formUpdates.category_id = category.id;
-  }
-
-  // Set condition
-  if (!currentFormData.condition) {
-    formUpdates.condition = 'Used - Good';
-  }
-
-  // Extract pricing if mentioned
-  const priceMatch = userMessage.match(/\$(\d+)/);
-  if (priceMatch && !currentFormData.starting_price) {
-    formUpdates.starting_price = priceMatch[1];
+  // Detect revision keywords
+  const isRevision = /\b(change|update|modify|make|set|actually|instead|rather|correction|fix)\b/.test(userMessage.toLowerCase());
+  
+  // STEP-SPECIFIC PARSING
+  if (currentStep === 'basic_info') {
+    Object.assign(formUpdates, parseBasicInfo(userMessage, currentFormData, categories, isRevision));
+  } else if (currentStep === 'pricing') {
+    Object.assign(formUpdates, parsePricing(userMessage, currentFormData));
+  } else if (currentStep === 'video') {
+    Object.assign(formUpdates, parseVideo(userMessage));
   }
 
   return formUpdates;
+}
+
+function parseBasicInfo(userMessage: string, currentFormData: FormData, categories: Array<{id: string, name: string}>, isRevision: boolean): Record<string, string> {
+  const updates: Record<string, string> = {};
+  const message = userMessage.toLowerCase();
+
+  // Handle direct field updates
+  if (isRevision) {
+    // Title changes
+    if (message.includes('title') || message.includes('name')) {
+      const titleMatch = userMessage.match(/(?:title|name)\s+(?:to\s+|is\s+)?["']([^"']+)["']|(?:title|name)\s+(?:to\s+|is\s+)?([^.,!?\n]+)/i);
+      if (titleMatch) {
+        updates.title = (titleMatch[1] || titleMatch[2]).trim();
+      }
+    }
+    
+    // Description changes
+    if (message.includes('description')) {
+      const descMatch = userMessage.match(/description\s+(?:to\s+|is\s+)?["']([^"']+)["']|description\s+(?:to\s+|is\s+)?([^.,!?\n]+)/i);
+      if (descMatch) {
+        updates.description = (descMatch[1] || descMatch[2]).trim();
+      }
+    }
+    
+    // Condition changes
+    const conditions = ['new', 'used - excellent', 'used - good', 'used - fair'];
+    for (const condition of conditions) {
+      if (message.includes(condition.toLowerCase())) {
+        updates.condition = condition.charAt(0).toUpperCase() + condition.slice(1);
+        break;
+      }
+    }
+  }
+
+  // Initial parsing for empty fields
+  if (!currentFormData.title || currentFormData.title === 'Creator Item') {
+    const extractedTitle = extractTitle(userMessage);
+    if (extractedTitle) updates.title = extractedTitle;
+  }
+
+  if (!currentFormData.description || currentFormData.description.includes('Authentic item worn by creator')) {
+    const extractedDesc = extractDescription(userMessage);
+    if (extractedDesc) updates.description = extractedDesc;
+  }
+
+  if (!currentFormData.category_id) {
+    const categoryId = findBestCategory(userMessage, categories);
+    if (categoryId) updates.category_id = categoryId;
+  }
+
+  if (!currentFormData.condition) {
+    updates.condition = 'Used - Good'; // Default
+  }
+
+  return updates;
+}
+
+function extractTitle(userMessage: string): string | null {
+  // Look for common item descriptors
+  const words = userMessage.toLowerCase().split(' ');
+  const itemKeywords = ['pair', 'set', 'collection', 'vintage', 'original', 'signed', 'rare', 'limited'];
+  const itemTypes = ['book', 'shirt', 'shoes', 'hat', 'jacket', 'watch', 'phone', 'laptop', 'guitar', 'camera', 'art', 'poster', 'card', 'coin', 'toy', 'game'];
+  
+  // Find the main item type
+  let mainItem = '';
+  for (const type of itemTypes) {
+    if (words.includes(type) || words.includes(type + 's')) {
+      mainItem = type;
+      break;
+    }
+  }
+  
+  if (mainItem) {
+    // Look for descriptive words before the item
+    const itemIndex = words.findIndex(word => word === mainItem || word === mainItem + 's');
+    const descriptors = words.slice(Math.max(0, itemIndex - 3), itemIndex)
+      .filter(word => itemKeywords.includes(word) || /\d{4}/.test(word)); // Include years
+    
+    const title = descriptors.concat([mainItem]).join(' ');
+    return title.charAt(0).toUpperCase() + title.slice(1);
+  }
+  
+  return null;
+}
+
+function extractDescription(userMessage: string): string | null {
+  // Clean up the message and use it as description if it's descriptive enough
+  const cleaned = userMessage.trim();
+  if (cleaned.length > 20) {
+    return cleaned.charAt(0).toUpperCase() + cleaned.slice(1) + 
+           (cleaned.endsWith('.') ? '' : '.');
+  }
+  return null;
+}
+
+function findBestCategory(userMessage: string, categories: Array<{id: string, name: string}>): string | null {
+  const message = userMessage.toLowerCase();
+  
+  // Try to match categories by keywords
+  const categoryKeywords = {
+    'fashion': ['shirt', 'shoes', 'hat', 'jacket', 'pants', 'dress', 'clothing', 'wear'],
+    'electronics': ['phone', 'laptop', 'computer', 'camera', 'headphones', 'tech'],
+    'collectibles': ['card', 'coin', 'figurine', 'vintage', 'rare', 'signed', 'limited'],
+    'books': ['book', 'novel', 'textbook', 'magazine', 'comic'],
+    'art': ['painting', 'artwork', 'poster', 'print', 'canvas'],
+    'music': ['guitar', 'piano', 'drum', 'vinyl', 'cd', 'record'],
+    'games': ['game', 'console', 'controller', 'board game'],
+    'home': ['furniture', 'lamp', 'chair', 'table', 'decor']
+  };
+  
+  for (const [categoryType, keywords] of Object.entries(categoryKeywords)) {
+    if (keywords.some(keyword => message.includes(keyword))) {
+      const category = categories.find(c => 
+        c.name.toLowerCase().includes(categoryType) ||
+        keywords.some(k => c.name.toLowerCase().includes(k))
+      );
+      if (category) return category.id;
+    }
+  }
+  
+  return null;
+}
+
+function parsePricing(userMessage: string, currentFormData: FormData): Record<string, string> {
+  const updates: Record<string, string> = {};
+
+  // Extract all price mentions
+  const priceMatches = userMessage.match(/\$(\d+(?:\.\d{2})?)/g);
+  if (priceMatches) {
+    const prices = priceMatches.map(p => p.replace('$', ''));
+    
+    // Smart assignment based on context and values
+    if (prices.length === 1) {
+      if (!currentFormData.starting_price) {
+        updates.starting_price = prices[0];
+      }
+    } else if (prices.length >= 2) {
+      const sortedPrices = prices.map(Number).sort((a, b) => a - b);
+      if (!currentFormData.starting_price) updates.starting_price = sortedPrices[0].toString();
+      if (!currentFormData.reserve_price && sortedPrices.length > 1) updates.reserve_price = sortedPrices[1].toString();
+      if (!currentFormData.buy_now_price && sortedPrices.length > 2) updates.buy_now_price = sortedPrices[2].toString();
+    }
+  }
+
+  // Duration extraction
+  const durationMatch = userMessage.match(/(\d+)\s*days?/i);
+  if (durationMatch && !currentFormData.duration_days) {
+    updates.duration_days = durationMatch[1];
+  }
+
+  return updates;
+}
+
+function parseVideo(userMessage: string): Record<string, string> {
+  const updates: Record<string, string> = {};
+
+  // URL extraction
+  const urlMatch = userMessage.match(/(https?:\/\/[^\s]+)/i);
+  if (urlMatch) {
+    updates.video_url = urlMatch[1];
+  }
+
+  // Timestamp extraction - handle various formats
+  const timestampMatch = userMessage.match(/(\d+:\d+|\d+\s*(?:seconds?|minutes?|mins?))/i);
+  if (timestampMatch) {
+    const timestamp = timestampMatch[1];
+    if (timestamp.includes(':')) {
+      const [min, sec] = timestamp.split(':').map(Number);
+      updates.video_timestamp = String(min * 60 + (sec || 0));
+    } else {
+      const number = parseInt(timestamp);
+      updates.video_timestamp = timestamp.includes('min') ? String(number * 60) : String(number);
+    }
+  }
+
+  return updates;
 } 
