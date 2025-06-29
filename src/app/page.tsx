@@ -2,134 +2,130 @@ import Link from 'next/link';
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-zinc-950 text-white">
       {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-br from-indigo-50 via-white to-purple-50"></div>
-        <div className="relative max-w-6xl mx-auto px-6 py-24">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <div className="accent-bar w-16 mb-6"></div>
-              <h1 className="text-display mb-6">
-                Authentic Creator Collections
-              </h1>
-              <p className="text-xl text-gray-600 mb-8 max-w-lg leading-relaxed">
-                A curated marketplace for verified items used by content creators. 
-                Own authentic pieces from your favorite creators&lsquo; content.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4">
-                <Link 
-                  href="/auctions"
-                  className="btn-primary inline-flex items-center justify-center"
-                >
-                  Explore Auctions
-                </Link>
-                <Link 
-                  href="/auth/register?creator=true"
-                  className="btn-secondary inline-flex items-center justify-center"
-                >
-                  Join as Creator
-                </Link>
-              </div>
-            </div>
-            <div className="relative">
-              <div className="relative">
-                <div className="aspect-square bg-gradient-primary rounded-2xl flex items-center justify-center shadow-2xl">
-                  <div className="w-32 h-32 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                    <div className="w-12 h-12 bg-white rounded-lg"></div>
-                  </div>
+      <section className="relative">
+        <div className="max-w-6xl mx-auto px-8 py-24">
+          <div className="grid grid-cols-12 gap-12 items-center min-h-[70vh]">
+            <div className="col-span-8">
+              <div className="space-y-8">
+                <div className="w-8 h-1 bg-gradient-to-r from-purple-500 to-coral-500"></div>
+                
+                <h1 className="text-6xl font-black leading-tight tracking-tight text-white">
+                  VERIFIED CREATOR
+                  <br />
+                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-300 to-coral-300">
+                    MARKETPLACE
+                  </span>
+                </h1>
+                
+                <p className="text-xl text-zinc-200 max-w-lg leading-relaxed font-medium">
+                  Authenticated items from content creators. Each piece verified through cryptographic proof of origin.
+                </p>
+                
+                <div className="flex space-x-6 pt-6">
+                  <Link 
+                    href="/auctions"
+                    className="bg-white text-black font-bold px-8 py-4 hover:bg-purple-500 hover:text-white transition-all duration-300 text-sm tracking-wide"
+                  >
+                    EXPLORE AUCTIONS
+                  </Link>
+                  <Link 
+                    href="/auth/register?creator=true"
+                    className="border-2 border-zinc-600 text-white font-bold px-8 py-4 hover:border-purple-400 hover:text-purple-300 transition-all duration-300 text-sm tracking-wide"
+                  >
+                    JOIN AS CREATOR
+                  </Link>
                 </div>
-                <div className="absolute -bottom-6 -right-6 w-24 h-24 bg-gradient-secondary rounded-xl shadow-lg"></div>
-                <div className="absolute -top-4 -left-4 w-16 h-16 bg-gradient-accent rounded-lg shadow-lg"></div>
+              </div>
+            </div>
+            
+            <div className="col-span-4">
+              <div className="w-64 h-64 border-2 border-zinc-700 relative">
+                <div className="absolute top-4 right-4 w-4 h-4 bg-purple-400"></div>
+                <div className="absolute bottom-4 left-4 w-4 h-4 bg-coral-400"></div>
+                <div className="absolute inset-8 border border-zinc-600"></div>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="grid grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="text-4xl font-bold bg-gradient-primary bg-clip-text text-transparent mb-2">1,247</div>
-              <div className="text-caption text-gray-600">Items Sold</div>
+      {/* Stats */}
+      <section className="border-t border-zinc-700">
+        <div className="max-w-6xl mx-auto px-8 py-16">
+          <div className="grid grid-cols-3 gap-16">
+            <div>
+              <div className="text-4xl font-black text-purple-300 mb-2">2,847</div>
+              <div className="text-sm font-mono text-zinc-300 uppercase tracking-wider font-semibold">Items Verified</div>
             </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold bg-gradient-secondary bg-clip-text text-transparent mb-2">89</div>
-              <div className="text-caption text-gray-600">Verified Creators</div>
+            <div>
+              <div className="text-4xl font-black text-coral-300 mb-2">163</div>
+              <div className="text-sm font-mono text-zinc-300 uppercase tracking-wider font-semibold">Active Creators</div>
             </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold bg-gradient-accent bg-clip-text text-transparent mb-2">4.9</div>
-              <div className="text-caption text-gray-600">Trust Rating</div>
+            <div>
+              <div className="text-4xl font-black text-white mb-2">99.7%</div>
+              <div className="text-sm font-mono text-zinc-300 uppercase tracking-wider font-semibold">Success Rate</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Features Section */}
+      {/* Process */}
       <section className="py-24">
-        <div className="max-w-6xl mx-auto px-6">
-          <div className="text-center mb-16">
-            <div className="accent-bar w-16 mx-auto mb-6"></div>
-            <h2 className="text-heading text-gray-900 mb-4">How It Works</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Our comprehensive verification process ensures authenticity and provenance for every item.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="card card-featured p-8 text-center">
-              <div className="w-16 h-16 bg-gradient-primary rounded-xl mb-6 mx-auto flex items-center justify-center">
-                <div className="w-6 h-6 bg-white rounded"></div>
-              </div>
-              <h3 className="text-subheading text-gray-900 mb-4">Video Verification</h3>
-              <p className="text-body text-gray-600">
-                Every item is linked to specific video content with timestamp verification and provenance tracking.
+        <div className="max-w-6xl mx-auto px-8">
+          <div className="space-y-16">
+            <div>
+              <div className="w-12 h-1 bg-gradient-to-r from-coral-400 to-purple-400 mb-6"></div>
+              <h2 className="text-4xl font-black mb-4 text-white">VERIFICATION PROCESS</h2>
+              <p className="text-zinc-200 text-lg max-w-2xl font-medium leading-relaxed">
+                Three-step authentication ensures every item has verifiable provenance from creator to collector.
               </p>
             </div>
 
-            <div className="card p-8 text-center">
-              <div className="w-16 h-16 bg-gradient-secondary rounded-xl mb-6 mx-auto flex items-center justify-center">
-                <div className="w-6 h-6 border-2 border-white rounded-full"></div>
+            <div className="grid grid-cols-3 gap-8">
+              <div className="space-y-6">
+                <div className="w-12 h-12 bg-purple-400 text-black font-mono font-black flex items-center justify-center text-lg">1</div>
+                <h3 className="text-xl font-bold text-white">DIGITAL PROOF</h3>
+                <p className="text-zinc-200 leading-relaxed">
+                  Cryptographic signatures link items to specific video content and timestamps.
+                </p>
               </div>
-              <h3 className="text-subheading text-gray-900 mb-4">Creator Authentication</h3>
-              <p className="text-body text-gray-600">
-                Rigorous multi-step verification process for all content creators on the platform.
-              </p>
-            </div>
 
-            <div className="card p-8 text-center">
-              <div className="w-16 h-16 bg-gradient-accent rounded-xl mb-6 mx-auto flex items-center justify-center">
-                <div className="w-6 h-6 bg-white rounded transform rotate-45"></div>
+              <div className="space-y-6">
+                <div className="w-12 h-12 bg-coral-400 text-black font-mono font-black flex items-center justify-center text-lg">2</div>
+                <h3 className="text-xl font-bold text-white">CREATOR AUTH</h3>
+                <p className="text-zinc-200 leading-relaxed">
+                  Multi-factor verification confirms creator identity through platform APIs.
+                </p>
               </div>
-              <h3 className="text-subheading text-gray-900 mb-4">Secure Transactions</h3>
-              <p className="text-body text-gray-600">
-                End-to-end secure payment processing with comprehensive buyer and seller protection.
-              </p>
+
+              <div className="space-y-6">
+                <div className="w-12 h-12 bg-white text-black font-mono font-black flex items-center justify-center text-lg">3</div>
+                <h3 className="text-xl font-bold text-white">SECURE TRANSFER</h3>
+                <p className="text-zinc-200 leading-relaxed">
+                  Encrypted transactions with immutable ownership records.
+                </p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="relative py-24 overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-primary"></div>
-        <div className="absolute inset-0 bg-black/20"></div>
-        <div className="relative max-w-6xl mx-auto px-6 text-center">
-          <h2 className="text-heading text-white mb-4">Start Your Collection Today</h2>
-          <p className="text-lg text-white/80 mb-8 max-w-lg mx-auto">
-            Join thousands of collectors and creators in the authentic content marketplace.
+      {/* CTA */}
+      <section className="border-t border-zinc-700 py-24">
+        <div className="max-w-4xl mx-auto px-8 text-center">
+          <h2 className="text-4xl font-black mb-6 text-white">START YOUR COLLECTION</h2>
+          <p className="text-xl text-zinc-200 mb-8 max-w-2xl mx-auto font-medium leading-relaxed">
+            Join the authenticated marketplace for creator artifacts. Verify, collect, own.
           </p>
           <Link 
             href="/auth/register"
-            className="btn-accent"
+            className="bg-gradient-to-r from-purple-500 to-coral-500 text-white font-bold px-12 py-4 hover:shadow-lg hover:shadow-purple-500/25 transition-all duration-300 text-sm tracking-wide"
           >
-            Get Started Now
+            GET STARTED NOW
           </Link>
         </div>
-        <div className="absolute top-20 right-20 w-32 h-32 bg-white/10 rounded-full"></div>
-        <div className="absolute bottom-20 left-20 w-24 h-24 bg-white/10 rounded-full"></div>
       </section>
     </div>
   );
