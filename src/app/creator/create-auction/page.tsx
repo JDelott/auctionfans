@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
-import { VoiceFormFiller } from '@/components/auction/VoiceFormFiller';
+import { VoiceMicButton } from '@/components/auction/VoiceMicButton';
 import { SmartFormField } from '@/components/auction/SmartFormField';
 import { useFormSteps } from '@/lib/hooks/useFormSteps';
 import { validateBasicInfo, validatePricing, validateImages } from '@/lib/auction-forms/validation';
@@ -66,6 +66,10 @@ export default function CreateAuctionPage() {
   // Handle form updates from voice input
   const handleFormUpdate = (updates: Partial<AuctionFormData>) => {
     setFormData(prev => ({ ...prev, ...updates }));
+    // Clear any validation errors when voice input successfully updates the form
+    if (Object.keys(updates).length > 0) {
+      setError('');
+    }
   };
 
   // Handle image changes  
@@ -213,13 +217,6 @@ export default function CreateAuctionPage() {
           </div>
         )}
 
-        {/* Voice Form Filler */}
-        <VoiceFormFiller 
-          onFormUpdate={handleFormUpdate}
-          categories={categories}
-          currentFormData={formData}
-        />
-
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Progress Indicator */}
           <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-4">
@@ -258,7 +255,16 @@ export default function CreateAuctionPage() {
 
           {/* Form sections */}
           {currentStep === 'basic_info' && (
-            <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6">
+            <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6 relative">
+              {/* Voice Mic Button in corner */}
+              <div className="absolute top-4 right-4">
+                <VoiceMicButton 
+                  onFormUpdate={handleFormUpdate}
+                  categories={categories}
+                  currentFormData={formData}
+                />
+              </div>
+
               <h3 className="text-xl font-semibold mb-6">Basic Information</h3>
               
               <div className="space-y-4">

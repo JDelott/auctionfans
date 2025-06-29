@@ -29,6 +29,8 @@ export async function POST(request: NextRequest) {
     }
 
     const body: EnhanceListingRequest = await request.json();
+    console.log('AI Enhancement Request:', body);
+    
     const { 
       userMessage = '',
       currentFormData = {} as AuctionFormData,
@@ -39,6 +41,31 @@ export async function POST(request: NextRequest) {
 
     currentStep = body.currentStep || 'welcome';
 
+    // If this is a field iteration, skip the general AI response
+    if (iterationField) {
+      const { formUpdates, fieldUpdates } = await extractFormUpdatesWithReasons(
+        userMessage, 
+        currentFormData, 
+        categories, 
+        currentStep, 
+        iterationField, 
+        rejectedFields
+      );
+      
+      console.log('AI Enhancement Result:', { formUpdates, fieldUpdates });
+      
+      return NextResponse.json({
+        success: true,
+        response: `Enhanced ${iterationField} successfully!`,
+        formUpdates,
+        fieldUpdates,
+        nextStep: currentStep,
+        suggestions: [],
+        formAnalysis: analyzeFormState({ ...currentFormData, ...formUpdates } as AuctionFormData)
+      });
+    }
+
+    // For general form filling, use the regular AI flow
     const systemPrompt = `You are an AI assistant that helps users create auction listings from voice input.
 
 Parse the user's description and extract basic information to fill form fields.
@@ -73,7 +100,7 @@ Provide helpful confirmation of what you understood.`;
     const aiResponse = completion.content[0].type === 'text' ? completion.content[0].text : '';
 
     // Enhanced parsing with field-specific updates
-    const { formUpdates, fieldUpdates } = extractFormUpdatesWithReasons(
+    const { formUpdates, fieldUpdates } = await extractFormUpdatesWithReasons(
       userMessage, 
       currentFormData, 
       categories, 
@@ -82,11 +109,13 @@ Provide helpful confirmation of what you understood.`;
       rejectedFields
     );
     
+    console.log('AI Enhancement Result:', { formUpdates, fieldUpdates });
+    
     return NextResponse.json({
       success: true,
       response: aiResponse,
       formUpdates,
-      fieldUpdates, // Granular field updates with reasons
+      fieldUpdates,
       nextStep: currentStep,
       suggestions: generateSuggestions([], currentStep, formUpdates),
       formAnalysis: analyzeFormState({ ...currentFormData, ...formUpdates } as AuctionFormData)

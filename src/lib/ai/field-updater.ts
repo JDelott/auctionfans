@@ -1,6 +1,12 @@
 import { AuctionFormData, Category, FieldUpdate } from '../auction-forms/types';
 import { extractFormUpdates } from './form-parser';
 import { findBestCategory } from './category-matcher';
+import Anthropic from '@anthropic-ai/sdk';
+
+// Initialize Anthropic client
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY!,
+});
 
 export function getSimpleReason(field: string): string {
   const reasons: Record<string, string> = {
@@ -17,34 +23,92 @@ export function getSimpleReason(field: string): string {
   return reasons[field] || 'Updated from your input';
 }
 
-export function extractFormUpdatesWithReasons(
+async function enhanceFieldWithAI(
+  userMessage: string,
+  fieldName: string, 
+  currentValue: string
+): Promise<{ value: string; reason: string } | null> {
+  
+  if (!currentValue.trim()) {
+    return null;
+  }
+
+  try {
+    const fieldPrompts = {
+      title: `You are helping enhance an auction listing title. The user wants to: "${userMessage}"
+
+Current title: "${currentValue}"
+
+Please rewrite this title to be ${userMessage.toLowerCase()}. Keep it concise (under 10 words) but compelling for an auction listing. Return only the enhanced title, nothing else.`,
+
+      description: `You are helping enhance an auction listing description. The user wants to: "${userMessage}"
+
+Current description: "${currentValue}"
+
+Please rewrite this description to be ${userMessage.toLowerCase()}. This is for an auction of an authentic item from a content creator. Make it compelling for potential bidders while maintaining authenticity. Return only the enhanced description, nothing else.`
+    };
+
+    const prompt = fieldPrompts[fieldName as keyof typeof fieldPrompts];
+    if (!prompt) {
+      return null;
+    }
+
+    const completion = await anthropic.messages.create({
+      model: 'claude-3-sonnet-20240229',
+      max_tokens: 400,
+      messages: [
+        {
+          role: 'user',
+          content: prompt
+        }
+      ]
+    });
+
+    const enhancedText = completion.content[0].type === 'text' ? completion.content[0].text.trim() : '';
+    
+    if (enhancedText && enhancedText !== currentValue) {
+      return {
+        value: enhancedText,
+        reason: `Enhanced ${fieldName} using AI: ${userMessage.toLowerCase()}`
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error('AI Field Enhancement Error:', error);
+    return null;
+  }
+}
+
+export async function extractFormUpdatesWithReasons(
   userMessage: string, 
   currentFormData: AuctionFormData, 
   categories: Category[], 
   currentStep: string,
   iterationField?: string,
   rejectedFields: string[] = []
-): { formUpdates: Record<string, string>; fieldUpdates: FieldUpdate[] } {
+): Promise<{ formUpdates: Record<string, string>; fieldUpdates: FieldUpdate[] }> {
   
   const formUpdates: Record<string, string> = {};
   const fieldUpdates: FieldUpdate[] = [];
 
-  // Handle field iteration
+  // Handle field iteration with real AI enhancement
   if (iterationField) {
-    const updatedValue = iterateOnField(userMessage, iterationField, currentFormData, categories);
+    const currentValue = currentFormData[iterationField as keyof AuctionFormData] as string;
+    const updatedValue = await enhanceFieldWithAI(userMessage, iterationField, currentValue);
     if (updatedValue) {
       formUpdates[iterationField] = updatedValue.value;
       fieldUpdates.push({
         field: iterationField,
         value: updatedValue.value,
         reason: updatedValue.reason,
-        current: currentFormData[iterationField as keyof AuctionFormData] as string
+        current: currentValue
       });
     }
     return { formUpdates, fieldUpdates };
   }
 
-  // Simple extraction
+  // Simple extraction for initial form filling
   const updates = extractFormUpdates(userMessage, currentFormData, categories);
   
   // Convert to field updates with simple reasons
@@ -63,6 +127,7 @@ export function extractFormUpdatesWithReasons(
   return { formUpdates, fieldUpdates };
 }
 
+// Keep the old iterateOnField function as fallback but it won't be used now
 export function iterateOnField(
   userMessage: string, 
   field: string, 
