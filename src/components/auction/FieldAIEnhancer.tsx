@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { AuctionFormData, Category } from '@/lib/auction-forms/types';
 
@@ -22,15 +22,15 @@ export function FieldAIEnhancer({
   const menuRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const menuItems = [
+  const menuItems = useMemo(() => [
     { label: 'More exciting', prompt: 'Make this more exciting and engaging' },
     { label: 'Add details', prompt: 'Add more specific details' },
     { label: 'Make shorter', prompt: 'Make this more concise' },
     { label: 'Fix grammar', prompt: 'Fix grammar and improve writing' },
     { label: 'More professional', prompt: 'Make this more professional' }
-  ];
+  ], []);
 
-  const updateDropdownPosition = () => {
+  const updateDropdownPosition = useCallback(() => {
     if (buttonRef.current) {
       const rect = buttonRef.current.getBoundingClientRect();
       setDropdownPosition({
@@ -38,7 +38,42 @@ export function FieldAIEnhancer({
         left: rect.right + window.scrollX - 192 // 192px = w-48
       });
     }
-  };
+  }, []);
+
+  const enhanceField = useCallback(async (prompt: string) => {
+    setIsProcessing(true);
+    try {
+      const response = await fetch('/api/ai/enhance-listing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          userMessage: prompt,
+          currentFormData,
+          categories: categories.map(c => ({ id: c.id, name: c.name })),
+          iterationField: fieldName,
+          rejectedFields: []
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.fieldUpdates && data.fieldUpdates.length > 0) {
+        onFieldUpdate(data.fieldUpdates[0].value);
+      } else if (data.formUpdates && data.formUpdates[fieldName]) {
+        onFieldUpdate(data.formUpdates[fieldName]);
+      }
+    } catch (error) {
+      console.error('Error enhancing field:', error);
+    } finally {
+      setIsProcessing(false);
+      setIsOpen(false);
+      setFocusedIndex(-1);
+    }
+  }, [currentFormData, categories, fieldName, onFieldUpdate]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -95,50 +130,15 @@ export function FieldAIEnhancer({
       window.removeEventListener('scroll', handleScroll, true);
       window.removeEventListener('resize', handleScroll);
     };
-  }, [isOpen, focusedIndex, menuItems]);
+  }, [isOpen, focusedIndex, menuItems, enhanceField, updateDropdownPosition]);
 
-  const enhanceField = async (prompt: string) => {
-    setIsProcessing(true);
-    try {
-      const response = await fetch('/api/ai/enhance-listing', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userMessage: prompt,
-          currentFormData,
-          categories: categories.map(c => ({ id: c.id, name: c.name })),
-          iterationField: fieldName,
-          rejectedFields: []
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      if (data.fieldUpdates && data.fieldUpdates.length > 0) {
-        onFieldUpdate(data.fieldUpdates[0].value);
-      } else if (data.formUpdates && data.formUpdates[fieldName]) {
-        onFieldUpdate(data.formUpdates[fieldName]);
-      }
-    } catch (error) {
-      console.error('Error enhancing field:', error);
-    } finally {
-      setIsProcessing(false);
-      setIsOpen(false);
-      setFocusedIndex(-1);
-    }
-  };
-
-  const handleOpenDropdown = (e: React.MouseEvent) => {
+  const handleOpenDropdown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     updateDropdownPosition();
     setIsOpen(!isOpen);
     setFocusedIndex(-1);
-  };
+  }, [updateDropdownPosition, isOpen]);
 
   const fieldDisplayName = fieldName.replace('_', ' ');
 

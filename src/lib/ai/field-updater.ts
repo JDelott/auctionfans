@@ -26,32 +26,50 @@ export function getSimpleReason(field: string): string {
 async function enhanceFieldWithAI(
   userMessage: string,
   fieldName: string, 
-  currentValue: string
+  currentValue: string,
+  fullFormData: AuctionFormData
 ): Promise<{ value: string; reason: string } | null> {
   
-  if (!currentValue.trim()) {
-    return null;
-  }
-
   try {
-    const fieldPrompts = {
-      title: `Make this auction title ${userMessage.toLowerCase()}: "${currentValue}"
+    let prompt = '';
+    
+    if (fieldName === 'title') {
+      // For title, use description as context
+      const description = fullFormData.description || '';
+      
+      if (!description.trim()) {
+        // If no description, fall back to enhancing current title
+        if (!currentValue.trim()) return null;
+        prompt = `Make this auction title ${userMessage.toLowerCase()}: "${currentValue}"
 
-Return only the improved title (max 8 words):`,
+Return only the improved title (max 8 words):`;
+      } else {
+        // Use description as context for title generation
+        prompt = `Based on this item description: "${description}"
 
-      description: `Make this auction description ${userMessage.toLowerCase()}: "${currentValue}"
+Create a ${userMessage.toLowerCase()} auction title for this item.
 
-Return only the improved description (max 50 words):`
-    };
+Current title: "${currentValue || 'untitled'}"
 
-    const prompt = fieldPrompts[fieldName as keyof typeof fieldPrompts];
-    if (!prompt) {
-      return null;
+Return only the new title (max 8 words):`;
+      }
+    } else if (fieldName === 'description') {
+      // For description, work with current content
+      if (!currentValue.trim()) return null;
+      prompt = `Make this auction description ${userMessage.toLowerCase()}: "${currentValue}"
+
+Return only the improved description (max 50 words):`;
+    } else {
+      // For other fields, use current value
+      if (!currentValue.trim()) return null;
+      prompt = `Make this ${fieldName.replace('_', ' ')} ${userMessage.toLowerCase()}: "${currentValue}"
+
+Return only the improved text:`;
     }
 
     const completion = await anthropic.messages.create({
       model: 'claude-3-sonnet-20240229',
-      max_tokens: 100, // Much shorter responses
+      max_tokens: 100,
       messages: [
         {
           role: 'user',
@@ -65,7 +83,9 @@ Return only the improved description (max 50 words):`
     if (enhancedText && enhancedText !== currentValue) {
       return {
         value: enhancedText,
-        reason: `AI enhanced: ${userMessage.toLowerCase()}`
+        reason: fieldName === 'title' 
+          ? `AI generated title from description: ${userMessage.toLowerCase()}`
+          : `AI enhanced: ${userMessage.toLowerCase()}`
       };
     }
     
@@ -91,7 +111,7 @@ export async function extractFormUpdatesWithReasons(
   // Handle field iteration with real AI enhancement
   if (iterationField) {
     const currentValue = currentFormData[iterationField as keyof AuctionFormData] as string;
-    const updatedValue = await enhanceFieldWithAI(userMessage, iterationField, currentValue);
+    const updatedValue = await enhanceFieldWithAI(userMessage, iterationField, currentValue, currentFormData);
     if (updatedValue) {
       formUpdates[iterationField] = updatedValue.value;
       fieldUpdates.push({
