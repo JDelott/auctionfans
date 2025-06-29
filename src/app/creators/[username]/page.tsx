@@ -95,15 +95,15 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ usern
     const now = new Date();
     const diff = end.getTime() - now.getTime();
 
-    if (diff <= 0) return 'Ended';
+    if (diff <= 0) return 'ENDED';
 
     const days = Math.floor(diff / (1000 * 60 * 60 * 24));
     const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-    if (days > 0) return `${days}d ${hours}h`;
-    if (hours > 0) return `${hours}h ${minutes}m`;
-    return `${minutes}m`;
+    if (days > 0) return `${days}D ${hours}H`;
+    if (hours > 0) return `${hours}H ${minutes}M`;
+    return `${minutes}M`;
   };
 
   const formatSubscriberCount = (count: number) => {
@@ -115,57 +115,54 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ usern
     return count.toString();
   };
 
-  const getPlatformIcon = (platform: string) => {
-    switch (platform?.toLowerCase()) {
-      case 'youtube':
-        return '📺';
-      case 'twitch':
-        return '🎮';
-      case 'tiktok':
-        return '🎵';
-      case 'instagram':
-        return '📷';
-      case 'twitter':
-        return '🐦';
-      default:
-        return '🌐';
-    }
+  const getPlatformInfo = (platform: string) => {
+    const platforms: { [key: string]: { name: string; color: string } } = {
+      'youtube': { name: 'YOUTUBE', color: 'bg-red-500' },
+      'twitch': { name: 'TWITCH', color: 'bg-violet-500' },
+      'tiktok': { name: 'TIKTOK', color: 'bg-zinc-700' },
+      'instagram': { name: 'INSTAGRAM', color: 'bg-red-400' },
+      'twitter': { name: 'TWITTER', color: 'bg-zinc-600' },
+    };
+    return platforms[platform?.toLowerCase()] || { name: 'OTHER', color: 'bg-zinc-500' };
   };
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   if (!creatorData) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Creator Not Found</h1>
-          <Link href="/creators" className="btn-primary">Browse Creators</Link>
+          <h1 className="text-4xl font-black text-white mb-6">CREATOR NOT FOUND</h1>
+          <Link href="/creators" className="bg-violet-500 text-white font-bold px-8 py-4 hover:bg-violet-600 transition-colors">
+            BROWSE CREATORS
+          </Link>
         </div>
       </div>
     );
   }
 
   const { creator, auctions, stats, recentActivity } = creatorData;
+  const platformInfo = getPlatformInfo(creator.platform || '');
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50">
-      <div className="max-w-6xl mx-auto px-6 py-12">
+    <div className="min-h-screen bg-zinc-950 text-white">
+      <div className="max-w-6xl mx-auto px-8 py-16">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <Link href="/creators" className="text-caption text-gray-600 hover:text-indigo-600">
+        <div className="mb-12">
+          <Link href="/creators" className="text-sm font-mono text-violet-400 hover:text-violet-300 uppercase tracking-wider">
             ← BACK TO CREATORS
           </Link>
         </div>
 
         {/* Creator Profile Header */}
-        <div className="card p-8 mb-8">
-          <div className="flex flex-col md:flex-row items-start md:items-center space-y-6 md:space-y-0 md:space-x-8">
+        <div className="bg-zinc-900 border border-zinc-800 p-8 mb-8">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center space-y-8 lg:space-y-0 lg:space-x-12">
             {/* Profile Image */}
             <div className="flex-shrink-0">
               {creator.profile_image_url ? (
@@ -177,8 +174,8 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ usern
                   className="w-30 h-30 rounded-full"
                 />
               ) : (
-                <div className="w-30 h-30 bg-gradient-primary rounded-full flex items-center justify-center">
-                  <span className="text-white text-3xl font-bold">
+                <div className="w-30 h-30 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <span className="text-white text-4xl font-bold">
                     {(creator.display_name || creator.username).charAt(0).toUpperCase()}
                   </span>
                 </div>
@@ -187,108 +184,93 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ usern
 
             {/* Profile Info */}
             <div className="flex-1">
-              <div className="flex items-center space-x-3 mb-2">
-                <h1 className="text-heading text-gray-900">
-                  {creator.display_name || creator.username}
-                </h1>
-                {creator.is_verified && (
-                  <span className="bg-blue-100 text-blue-800 text-sm px-3 py-1 rounded-full font-semibold">
-                    VERIFIED
-                  </span>
-                )}
-              </div>
-              <p className="text-caption text-gray-600 mb-4">@{creator.username}</p>
-              
-              {creator.bio && (
-                <p className="text-gray-700 mb-4 leading-relaxed">{creator.bio}</p>
-              )}
+              <div className="space-y-6">
+                <div>
+                  <h1 className="text-4xl font-black text-white mb-2">
+                    {creator.display_name || creator.username}
+                  </h1>
+                  <p className="text-lg font-mono text-zinc-400 mb-4">@{creator.username}</p>
+                  
+                  <div className="flex flex-wrap gap-3 mb-6">
+                    {creator.is_verified && (
+                      <span className="bg-violet-500 text-white text-xs px-3 py-1 font-mono font-bold uppercase tracking-wider">
+                        VERIFIED
+                      </span>
+                    )}
+                    {creator.platform && (
+                      <span className={`${platformInfo.color} text-white text-xs px-3 py-1 font-mono font-bold uppercase tracking-wider`}>
+                        {platformInfo.name}
+                      </span>
+                    )}
+                  </div>
 
-              <div className="flex flex-wrap gap-4 mb-4">
-                {creator.platform && (
-                  <div className="flex items-center space-x-2">
-                    <span>{getPlatformIcon(creator.platform)}</span>
-                    <span className="text-sm text-gray-600">
-                      {creator.platform.charAt(0).toUpperCase() + creator.platform.slice(1)}
-                    </span>
-                  </div>
-                )}
-                {creator.subscriber_count > 0 && (
-                  <div className="text-sm text-gray-600">
-                    {formatSubscriberCount(creator.subscriber_count)} subscribers
-                  </div>
-                )}
-                <div className="text-sm text-gray-600">
-                  Member since {new Date(creator.created_at).toLocaleDateString()}
+                  {creator.bio && (
+                    <p className="text-zinc-200 mb-6 leading-relaxed max-w-2xl">{creator.bio}</p>
+                  )}
                 </div>
-              </div>
 
-              {creator.channel_url && (
-                <a
-                  href={creator.channel_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-secondary inline-block"
-                >
-                  Visit Channel
-                </a>
-              )}
+                <div className="flex flex-wrap gap-6 text-sm font-mono text-zinc-400">
+                  {creator.subscriber_count > 0 && (
+                    <div>
+                      <span className="text-white font-bold">{formatSubscriberCount(creator.subscriber_count)}</span> SUBSCRIBERS
+                    </div>
+                  )}
+                  <div>
+                    MEMBER SINCE <span className="text-white font-bold">{new Date(creator.created_at).getFullYear()}</span>
+                  </div>
+                </div>
+
+                {creator.channel_url && (
+                  <a
+                    href={creator.channel_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-block border-2 border-zinc-600 text-white font-bold px-6 py-3 hover:border-violet-400 hover:text-violet-300 transition-all duration-300 text-sm tracking-wider uppercase"
+                  >
+                    VISIT CHANNEL
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <div className="card p-4 text-center">
-            <p className="text-2xl font-bold text-indigo-600">{stats.total_auctions}</p>
-            <p className="text-sm text-gray-600">Total Auctions</p>
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="bg-zinc-900 border border-zinc-800 p-6 text-center">
+            <p className="text-3xl font-black text-violet-400 mb-2">{stats.total_auctions}</p>
+            <p className="text-xs font-mono text-zinc-400 uppercase tracking-wider">Total Auctions</p>
           </div>
-          <div className="card p-4 text-center">
-            <p className="text-2xl font-bold text-green-600">{stats.active_auctions}</p>
-            <p className="text-sm text-gray-600">Active Auctions</p>
+          <div className="bg-zinc-900 border border-zinc-800 p-6 text-center">
+            <p className="text-3xl font-black text-red-400 mb-2">{stats.active_auctions}</p>
+            <p className="text-xs font-mono text-zinc-400 uppercase tracking-wider">Active Now</p>
           </div>
-          <div className="card p-4 text-center">
-            <p className="text-2xl font-bold text-purple-600">{stats.completed_sales}</p>
-            <p className="text-sm text-gray-600">Sales</p>
+          <div className="bg-zinc-900 border border-zinc-800 p-6 text-center">
+            <p className="text-3xl font-black text-white mb-2">{stats.completed_sales}</p>
+            <p className="text-xs font-mono text-zinc-400 uppercase tracking-wider">Sales</p>
           </div>
-          <div className="card p-4 text-center">
-            <p className="text-2xl font-bold text-orange-600">${formatPrice(stats.avg_sale_price)}</p>
-            <p className="text-sm text-gray-600">Avg Sale Price</p>
+          <div className="bg-zinc-900 border border-zinc-800 p-6 text-center">
+            <p className="text-3xl font-black text-violet-400 mb-2">${formatPrice(stats.avg_sale_price)}</p>
+            <p className="text-xs font-mono text-zinc-400 uppercase tracking-wider">Avg Price</p>
           </div>
         </div>
 
         {/* Tabs */}
-        <div className="border-b border-gray-200 mb-8">
-          <nav className="flex space-x-8">
-            <button
-              onClick={() => setActiveTab('auctions')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'auctions'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Auctions ({auctions.length})
-            </button>
-            <button
-              onClick={() => setActiveTab('about')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'about'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              About
-            </button>
-            <button
-              onClick={() => setActiveTab('activity')}
-              className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                activeTab === 'activity'
-                  ? 'border-indigo-500 text-indigo-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              Activity
-            </button>
+        <div className="border-b border-zinc-800 mb-8">
+          <nav className="flex space-x-12">
+            {['auctions', 'about', 'activity'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveTab(tab as 'auctions' | 'about' | 'activity')}
+                className={`py-4 font-mono text-sm uppercase tracking-wider transition-colors ${
+                  activeTab === tab
+                    ? 'text-violet-400 border-b-2 border-violet-400'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                {tab} {tab === 'auctions' ? `(${auctions.length})` : ''}
+              </button>
+            ))}
           </nav>
         </div>
 
@@ -299,9 +281,9 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ usern
               <Link
                 key={auction.id}
                 href={`/auctions/${auction.id}`}
-                className="card overflow-hidden hover:border-indigo-300 group"
+                className="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-all duration-300 hover:-translate-y-1 group"
               >
-                <div className="aspect-square bg-gray-100 relative overflow-hidden">
+                <div className="aspect-square bg-zinc-800 relative overflow-hidden">
                   {auction.primary_image ? (
                     <Image
                       src={auction.primary_image}
@@ -311,36 +293,36 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ usern
                       sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-primary flex items-center justify-center">
-                      <div className="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center">
-                        <div className="w-6 h-6 bg-white rounded"></div>
+                    <div className="w-full h-full bg-gradient-to-br from-violet-500/20 to-purple-600/20 flex items-center justify-center">
+                      <div className="w-16 h-16 bg-zinc-700 rounded-lg flex items-center justify-center">
+                        <div className="w-6 h-6 bg-zinc-500 rounded"></div>
                       </div>
                     </div>
                   )}
                   <div className="absolute top-3 right-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-semibold ${
-                      auction.status === 'active' ? 'bg-green-100 text-green-800' :
-                      auction.status === 'ended' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
+                    <span className={`px-2 py-1 text-xs font-mono font-bold uppercase tracking-wider ${
+                      auction.status === 'active' ? 'bg-red-500 text-white' :
+                      auction.status === 'ended' ? 'bg-zinc-700 text-zinc-300' :
+                      'bg-zinc-600 text-white'
                     }`}>
-                      {auction.status === 'active' ? formatTimeRemaining(auction.end_time) : auction.status.toUpperCase()}
+                      {auction.status === 'active' ? formatTimeRemaining(auction.end_time) : auction.status}
                     </span>
                   </div>
                 </div>
 
-                <div className="p-4">
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">{auction.title}</h3>
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm text-gray-500">{auction.category_name}</span>
-                    <span className="text-sm text-gray-500 capitalize">{auction.condition}</span>
+                <div className="p-6">
+                  <h3 className="text-lg font-bold text-white mb-3 line-clamp-2">{auction.title}</h3>
+                  <div className="flex justify-between items-center mb-4 text-sm font-mono text-zinc-400 uppercase tracking-wider">
+                    <span>{auction.category_name}</span>
+                    <span>{auction.condition}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <div>
-                      <p className="text-sm text-gray-500">Current Price</p>
-                      <p className="text-xl font-bold text-green-600">${formatPrice(auction.current_price)}</p>
+                      <p className="text-xs font-mono text-zinc-400 uppercase tracking-wider mb-1">Current Price</p>
+                      <p className="text-xl font-black text-violet-400">${formatPrice(auction.current_price)}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-gray-500">{auction.bid_count} bids</p>
+                      <p className="text-xs font-mono text-zinc-400 uppercase tracking-wider">{auction.bid_count} BIDS</p>
                     </div>
                   </div>
                 </div>
@@ -350,60 +332,60 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ usern
         )}
 
         {activeTab === 'about' && (
-          <div className="card p-8">
-            <div className="max-w-3xl">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">About {creator.display_name || creator.username}</h3>
+          <div className="bg-zinc-900 border border-zinc-800 p-8">
+            <div className="max-w-4xl">
+              <h3 className="text-2xl font-bold text-white mb-6">ABOUT {(creator.display_name || creator.username).toUpperCase()}</h3>
               {creator.bio ? (
-                <p className="text-gray-700 leading-relaxed mb-6">{creator.bio}</p>
+                <p className="text-zinc-200 leading-relaxed mb-8 text-lg">{creator.bio}</p>
               ) : (
-                <p className="text-gray-500 mb-6">No bio provided.</p>
+                <p className="text-zinc-400 mb-8 font-mono uppercase tracking-wider">No bio provided.</p>
               )}
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                 <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">Creator Details</h4>
-                  <div className="space-y-2 text-sm">
+                  <h4 className="font-bold text-violet-400 mb-6 font-mono uppercase tracking-wider">Creator Details</h4>
+                  <div className="space-y-4">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Username:</span>
-                      <span className="text-gray-900">@{creator.username}</span>
+                      <span className="text-zinc-400 font-mono uppercase tracking-wider">Username:</span>
+                      <span className="text-white font-mono">@{creator.username}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Member since:</span>
-                      <span className="text-gray-900">{new Date(creator.created_at).toLocaleDateString()}</span>
+                      <span className="text-zinc-400 font-mono uppercase tracking-wider">Member since:</span>
+                      <span className="text-white font-mono">{new Date(creator.created_at).toLocaleDateString()}</span>
                     </div>
                     {creator.platform && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Platform:</span>
-                        <span className="text-gray-900 capitalize">{creator.platform}</span>
+                        <span className="text-zinc-400 font-mono uppercase tracking-wider">Platform:</span>
+                        <span className="text-white font-mono uppercase">{creator.platform}</span>
                       </div>
                     )}
                     {creator.subscriber_count > 0 && (
                       <div className="flex justify-between">
-                        <span className="text-gray-600">Subscribers:</span>
-                        <span className="text-gray-900">{formatSubscriberCount(creator.subscriber_count)}</span>
+                        <span className="text-zinc-400 font-mono uppercase tracking-wider">Subscribers:</span>
+                        <span className="text-white font-mono">{formatSubscriberCount(creator.subscriber_count)}</span>
                       </div>
                     )}
                   </div>
                 </div>
                 
                 <div>
-                  <h4 className="font-semibold text-gray-900 mb-2">Auction Stats</h4>
-                  <div className="space-y-2 text-sm">
+                  <h4 className="font-bold text-violet-400 mb-6 font-mono uppercase tracking-wider">Auction Stats</h4>
+                  <div className="space-y-4">
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Total Auctions:</span>
-                      <span className="text-gray-900">{stats.total_auctions}</span>
+                      <span className="text-zinc-400 font-mono uppercase tracking-wider">Total Auctions:</span>
+                      <span className="text-white font-mono">{stats.total_auctions}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Completed Sales:</span>
-                      <span className="text-gray-900">{stats.completed_sales}</span>
+                      <span className="text-zinc-400 font-mono uppercase tracking-wider">Completed Sales:</span>
+                      <span className="text-white font-mono">{stats.completed_sales}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Total Revenue:</span>
-                      <span className="text-gray-900">${formatPrice(stats.total_revenue)}</span>
+                      <span className="text-zinc-400 font-mono uppercase tracking-wider">Total Revenue:</span>
+                      <span className="text-white font-mono">${formatPrice(stats.total_revenue)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-gray-600">Average Sale Price:</span>
-                      <span className="text-gray-900">${formatPrice(stats.avg_sale_price)}</span>
+                      <span className="text-zinc-400 font-mono uppercase tracking-wider">Average Sale:</span>
+                      <span className="text-white font-mono">${formatPrice(stats.avg_sale_price)}</span>
                     </div>
                   </div>
                 </div>
@@ -413,24 +395,24 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ usern
         )}
 
         {activeTab === 'activity' && (
-          <div className="card p-8">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Recent Activity</h3>
+          <div className="bg-zinc-900 border border-zinc-800 p-8">
+            <h3 className="text-2xl font-bold text-white mb-8 font-mono uppercase tracking-wider">Recent Activity</h3>
             {recentActivity.length > 0 ? (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {recentActivity.map((activity, index) => (
-                  <div key={index} className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
-                    <div className="w-2 h-2 bg-indigo-600 rounded-full"></div>
+                  <div key={index} className="flex items-start space-x-4 p-6 bg-zinc-800 border border-zinc-700">
+                    <div className="w-2 h-2 bg-violet-500 rounded-full mt-2 flex-shrink-0"></div>
                     <div className="flex-1">
-                      <p className="text-gray-900">
-                        {activity.activity_type === 'auction_created' ? 'Created auction:' : 'Auction ended:'}
+                      <p className="text-white font-mono">
+                        {activity.activity_type === 'auction_created' ? 'CREATED AUCTION:' : 'AUCTION ENDED:'}
                         <Link 
                           href={`/auctions/${activity.auction_id}`}
-                          className="text-indigo-600 hover:text-indigo-700 ml-1"
+                          className="text-violet-400 hover:text-violet-300 ml-2"
                         >
                           {activity.auction_title}
                         </Link>
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-zinc-400 font-mono mt-1">
                         {new Date(activity.activity_date).toLocaleDateString()}
                       </p>
                     </div>
@@ -438,7 +420,7 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ usern
                 ))}
               </div>
             ) : (
-              <p className="text-gray-500">No recent activity.</p>
+              <p className="text-zinc-400 font-mono uppercase tracking-wider">No recent activity.</p>
             )}
           </div>
         )}

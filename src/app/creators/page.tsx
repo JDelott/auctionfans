@@ -113,63 +113,70 @@ export default function CreatorsPage() {
   };
 
   const getPlatformIcon = (platform: string) => {
-    switch (platform?.toLowerCase()) {
-      case 'youtube':
-        return '📺';
-      case 'twitch':
-        return '🎮';
-      case 'tiktok':
-        return '🎵';
-      case 'instagram':
-        return '📷';
-      case 'twitter':
-        return '🐦';
-      default:
-        return '🌐';
-    }
+    const icons: { [key: string]: string } = {
+      'youtube': 'YT',
+      'twitch': 'TW',
+      'tiktok': 'TT',
+      'instagram': 'IG',
+      'twitter': 'X',
+    };
+    return icons[platform?.toLowerCase()] || 'WEB';
+  };
+
+  const getPlatformColor = (platform: string) => {
+    const colors: { [key: string]: string } = {
+      'youtube': 'bg-red-500',
+      'twitch': 'bg-violet-500',
+      'tiktok': 'bg-zinc-700',
+      'instagram': 'bg-red-400',
+      'twitter': 'bg-zinc-600',
+    };
+    return colors[platform?.toLowerCase()] || 'bg-zinc-500';
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50">
-      <div className="max-w-7xl mx-auto px-6 py-12">
+    <div className="min-h-screen bg-zinc-950 text-white">
+      <div className="max-w-7xl mx-auto px-8 py-16">
         {/* Header */}
-        <div className="mb-12">
-          <div className="accent-bar w-16 mb-4"></div>
-          <h1 className="text-heading text-gray-900 mb-4">Discover Creators</h1>
-          <p className="text-lg text-gray-600">Find and follow your favorite content creators selling authentic items</p>
+        <div className="mb-16">
+          <div className="w-16 h-1 bg-gradient-to-r from-violet-500 to-red-500 mb-6"></div>
+          <h1 className="text-6xl font-black text-white mb-6">DISCOVER CREATORS</h1>
+          <p className="text-xl text-zinc-200 max-w-3xl font-light leading-relaxed">
+            Explore verified content creators selling authentic items from their content. Own pieces of your favorite creator&apos;s journey.
+          </p>
         </div>
 
         {/* Filters */}
-        <div className="card p-6 mb-8">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <form onSubmit={handleSearch} className="md:col-span-2">
-              <label htmlFor="search" className="block text-caption text-gray-700 mb-2">
+        <div className="bg-zinc-900 border border-zinc-800 p-8 mb-12">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <form onSubmit={handleSearch} className="lg:col-span-2">
+              <label htmlFor="search" className="block text-sm font-mono text-violet-400 mb-3 uppercase tracking-wider">
                 SEARCH CREATORS
               </label>
-              <div className="flex space-x-3">
+              <div className="flex space-x-4">
                 <input
                   id="search"
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="input flex-1"
+                  className="flex-1 bg-zinc-800 border border-zinc-700 text-white px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
                   placeholder="Search by name or username..."
                 />
-                <button type="submit" className="btn-primary">
-                  Search
+                <button type="submit" className="bg-violet-500 text-white font-bold px-8 py-3 hover:bg-violet-600 transition-colors">
+                  SEARCH
                 </button>
               </div>
             </form>
 
             <div>
-              <label htmlFor="platform" className="block text-caption text-gray-700 mb-2">
+              <label htmlFor="platform" className="block text-sm font-mono text-violet-400 mb-3 uppercase tracking-wider">
                 PLATFORM
               </label>
               <select
                 id="platform"
                 value={selectedPlatform}
                 onChange={(e) => handlePlatformChange(e.target.value)}
-                className="input w-full"
+                className="w-full bg-zinc-800 border border-zinc-700 text-white px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
               >
                 <option value="">All Platforms</option>
                 <option value="youtube">YouTube</option>
@@ -185,84 +192,84 @@ export default function CreatorsPage() {
 
         {/* Creators Grid */}
         {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="flex justify-center py-20">
+            <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : creators.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
             {creators.map((creator) => (
               <Link
                 key={creator.id}
                 href={`/creators/${creator.username}`}
-                className="card overflow-hidden hover:border-indigo-300 group"
+                className="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-all duration-300 hover:-translate-y-1 group"
               >
                 <div className="p-6">
                   {/* Profile Section */}
-                  <div className="text-center mb-4">
+                  <div className="text-center mb-6">
                     {creator.profile_image_url ? (
                       <Image
                         src={creator.profile_image_url}
                         alt={creator.display_name || creator.username}
                         width={80}
                         height={80}
-                        className="w-20 h-20 rounded-full mx-auto mb-3"
+                        className="w-20 h-20 rounded-full mx-auto mb-4"
                       />
                     ) : (
-                      <div className="w-20 h-20 bg-gradient-primary rounded-full mx-auto mb-3 flex items-center justify-center">
+                      <div className="w-20 h-20 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
                         <span className="text-white text-xl font-bold">
                           {(creator.display_name || creator.username).charAt(0).toUpperCase()}
                         </span>
                       </div>
                     )}
                     
-                    <h3 className="text-subheading text-gray-900 mb-1">
+                    <h3 className="text-lg font-bold text-white mb-1">
                       {creator.display_name || creator.username}
                     </h3>
-                    <p className="text-caption text-gray-600 mb-2">@{creator.username}</p>
+                    <p className="text-sm font-mono text-zinc-400 mb-3">@{creator.username}</p>
                     
-                    <div className="flex items-center justify-center space-x-2 mb-3">
+                    <div className="flex items-center justify-center space-x-2 mb-4">
                       {creator.is_verified && (
-                        <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-semibold">
+                        <span className="bg-violet-500 text-white text-xs px-2 py-1 font-mono font-bold uppercase tracking-wider">
                           VERIFIED
                         </span>
                       )}
                       {creator.platform && (
-                        <span className="text-sm">
-                          {getPlatformIcon(creator.platform)} {creator.platform.charAt(0).toUpperCase() + creator.platform.slice(1)}
+                        <span className={`${getPlatformColor(creator.platform)} text-white text-xs px-2 py-1 font-mono font-bold`}>
+                          {getPlatformIcon(creator.platform)}
                         </span>
                       )}
                     </div>
 
                     {creator.bio && (
-                      <p className="text-sm text-gray-600 line-clamp-2 mb-4">{creator.bio}</p>
+                      <p className="text-sm text-zinc-300 line-clamp-2 mb-4">{creator.bio}</p>
                     )}
                   </div>
 
                   {/* Stats */}
-                  <div className="border-t border-gray-100 pt-4">
-                    <div className="grid grid-cols-2 gap-4 text-center">
+                  <div className="border-t border-zinc-800 pt-4">
+                    <div className="grid grid-cols-2 gap-4 text-center mb-4">
                       <div>
-                        <p className="text-sm text-gray-500 mb-1">Auctions</p>
-                        <p className="font-semibold text-gray-900">{creator.auction_count}</p>
+                        <p className="text-lg font-bold text-violet-400">{creator.auction_count}</p>
+                        <p className="text-xs font-mono text-zinc-500 uppercase tracking-wider">Auctions</p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-500 mb-1">Sales</p>
-                        <p className="font-semibold text-gray-900">{creator.total_sales}</p>
+                        <p className="text-lg font-bold text-white">{creator.total_sales}</p>
+                        <p className="text-xs font-mono text-zinc-500 uppercase tracking-wider">Sales</p>
                       </div>
                     </div>
                     
                     {creator.subscriber_count > 0 && (
-                      <div className="mt-3 text-center">
-                        <p className="text-sm text-gray-500">
+                      <div className="text-center mb-3">
+                        <p className="text-sm text-zinc-400 font-mono">
                           {formatSubscriberCount(creator.subscriber_count)} subscribers
                         </p>
                       </div>
                     )}
 
                     {creator.active_auction_count > 0 && (
-                      <div className="mt-3">
-                        <span className="status-active text-xs">
-                          {creator.active_auction_count} Active Auction{creator.active_auction_count !== 1 ? 's' : ''}
+                      <div className="text-center">
+                        <span className="bg-red-500 text-white text-xs px-3 py-1 font-mono font-bold uppercase tracking-wider">
+                          {creator.active_auction_count} ACTIVE
                         </span>
                       </div>
                     )}
@@ -272,23 +279,23 @@ export default function CreatorsPage() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-12">
-            <div className="w-24 h-24 bg-gray-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-              <div className="w-8 h-8 bg-gray-400 rounded"></div>
+          <div className="text-center py-20">
+            <div className="w-24 h-24 bg-zinc-800 rounded-full mx-auto mb-6 flex items-center justify-center">
+              <div className="w-8 h-8 bg-zinc-600 rounded"></div>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No creators found</h3>
-            <p className="text-gray-600">Try adjusting your search or filter criteria</p>
+            <h3 className="text-2xl font-bold text-white mb-4">NO CREATORS FOUND</h3>
+            <p className="text-zinc-400 font-mono uppercase tracking-wider">Try adjusting your search criteria</p>
           </div>
         )}
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex justify-center mt-8">
+          <div className="flex justify-center">
             <div className="flex space-x-2">
               {currentPage > 1 && (
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
-                  className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-6 py-3 text-zinc-300 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:text-white transition-colors font-mono uppercase tracking-wider"
                 >
                   Previous
                 </button>
@@ -298,10 +305,10 @@ export default function CreatorsPage() {
                 <button
                   key={page}
                   onClick={() => handlePageChange(page)}
-                  className={`px-4 py-2 rounded-lg ${
+                  className={`px-4 py-3 font-mono uppercase tracking-wider transition-colors ${
                     page === currentPage
-                      ? 'bg-indigo-600 text-white'
-                      : 'text-gray-600 bg-white border border-gray-300 hover:bg-gray-50'
+                      ? 'bg-violet-500 text-white'
+                      : 'text-zinc-300 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:text-white'
                   }`}
                 >
                   {page}
@@ -311,7 +318,7 @@ export default function CreatorsPage() {
               {currentPage < totalPages && (
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
-                  className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-6 py-3 text-zinc-300 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:text-white transition-colors font-mono uppercase tracking-wider"
                 >
                   Next
                 </button>
