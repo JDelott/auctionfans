@@ -54,22 +54,26 @@ export async function POST(request: NextRequest) {
     // Analyze form completeness with strict validation
     const formAnalysis = analyzeFormState(currentFormData);
     
-    const systemPrompt = `You are an AI assistant for auction listings. Your job is to:
+    const systemPrompt = `You are an AI assistant helping creators list items for auction. 
 
-1. Provide helpful, conversational guidance
-2. Extract specific information to populate form fields
-3. Guide users through: basic_info → pricing → video (optional) → images → review
-4. NEVER include raw JSON or technical data in your responses
-5. Be encouraging and professional
-
-Current form analysis:
-${JSON.stringify(formAnalysis, null, 2)}
-
-Available categories: ${categories.map(c => `${c.id}: ${c.name}`).join('\n')}
+IMPORTANT RULES:
+1. NEVER advance to the next step automatically
+2. ALWAYS stay focused on the current step: ${currentStep}
+3. Help users refine and perfect the current section
+4. Encourage continued conversation for improvements
+5. Only provide guidance for the current step
 
 Current step: ${currentStep}
+Available categories: ${categories.map(c => `${c.id}: ${c.name}`).join('\n')}
 
-Respond conversationally without any JSON or technical formatting. When you extract information, I'll handle the form updates separately.`;
+For ${currentStep} step, focus on:
+${currentStep === 'basic_info' ? '- Title optimization\n- Description enhancement\n- Category selection\n- Condition assessment' : 
+  currentStep === 'pricing' ? '- Starting price strategy\n- Reserve price considerations\n- Buy now pricing\n- Auction duration' :
+  currentStep === 'video' ? '- Video URL validation\n- Timestamp accuracy\n- Content connection' :
+  currentStep === 'images' ? '- Photo quality tips\n- Multiple angle suggestions\n- Lighting advice' :
+  '- Final review and optimization'}
+
+Respond conversationally and encourage further refinement of the current section.`;
 
     const userPrompt = `User message: "${userMessage}"
 
@@ -184,6 +188,24 @@ function extractFormUpdates(userMessage: string, currentFormData: FormData, cate
   const formUpdates: Record<string, string> = {};
   const message = userMessage.toLowerCase();
 
+  // Extract pricing information - FIXED
+  const pricePatterns = [
+    { field: 'starting_price', patterns: [/starting\s+(?:price|bid)\s+(?:of\s+)?\$?(\d+(?:\.\d{2})?)/i, /start\s+(?:at\s+)?\$(\d+(?:\.\d{2})?)/i] },
+    { field: 'reserve_price', patterns: [/reserve\s+(?:price\s+)?(?:of\s+)?\$?(\d+(?:\.\d{2})?)/i] },
+    { field: 'buy_now_price', patterns: [/buy\s+(?:it\s+)?now\s+(?:price\s+)?(?:of\s+)?(?:with\s+)?\$?(\d+(?:\.\d{2})?)/i, /buy\s+now\s+(?:with\s+)?\$?(\d+(?:\.\d{2})?)/i] },
+    { field: 'duration_days', patterns: [/(?:auction\s+)?duration\s+(?:of\s+)?(\d+)\s+days?/i, /(\d+)\s+days?\s+(?:auction|duration)/i] }
+  ];
+
+  for (const { field, patterns } of pricePatterns) {
+    for (const pattern of patterns) {
+      const match = userMessage.match(pattern);
+      if (match && match[1]) {
+        formUpdates[field] = match[1];
+        break;
+      }
+    }
+  }
+
   // Extract location and context for better titles/descriptions
   let location = '';
   let context = '';
@@ -249,11 +271,6 @@ function extractFormUpdates(userMessage: string, currentFormData: FormData, cate
   // Default condition
   if (!currentFormData.condition) {
     formUpdates.condition = 'Used - Good';
-  }
-
-  // Default starting price
-  if (!currentFormData.starting_price) {
-    formUpdates.starting_price = '35';
   }
 
   return formUpdates;
