@@ -158,19 +158,22 @@ export default function ProfilePage() {
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-violet-400 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
 
   if (!user || !profileData) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-heading text-gray-900 mb-4">Profile Not Found</h1>
-          <p className="text-gray-600 mb-6">Unable to load profile information.</p>
-          <Link href="/dashboard" className="btn-primary">
+          <h1 className="text-2xl font-bold mb-4">Profile Not Found</h1>
+          <p className="text-zinc-400 mb-6">Unable to load profile information.</p>
+          <Link 
+            href="/dashboard" 
+            className="inline-block px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg transition-colors"
+          >
             Go to Dashboard
           </Link>
         </div>
@@ -179,23 +182,38 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50">
-      <div className="max-w-4xl mx-auto px-6 py-12">
+    <div className="min-h-screen bg-zinc-950 text-white">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-[0.02]">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`,
+          backgroundSize: '24px 24px'
+        }}></div>
+      </div>
+
+      <div className="relative max-w-5xl mx-auto px-6 py-8">
         {/* Header */}
         <div className="mb-8">
-          <Link href="/dashboard" className="text-caption text-gray-600 hover:text-indigo-600 mb-4 inline-block">
-            ← BACK TO DASHBOARD
+          <Link 
+            href="/dashboard" 
+            className="inline-flex items-center text-zinc-400 hover:text-white text-sm mb-6 transition-colors"
+          >
+            ← Back to Dashboard
           </Link>
-          <div className="accent-bar w-16 mb-4"></div>
+          
+          <div className="w-12 h-1 bg-gradient-to-r from-violet-500 to-purple-500 rounded-full mb-4"></div>
+          
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-heading text-gray-900 mb-2">Profile Settings</h1>
-              <p className="text-lg text-gray-600">Manage your account information and preferences</p>
+              <h1 className="text-4xl font-black text-white mb-3 tracking-tight">
+                PROFILE SETTINGS
+              </h1>
+              <p className="text-zinc-400 text-lg">Manage your account information and preferences</p>
             </div>
             {!editing ? (
               <button
                 onClick={() => setEditing(true)}
-                className="btn-primary"
+                className="px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg transition-colors"
               >
                 Edit Profile
               </button>
@@ -203,14 +221,14 @@ export default function ProfilePage() {
               <div className="flex space-x-3">
                 <button
                   onClick={handleCancel}
-                  className="btn-secondary"
+                  className="px-6 py-3 bg-zinc-700 hover:bg-zinc-600 text-white font-medium rounded-lg transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={saving}
-                  className="btn-primary disabled:opacity-50"
+                  className="px-6 py-3 bg-violet-600 hover:bg-violet-700 disabled:bg-zinc-600 text-white font-medium rounded-lg transition-colors"
                 >
                   {saving ? 'Saving...' : 'Save Changes'}
                 </button>
@@ -220,15 +238,15 @@ export default function ProfilePage() {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <p className="text-red-600">{error}</p>
+          <div className="bg-red-950/50 border border-red-800 rounded-lg p-4 mb-6">
+            <p className="text-red-200">{error}</p>
           </div>
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Profile Card */}
-          <div className="lg:col-span-1">
-            <div className="card p-6 text-center">
+          <div className="lg:col-span-1 space-y-6">
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-6 text-center">
               <div className="mb-6">
                 {profileData.user.profile_image_url ? (
                   <Image
@@ -236,27 +254,29 @@ export default function ProfilePage() {
                     alt={profileData.user.display_name || profileData.user.username}
                     width={96}
                     height={96}
-                    className="w-24 h-24 rounded-full mx-auto mb-4"
+                    className="w-24 h-24 rounded-full mx-auto mb-4 object-cover"
                   />
                 ) : (
-                  <div className="w-24 h-24 bg-gradient-primary rounded-full mx-auto mb-4 flex items-center justify-center">
+                  <div className="w-24 h-24 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
                     <span className="text-white text-2xl font-bold">
                       {(profileData.user.display_name || profileData.user.username).charAt(0).toUpperCase()}
                     </span>
                   </div>
                 )}
                 
-                <h2 className="text-subheading text-gray-900 mb-1">
+                <h2 className="text-xl font-bold text-white mb-1">
                   {profileData.user.display_name || profileData.user.username}
                 </h2>
-                <p className="text-caption text-gray-600 mb-2">@{profileData.user.username}</p>
+                <p className="text-zinc-400 text-sm mb-3">@{profileData.user.username}</p>
                 
                 <div className="flex items-center justify-center space-x-2">
                   {profileData.user.is_creator && (
-                    <span className="creator-badge">CREATOR</span>
+                    <span className="px-2 py-1 bg-violet-500/20 border border-violet-500/30 rounded text-xs font-mono text-violet-300">
+                      CREATOR
+                    </span>
                   )}
                   {profileData.user.is_verified && (
-                    <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-semibold">
+                    <span className="px-2 py-1 bg-green-600/20 border border-green-600/30 rounded text-xs font-mono text-green-300">
                       VERIFIED
                     </span>
                   )}
@@ -265,42 +285,45 @@ export default function ProfilePage() {
 
               {profileData.user.bio && (
                 <div className="mb-6">
-                  <p className="text-sm text-gray-600 leading-relaxed">{profileData.user.bio}</p>
+                  <p className="text-sm text-zinc-300 leading-relaxed">{profileData.user.bio}</p>
                 </div>
               )}
 
-              <div className="text-sm text-gray-500">
+              <div className="text-xs text-zinc-500">
                 <p>Member since {new Date(profileData.user.created_at).toLocaleDateString()}</p>
               </div>
             </div>
 
             {/* Stats Card */}
-            <div className="card p-6 mt-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Activity Stats</h3>
-              <div className="space-y-3">
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-6">
+              <div className="flex items-center mb-4">
+                <div className="w-1 h-5 bg-violet-500 rounded-full mr-3"></div>
+                <h3 className="text-lg font-semibold text-white">Activity Stats</h3>
+              </div>
+              <div className="space-y-4">
                 {profileData.user.is_creator && (
                   <>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Auctions Created</span>
-                      <span className="font-semibold">{profileData.stats.auctions_created}</span>
+                    <div className="flex justify-between items-center py-2 border-b border-zinc-800">
+                      <span className="text-zinc-400 text-sm">Auctions Created</span>
+                      <span className="text-white font-semibold">{profileData.stats.auctions_created}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Items Sold</span>
-                      <span className="font-semibold">{profileData.stats.items_sold}</span>
+                    <div className="flex justify-between items-center py-2 border-b border-zinc-800">
+                      <span className="text-zinc-400 text-sm">Items Sold</span>
+                      <span className="text-white font-semibold">{profileData.stats.items_sold}</span>
                     </div>
                   </>
                 )}
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Bids Placed</span>
-                  <span className="font-semibold">{profileData.stats.bids_placed}</span>
+                <div className="flex justify-between items-center py-2 border-b border-zinc-800">
+                  <span className="text-zinc-400 text-sm">Bids Placed</span>
+                  <span className="text-white font-semibold">{profileData.stats.bids_placed}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Items Watched</span>
-                  <span className="font-semibold">{profileData.stats.items_watched}</span>
+                <div className="flex justify-between items-center py-2 border-b border-zinc-800">
+                  <span className="text-zinc-400 text-sm">Items Watched</span>
+                  <span className="text-white font-semibold">{profileData.stats.items_watched}</span>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-gray-600">Items Bought</span>
-                  <span className="font-semibold">{profileData.stats.items_bought}</span>
+                <div className="flex justify-between items-center py-2">
+                  <span className="text-zinc-400 text-sm">Items Bought</span>
+                  <span className="text-white font-semibold">{profileData.stats.items_bought}</span>
                 </div>
               </div>
             </div>
@@ -309,47 +332,50 @@ export default function ProfilePage() {
           {/* Profile Information */}
           <div className="lg:col-span-2 space-y-6">
             {/* Basic Information */}
-            <div className="card p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-6">Basic Information</h3>
+            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-6">
+              <div className="flex items-center mb-6">
+                <div className="w-1 h-6 bg-violet-500 rounded-full mr-3"></div>
+                <h3 className="text-xl font-semibold text-white">Basic Information</h3>
+              </div>
               
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
-                    <label className="block text-caption text-gray-700 mb-2">
-                      EMAIL ADDRESS
+                    <label className="block text-xs font-medium text-zinc-300 mb-2 uppercase tracking-wide">
+                      Email Address
                     </label>
                     {editing ? (
-                      <div className="input w-full bg-gray-100 cursor-not-allowed">
+                      <div className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-500 cursor-not-allowed">
                         {profileData.user.email}
                       </div>
                     ) : (
-                      <p className="text-gray-900">{profileData.user.email}</p>
+                      <p className="text-white text-sm">{profileData.user.email}</p>
                     )}
                     {editing && (
-                      <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+                      <p className="text-xs text-zinc-500 mt-1">Email cannot be changed</p>
                     )}
                   </div>
 
                   <div>
-                    <label className="block text-caption text-gray-700 mb-2">
-                      USERNAME
+                    <label className="block text-xs font-medium text-zinc-300 mb-2 uppercase tracking-wide">
+                      Username
                     </label>
                     {editing ? (
-                      <div className="input w-full bg-gray-100 cursor-not-allowed">
-                        {profileData.user.username}
+                      <div className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-zinc-500 cursor-not-allowed">
+                        @{profileData.user.username}
                       </div>
                     ) : (
-                      <p className="text-gray-900">@{profileData.user.username}</p>
+                      <p className="text-white text-sm">@{profileData.user.username}</p>
                     )}
                     {editing && (
-                      <p className="text-xs text-gray-500 mt-1">Username cannot be changed</p>
+                      <p className="text-xs text-zinc-500 mt-1">Username cannot be changed</p>
                     )}
                   </div>
                 </div>
 
                 <div>
-                  <label htmlFor="display_name" className="block text-caption text-gray-700 mb-2">
-                    DISPLAY NAME
+                  <label htmlFor="display_name" className="block text-xs font-medium text-zinc-300 mb-2 uppercase tracking-wide">
+                    Display Name
                   </label>
                   {editing ? (
                     <input
@@ -358,17 +384,17 @@ export default function ProfilePage() {
                       type="text"
                       value={formData.display_name}
                       onChange={handleInputChange}
-                      className="input w-full"
+                      className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
                       placeholder="Your display name"
                     />
                   ) : (
-                    <p className="text-gray-900">{profileData.user.display_name || 'Not set'}</p>
+                    <p className="text-white text-sm">{profileData.user.display_name || 'Not set'}</p>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="bio" className="block text-caption text-gray-700 mb-2">
-                    BIO
+                  <label htmlFor="bio" className="block text-xs font-medium text-zinc-300 mb-2 uppercase tracking-wide">
+                    Bio
                   </label>
                   {editing ? (
                     <textarea
@@ -377,17 +403,17 @@ export default function ProfilePage() {
                       rows={4}
                       value={formData.bio}
                       onChange={handleInputChange}
-                      className="input w-full resize-none"
+                      className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors resize-none"
                       placeholder="Tell us about yourself..."
                     />
                   ) : (
-                    <p className="text-gray-900">{profileData.user.bio || 'No bio provided'}</p>
+                    <p className="text-white text-sm">{profileData.user.bio || 'No bio provided'}</p>
                   )}
                 </div>
 
                 <div>
-                  <label htmlFor="profile_image_url" className="block text-caption text-gray-700 mb-2">
-                    PROFILE IMAGE URL
+                  <label htmlFor="profile_image_url" className="block text-xs font-medium text-zinc-300 mb-2 uppercase tracking-wide">
+                    Profile Image URL
                   </label>
                   {editing ? (
                     <input
@@ -396,11 +422,11 @@ export default function ProfilePage() {
                       type="url"
                       value={formData.profile_image_url}
                       onChange={handleInputChange}
-                      className="input w-full"
+                      className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
                       placeholder="https://example.com/your-image.jpg"
                     />
                   ) : (
-                    <p className="text-gray-900">{profileData.user.profile_image_url || 'No image set'}</p>
+                    <p className="text-white text-sm">{profileData.user.profile_image_url || 'No image set'}</p>
                   )}
                 </div>
               </div>
@@ -408,14 +434,17 @@ export default function ProfilePage() {
 
             {/* Creator Information */}
             {profileData.user.is_creator && (
-              <div className="card p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-6">Creator Information</h3>
+              <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-6">
+                <div className="flex items-center mb-6">
+                  <div className="w-1 h-6 bg-violet-500 rounded-full mr-3"></div>
+                  <h3 className="text-xl font-semibold text-white">Creator Information</h3>
+                </div>
                 
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <label htmlFor="channel_name" className="block text-caption text-gray-700 mb-2">
-                        CHANNEL NAME
+                      <label htmlFor="channel_name" className="block text-xs font-medium text-zinc-300 mb-2 uppercase tracking-wide">
+                        Channel Name
                       </label>
                       {editing ? (
                         <input
@@ -424,17 +453,17 @@ export default function ProfilePage() {
                           type="text"
                           value={formData.channel_name}
                           onChange={handleInputChange}
-                          className="input w-full"
+                          className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
                           placeholder="Your channel name"
                         />
                       ) : (
-                        <p className="text-gray-900">{profileData.creatorProfile?.channel_name || 'Not set'}</p>
+                        <p className="text-white text-sm">{profileData.creatorProfile?.channel_name || 'Not set'}</p>
                       )}
                     </div>
 
                     <div>
-                      <label htmlFor="platform" className="block text-caption text-gray-700 mb-2">
-                        PLATFORM
+                      <label htmlFor="platform" className="block text-xs font-medium text-zinc-300 mb-2 uppercase tracking-wide">
+                        Platform
                       </label>
                       {editing ? (
                         <select
@@ -442,7 +471,7 @@ export default function ProfilePage() {
                           name="platform"
                           value={formData.platform}
                           onChange={handleInputChange}
-                          className="input w-full"
+                          className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
                         >
                           <option value="">Select platform</option>
                           <option value="youtube">YouTube</option>
@@ -453,14 +482,14 @@ export default function ProfilePage() {
                           <option value="other">Other</option>
                         </select>
                       ) : (
-                        <p className="text-gray-900 capitalize">{profileData.creatorProfile?.platform || 'Not set'}</p>
+                        <p className="text-white text-sm capitalize">{profileData.creatorProfile?.platform || 'Not set'}</p>
                       )}
                     </div>
                   </div>
 
                   <div>
-                    <label htmlFor="channel_url" className="block text-caption text-gray-700 mb-2">
-                      CHANNEL URL
+                    <label htmlFor="channel_url" className="block text-xs font-medium text-zinc-300 mb-2 uppercase tracking-wide">
+                      Channel URL
                     </label>
                     {editing ? (
                       <input
@@ -469,17 +498,17 @@ export default function ProfilePage() {
                         type="url"
                         value={formData.channel_url}
                         onChange={handleInputChange}
-                        className="input w-full"
+                        className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
                         placeholder="https://youtube.com/c/yourchannel"
                       />
                     ) : (
-                      <p className="text-gray-900">
+                      <p className="text-white text-sm">
                         {profileData.creatorProfile?.channel_url ? (
                           <a 
                             href={profileData.creatorProfile.channel_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-indigo-600 hover:text-indigo-700"
+                            className="text-violet-400 hover:text-violet-300 transition-colors"
                           >
                             {profileData.creatorProfile.channel_url}
                           </a>
@@ -491,8 +520,8 @@ export default function ProfilePage() {
                   </div>
 
                   <div>
-                    <label htmlFor="subscriber_count" className="block text-caption text-gray-700 mb-2">
-                      SUBSCRIBER COUNT
+                    <label htmlFor="subscriber_count" className="block text-xs font-medium text-zinc-300 mb-2 uppercase tracking-wide">
+                      Subscriber Count
                     </label>
                     {editing ? (
                       <input
@@ -502,11 +531,11 @@ export default function ProfilePage() {
                         min="0"
                         value={formData.subscriber_count}
                         onChange={handleInputChange}
-                        className="input w-full"
+                        className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
                         placeholder="0"
                       />
                     ) : (
-                      <p className="text-gray-900">
+                      <p className="text-white text-sm">
                         {profileData.creatorProfile?.subscriber_count?.toLocaleString() || '0'}
                       </p>
                     )}
@@ -514,13 +543,13 @@ export default function ProfilePage() {
 
                   {profileData.creatorProfile?.verification_status && (
                     <div>
-                      <label className="block text-caption text-gray-700 mb-2">
-                        VERIFICATION STATUS
+                      <label className="block text-xs font-medium text-zinc-300 mb-2 uppercase tracking-wide">
+                        Verification Status
                       </label>
-                      <span className={`inline-block px-3 py-1 rounded-full text-sm font-semibold ${
-                        profileData.creatorProfile.verification_status === 'verified' ? 'bg-green-100 text-green-800' :
-                        profileData.creatorProfile.verification_status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                        'bg-red-100 text-red-800'
+                      <span className={`inline-block px-3 py-1 rounded-full text-xs font-mono ${
+                        profileData.creatorProfile.verification_status === 'verified' ? 'bg-green-600/20 border border-green-600/30 text-green-300' :
+                        profileData.creatorProfile.verification_status === 'pending' ? 'bg-yellow-600/20 border border-yellow-600/30 text-yellow-300' :
+                        'bg-red-600/20 border border-red-600/30 text-red-300'
                       }`}>
                         {profileData.creatorProfile.verification_status.toUpperCase()}
                       </span>

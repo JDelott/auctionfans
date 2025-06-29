@@ -148,21 +148,31 @@ export default function AuctionsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50">
-      <div className="max-w-7xl mx-auto px-6 py-12">
+    <div className="min-h-screen bg-zinc-950 text-white">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-[0.02]">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, white 1px, transparent 0)`,
+          backgroundSize: '24px 24px'
+        }}></div>
+      </div>
+
+      <div className="relative max-w-7xl mx-auto px-6 py-8">
         {/* Header */}
-        <div className="mb-12">
-          <div className="accent-bar w-16 mb-4"></div>
-          <h1 className="text-heading text-gray-900 mb-4">Live Auctions</h1>
-          <p className="text-lg text-gray-600">Discover authentic items from verified content creators</p>
+        <div className="mb-8">
+          <div className="w-12 h-1 bg-gradient-to-r from-violet-500 to-purple-500 rounded-full mb-4"></div>
+          <h1 className="text-4xl font-black text-white mb-3 tracking-tight">
+            LIVE AUCTIONS
+          </h1>
+          <p className="text-zinc-400 text-lg">Discover authentic items from verified content creators</p>
         </div>
 
         {/* Filters */}
-        <div className="card p-6 mb-8">
+        <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-6 mb-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <form onSubmit={handleSearch} className="md:col-span-2">
-              <label htmlFor="search" className="block text-caption text-gray-700 mb-2">
-                SEARCH AUCTIONS
+              <label htmlFor="search" className="block text-xs font-medium text-zinc-300 mb-2 uppercase tracking-wide">
+                Search Auctions
               </label>
               <div className="flex space-x-3">
                 <input
@@ -170,24 +180,27 @@ export default function AuctionsPage() {
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="input flex-1"
+                  className="flex-1 px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
                   placeholder="Search by title or description..."
                 />
-                <button type="submit" className="btn-primary">
+                <button 
+                  type="submit" 
+                  className="px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg transition-colors"
+                >
                   Search
                 </button>
               </div>
             </form>
 
             <div>
-              <label htmlFor="category" className="block text-caption text-gray-700 mb-2">
-                CATEGORY
+              <label htmlFor="category" className="block text-xs font-medium text-zinc-300 mb-2 uppercase tracking-wide">
+                Category
               </label>
               <select
                 id="category"
                 value={selectedCategory}
                 onChange={(e) => handleCategoryChange(e.target.value)}
-                className="input w-full"
+                className="w-full px-4 py-3 bg-zinc-800 border border-zinc-700 rounded-lg text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
               >
                 <option value="">All Categories</option>
                 {categories.map(category => (
@@ -202,8 +215,8 @@ export default function AuctionsPage() {
 
         {/* Auctions Grid */}
         {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="flex justify-center py-16">
+            <div className="w-8 h-8 border-2 border-violet-400 border-t-transparent rounded-full animate-spin"></div>
           </div>
         ) : auctions.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-8">
@@ -211,92 +224,110 @@ export default function AuctionsPage() {
               <Link
                 key={auction.id}
                 href={`/auctions/${auction.id}`}
-                className="card overflow-hidden hover:border-indigo-300 group"
+                className="group bg-zinc-900/50 border border-zinc-800 rounded-lg overflow-hidden hover:border-violet-500 hover:bg-zinc-900/80 transition-all duration-300"
               >
-                <div className="aspect-square bg-gray-100 relative overflow-hidden">
+                {/* Image */}
+                <div className="aspect-square bg-zinc-800 relative overflow-hidden">
                   {auction.primary_image ? (
                     <Image
                       src={auction.primary_image}
                       alt={auction.title}
                       fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      className="object-contain p-3 group-hover:scale-105 transition-transform duration-300"
                       sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-primary flex items-center justify-center">
-                      <div className="w-16 h-16 bg-white/20 rounded-xl flex items-center justify-center">
-                        <div className="w-6 h-6 bg-white rounded"></div>
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="w-16 h-16 bg-zinc-700 rounded-xl flex items-center justify-center">
+                        <div className="w-6 h-6 bg-zinc-600 rounded"></div>
                       </div>
                     </div>
                   )}
+                  
+                  {/* Status Badge */}
                   <div className="absolute top-3 right-3">
-                    <span className="status-active">
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      auction.status === 'active' 
+                        ? 'bg-green-600 text-white' 
+                        : 'bg-zinc-700 text-zinc-300'
+                    }`}>
                       {formatTimeRemaining(auction.end_time)}
                     </span>
                   </div>
+
+                  {/* Verified Badge */}
+                  {auction.is_verified && (
+                    <div className="absolute top-3 left-3">
+                      <span className="px-2 py-1 bg-violet-500/20 border border-violet-500/30 rounded text-xs font-mono text-violet-300">
+                        VERIFIED
+                      </span>
+                    </div>
+                  )}
                 </div>
 
-                <div className="p-6">
+                {/* Content */}
+                <div className="p-4">
+                  {/* Category */}
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-caption text-gray-600">{auction.category_name}</span>
-                    {auction.is_verified && (
-                      <span className="creator-badge">VERIFIED</span>
-                    )}
+                    <span className="text-xs text-zinc-400 uppercase tracking-wide">
+                      {auction.category_name || 'Uncategorized'}
+                    </span>
+                    <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                      auction.status === 'active' ? 'bg-green-900 text-green-300' :
+                      auction.status === 'ended' ? 'bg-red-900 text-red-300' :
+                      'bg-zinc-700 text-zinc-300'
+                    }`}>
+                      {auction.status.toUpperCase()}
+                    </span>
                   </div>
 
-                  <h3 className="text-subheading text-gray-900 mb-3 line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                  {/* Title */}
+                  <h3 className="text-white font-semibold mb-3 line-clamp-2 group-hover:text-violet-300 transition-colors">
                     {auction.title}
                   </h3>
 
+                  {/* Price & Bids */}
                   <div className="space-y-3 mb-4">
                     <div>
-                      <p className="text-sm text-gray-500 mb-1">Current Price</p>
-                      <p className="text-2xl font-bold text-green-600">
+                      <p className="text-xs text-zinc-400 mb-1">Current Price</p>
+                      <p className="text-xl font-bold text-white">
                         ${formatPrice(auction.current_price)}
                       </p>
                     </div>
                     
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-caption text-gray-500">
-                          {auction.bid_count} bid{auction.bid_count !== 1 ? 's' : ''}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-caption text-gray-600 mb-1">ENDS IN</p>
-                        <p className="text-sm font-semibold text-orange-600">
-                          {formatTimeRemaining(auction.end_time)}
-                        </p>
-                      </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-zinc-400">
+                        {auction.bid_count} bid{auction.bid_count !== 1 ? 's' : ''}
+                      </span>
+                      <span className="text-zinc-400">
+                        Ends {formatTimeRemaining(auction.end_time)}
+                      </span>
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                  {/* Creator */}
+                  <div className="flex items-center justify-between pt-3 border-t border-zinc-800">
                     <div className="flex items-center space-x-2">
-                      <div className="w-6 h-6 bg-indigo-500 rounded-full"></div>
-                      <span className="text-sm text-gray-600">
+                      <div className="w-5 h-5 bg-violet-600 rounded-full"></div>
+                      <span className="text-xs text-zinc-300 truncate">
                         {auction.display_name || auction.username}
                       </span>
                     </div>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      auction.status === 'active' ? 'bg-green-100 text-green-800' :
-                      auction.status === 'ended' ? 'bg-red-100 text-red-800' :
-                      'bg-gray-100 text-gray-800'
-                    }`}>
-                      {auction.status.toUpperCase()}
-                    </span>
+                    <div className="text-xs text-zinc-400">
+                      {auction.condition.replace('_', ' ')}
+                    </div>
                   </div>
                 </div>
               </Link>
             ))}
           </div>
         ) : (
-          <div className="text-center py-12">
-            <div className="w-24 h-24 bg-gray-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-              <div className="w-8 h-8 bg-gray-400 rounded"></div>
+          <div className="text-center py-16">
+            <div className="w-20 h-20 bg-zinc-800 rounded-full mx-auto mb-4 flex items-center justify-center">
+              <div className="w-8 h-8 bg-zinc-700 rounded"></div>
             </div>
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No auctions found</h3>
-            <p className="text-gray-600">Try adjusting your search or filter criteria</p>
+            <h3 className="text-lg font-medium text-white mb-2">No auctions found</h3>
+            <p className="text-zinc-400">Try adjusting your search or filter criteria</p>
           </div>
         )}
 
@@ -307,7 +338,7 @@ export default function AuctionsPage() {
               {currentPage > 1 && (
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
-                  className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 text-zinc-300 bg-zinc-800 border border-zinc-700 rounded-lg hover:bg-zinc-700 hover:text-white transition-colors"
                 >
                   Previous
                 </button>
@@ -317,10 +348,10 @@ export default function AuctionsPage() {
                 <button
                   key={page}
                   onClick={() => handlePageChange(page)}
-                  className={`px-4 py-2 rounded-lg ${
+                  className={`px-4 py-2 rounded-lg transition-colors ${
                     page === currentPage
-                      ? 'bg-indigo-600 text-white'
-                      : 'text-gray-600 bg-white border border-gray-300 hover:bg-gray-50'
+                      ? 'bg-violet-600 text-white'
+                      : 'text-zinc-300 bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 hover:text-white'
                   }`}
                 >
                   {page}
@@ -330,7 +361,7 @@ export default function AuctionsPage() {
               {currentPage < totalPages && (
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
-                  className="px-4 py-2 text-gray-600 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 text-zinc-300 bg-zinc-800 border border-zinc-700 rounded-lg hover:bg-zinc-700 hover:text-white transition-colors"
                 >
                   Next
                 </button>

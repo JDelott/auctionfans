@@ -72,21 +72,6 @@ export default function Navigation() {
                 <span className="font-mono text-sm font-semibold tracking-wider uppercase">CREATORS</span>
               </Link>
 
-              {user?.is_creator && (
-                <Link 
-                  href="/creator/auctions"
-                  className="flex items-center space-x-3 text-zinc-300 hover:text-white hover:bg-zinc-800 p-3 rounded-lg transition-all group"
-                  onClick={() => setIsCollapsed(true)}
-                >
-                  <div className="w-5 h-5 bg-white rounded flex items-center justify-center">
-                    <svg className="w-3 h-3 text-black" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3z" />
-                    </svg>
-                  </div>
-                  <span className="font-mono text-sm font-semibold tracking-wider uppercase">MY AUCTIONS</span>
-                </Link>
-              )}
-
               {user && (
                 <Link 
                   href="/dashboard"
