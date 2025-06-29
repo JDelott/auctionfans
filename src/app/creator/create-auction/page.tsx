@@ -250,65 +250,76 @@ export default function CreateAuctionPage() {
 
   // Send message to AI
   const sendMessage = async (message?: string) => {
-    const messageToSend = message || userInput.trim();
-    if (!messageToSend) return;
+    const messageToSend = message || userInput;
+    if (!messageToSend.trim() || aiProcessing) return;
 
-    setUserInput('');
     setAiProcessing(true);
+    setUserInput('');
 
     // Add user message
-    setAiMessages(prev => [...prev, {
+    const userMessage: AIMessage = {
       role: 'user',
       content: messageToSend,
       timestamp: new Date()
-    }]);
+    };
+    setAiMessages(prev => [...prev, userMessage]);
 
     try {
       const response = await fetch('/api/ai/enhance-listing', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          enhancementType: 'conversational_guide',
           userMessage: messageToSend,
-          currentFormData: formData,
           currentStep,
-          categories: categories.map(cat => ({ id: cat.id, name: cat.name }))
-        }),
+          currentFormData: formData,
+          categories
+        })
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        
-        // Add AI response
-        const messageContent = result.message || result.response || 'I\'m here to help!';
-        
-        setAiMessages(prev => [...prev, {
-          role: 'assistant',
-          content: messageContent,
-          timestamp: new Date(),
-          suggestions: result.suggestions,
-          formUpdates: result.formUpdates
-        }]);
-
-        // Apply form updates if any
-        if (result.formUpdates) {
-          setFormData(prev => ({ ...prev, ...result.formUpdates }));
+      const data = await response.json();
+      
+      if (data.success) {
+        // Apply form updates immediately
+        if (data.formUpdates && Object.keys(data.formUpdates).length > 0) {
+          setFormData(prev => ({ ...prev, ...data.formUpdates }));
+          
+          // Show what was updated
+          const updatedFields = Object.keys(data.formUpdates);
+          const updateMessage = `✅ Updated: ${updatedFields.join(', ')}`;
+          
+          const updateNotification: AIMessage = {
+            role: 'assistant',
+            content: updateMessage,
+            timestamp: new Date()
+          };
+          setAiMessages(prev => [...prev, updateNotification]);
         }
 
-        // Progress to next step if appropriate
-        if (result.nextStep && result.nextStep !== currentStep) {
-          setCurrentStep(result.nextStep);
+        // Add AI response
+        const aiMessage: AIMessage = {
+          role: 'assistant',
+          content: data.response,
+          timestamp: new Date(),
+          suggestions: data.suggestions
+        };
+        setAiMessages(prev => [...prev, aiMessage]);
+
+        // Update step if needed
+        if (data.nextStep && data.nextStep !== currentStep) {
+          setCurrentStep(data.nextStep as FormStep);
         }
       }
     } catch (error) {
-      console.error('Error sending message:', error);
-      setAiMessages(prev => [...prev, {
+      console.error('AI Error:', error);
+      const errorMessage: AIMessage = {
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please try again.',
         timestamp: new Date()
-      }]);
+      };
+      setAiMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setAiProcessing(false);
     }
-    setAiProcessing(false);
   };
 
   // Process voice input
@@ -322,16 +333,92 @@ export default function CreateAuctionPage() {
     setTranscript('');
   };
 
-  // Move to next step
+  // Step validation functions
+  const validateBasicInfo = (): { isValid: boolean; missingFields: string[] } => {
+    const missing: string[] = [];
+    if (!formData.title.trim()) missing.push('Title');
+    if (!formData.description.trim()) missing.push('Description');  
+    if (!formData.category_id) missing.push('Category');
+    if (!formData.condition) missing.push('Condition');
+    
+    return {
+      isValid: missing.length === 0,
+      missingFields: missing
+    };
+  };
+
+  const validatePricing = (): { isValid: boolean; missingFields: string[] } => {
+    const missing: string[] = [];
+    if (!formData.starting_price || parseFloat(formData.starting_price) <= 0) {
+      missing.push('Starting Price');
+    }
+    if (!formData.duration_days) missing.push('Auction Duration');
+    
+    return {
+      isValid: missing.length === 0,
+      missingFields: missing
+    };
+  };
+
+  const validateImages = (): { isValid: boolean; missingFields: string[] } => {
+    const missing: string[] = [];
+    if (!selectedImages || selectedImages.length === 0) {
+      missing.push('At least one image');
+    }
+    
+    return {
+      isValid: missing.length === 0,
+      missingFields: missing
+    };
+  };
+
+  // Enhanced step navigation with validation
   const nextStep = () => {
     const steps: FormStep[] = ['welcome', 'basic_info', 'pricing', 'video', 'images', 'review'];
     const currentIndex = steps.indexOf(currentStep);
+    
+    // Validate current step before proceeding
+    let canProceed = true;
+    let validationMessage = '';
+
+    switch (currentStep) {
+      case 'basic_info':
+        const basicValidation = validateBasicInfo();
+        if (!basicValidation.isValid) {
+          canProceed = false;
+          validationMessage = `Please complete: ${basicValidation.missingFields.join(', ')}`;
+        }
+        break;
+      case 'pricing':
+        const pricingValidation = validatePricing();
+        if (!pricingValidation.isValid) {
+          canProceed = false;
+          validationMessage = `Please complete: ${pricingValidation.missingFields.join(', ')}`;
+        }
+        break;
+      case 'images':
+        const imagesValidation = validateImages();
+        if (!imagesValidation.isValid) {
+          canProceed = false;
+          validationMessage = `Please complete: ${imagesValidation.missingFields.join(', ')}`;
+        }
+        break;
+    }
+
+    if (!canProceed) {
+      setError(validationMessage);
+      // Send validation error to AI
+      sendMessage(`I'm missing some required information: ${validationMessage}. Can you help me complete these fields?`);
+      return;
+    }
+
+    setError('');
     if (currentIndex < steps.length - 1) {
       const next = steps[currentIndex + 1];
       setCurrentStep(next);
       
       // Send step transition message to AI
-      sendMessage(`I'm ready to move to the ${stepConfig[next].title} section.`);
+      sendMessage(`Great! I've completed the ${stepConfig[currentStep].title} section. Now moving to ${stepConfig[next].title}.`);
     }
   };
 
@@ -448,58 +535,103 @@ export default function CreateAuctionPage() {
             )}
 
             <form onSubmit={handleSubmit} className="space-y-8">
-              {/* Step Content */}
-              {currentStep === 'welcome' && (
-                <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-8 text-center">
-                  <div className="mb-6">
-                    <div className="w-20 h-20 bg-gradient-to-r from-violet-500 to-indigo-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                      <span className="text-3xl">🚀</span>
-                    </div>
-                    <h2 className="text-2xl font-bold mb-4">Welcome to AI-Powered Listing</h2>
-                    <p className="text-zinc-400">I&apos;ll help you create an amazing auction listing step by step. Let&apos;s start by telling me about your item!</p>
-                  </div>
+              {/* Progress Indicator */}
+              <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-4">
+                <div className="flex items-center justify-between text-sm">
+                  {Object.entries(stepConfig).map(([step, config], index) => {
+                    if (step === 'welcome') return null;
+                    const isActive = currentStep === step;
+                    const isCompleted = (() => {
+                      switch (step) {
+                        case 'basic_info': return validateBasicInfo().isValid;
+                        case 'pricing': return validatePricing().isValid;
+                        case 'video': return !!(formData.video_url); // Only green if actually filled out
+                        case 'images': return validateImages().isValid;
+                        case 'review': return false;
+                        default: return false;
+                      }
+                    })();
+                    
+                    return (
+                      <div key={step} className={`flex items-center ${
+                        isActive ? 'text-violet-400' : 
+                        isCompleted ? 'text-green-400' : 'text-zinc-500'
+                      }`}>
+                        <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                          isActive ? 'bg-violet-600' : 
+                          isCompleted ? 'bg-green-600' : 'bg-zinc-700'
+                        }`}>
+                          {isCompleted ? '✓' : index}
+                        </div>
+                        <span className="ml-2 hidden sm:inline">{config.title}</span>
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
+              </div>
 
+              {/* Basic Info Step */}
               {currentStep === 'basic_info' && (
                 <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6">
-                  <h3 className="text-xl font-semibold mb-6">Basic Information</h3>
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-semibold">Basic Information</h3>
+                    <div className="text-sm text-zinc-400">
+                      {validateBasicInfo().isValid ? (
+                        <span className="text-green-400">✓ Complete</span>
+                      ) : (
+                        <span className="text-yellow-400">⚠ Incomplete</span>
+                      )}
+                    </div>
+                  </div>
+                  
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-zinc-300 mb-2">Item Title *</label>
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
+                        Item Title * 
+                        {!formData.title && <span className="text-red-400 ml-1">Required</span>}
+                      </label>
                       <input
                         type="text"
                         name="title"
                         value={formData.title}
                         onChange={handleInputChange}
-                        required
-                        className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
+                        className={`w-full bg-zinc-800/50 border rounded-lg px-4 py-3 focus:outline-none transition-colors ${
+                          formData.title ? 'border-green-600 focus:border-green-500' : 'border-zinc-700 focus:border-violet-500'
+                        }`}
                         placeholder="Enter a descriptive title for your item"
                       />
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-zinc-300 mb-2">Description *</label>
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
+                        Description *
+                        {!formData.description && <span className="text-red-400 ml-1">Required</span>}
+                      </label>
                       <textarea
                         name="description"
                         value={formData.description}
                         onChange={handleInputChange}
-                        required
                         rows={4}
-                        className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors resize-none"
+                        className={`w-full bg-zinc-800/50 border rounded-lg px-4 py-3 focus:outline-none transition-colors resize-none ${
+                          formData.description ? 'border-green-600 focus:border-green-500' : 'border-zinc-700 focus:border-violet-500'
+                        }`}
                         placeholder="Describe your item in detail..."
                       />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-zinc-300 mb-2">Category *</label>
+                        <label className="block text-sm font-medium text-zinc-300 mb-2">
+                          Category *
+                          {!formData.category_id && <span className="text-red-400 ml-1">Required</span>}
+                        </label>
                         <select
                           name="category_id"
                           value={formData.category_id}
                           onChange={handleInputChange}
-                          required
-                          className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
+                          className={`w-full bg-zinc-800/50 border rounded-lg px-4 py-3 focus:outline-none transition-colors ${
+                            formData.category_id ? 'border-green-600 focus:border-green-500' : 'border-zinc-700 focus:border-violet-500'
+                          }`}
                         >
                           <option value="">Select a category</option>
                           {categories.map((category) => (
@@ -509,19 +641,23 @@ export default function CreateAuctionPage() {
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-zinc-300 mb-2">Condition *</label>
+                        <label className="block text-sm font-medium text-zinc-300 mb-2">
+                          Condition *
+                          {!formData.condition && <span className="text-red-400 ml-1">Required</span>}
+                        </label>
                         <select
                           name="condition"
                           value={formData.condition}
                           onChange={handleInputChange}
-                          required
-                          className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
+                          className={`w-full bg-zinc-800/50 border rounded-lg px-4 py-3 focus:outline-none transition-colors ${
+                            formData.condition ? 'border-green-600 focus:border-green-500' : 'border-zinc-700 focus:border-violet-500'
+                          }`}
                         >
-                          <option value="new">New</option>
-                          <option value="like-new">Like New</option>
-                          <option value="good">Good</option>
-                          <option value="fair">Fair</option>
-                          <option value="poor">Poor</option>
+                          <option value="">Select condition</option>
+                          <option value="New">New</option>
+                          <option value="Used - Excellent">Used - Excellent</option>
+                          <option value="Used - Good">Used - Good</option>
+                          <option value="Used - Fair">Used - Fair</option>
                         </select>
                       </div>
                     </div>
@@ -529,66 +665,119 @@ export default function CreateAuctionPage() {
                 </div>
               )}
 
+              {/* Enhanced Pricing Step */}
               {currentStep === 'pricing' && (
                 <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6">
-                  <h3 className="text-xl font-semibold mb-6">Pricing</h3>
-                  <div className="space-y-4">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-semibold">Auction Pricing</h3>
+                    <div className="text-sm text-zinc-400">
+                      {validatePricing().isValid ? (
+                        <span className="text-green-400">✓ Complete</span>
+                      ) : (
+                        <span className="text-yellow-400">⚠ Incomplete</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    {/* Starting Price */}
                     <div>
-                      <label className="block text-sm font-medium text-zinc-300 mb-2">Starting Price ($) *</label>
-                      <input
-                        type="number"
-                        name="starting_price"
-                        value={formData.starting_price}
-                        onChange={handleInputChange}
-                        required
-                        min="0"
-                        step="0.01"
-                        className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
-                        placeholder="25.00"
-                      />
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
+                        Starting Price ($) *
+                        {!formData.starting_price && <span className="text-red-400 ml-1">Required</span>}
+                      </label>
+                      <div className="relative">
+                        <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400">$</div>
+                        <input
+                          type="number"
+                          name="starting_price"
+                          value={formData.starting_price}
+                          onChange={handleInputChange}
+                          min="0.01"
+                          step="0.01"
+                          className={`w-full bg-zinc-800/50 border rounded-lg pl-8 pr-4 py-3 focus:outline-none transition-colors ${
+                            formData.starting_price && parseFloat(formData.starting_price) > 0 
+                              ? 'border-green-600 focus:border-green-500' 
+                              : 'border-zinc-700 focus:border-violet-500'
+                          }`}
+                          placeholder="25.00"
+                        />
+                      </div>
+                      <p className="text-xs text-zinc-400 mt-1">This is the minimum bid amount</p>
                     </div>
 
+                    {/* Pricing Suggestions */}
+                    {formData.starting_price && (
+                      <div className="bg-violet-600/10 border border-violet-600/20 rounded-lg p-4">
+                        <h4 className="text-sm font-medium text-violet-300 mb-2">💡 Pricing Suggestions</h4>
+                        <div className="space-y-2 text-sm text-zinc-300">
+                          <p>• Reserve Price: ${(parseFloat(formData.starting_price) * 1.5).toFixed(2)} (50% higher than starting)</p>
+                          <p>• Buy Now Price: ${(parseFloat(formData.starting_price) * 3).toFixed(2)} (3x starting price)</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Optional Pricing */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div>
-                        <label className="block text-sm font-medium text-zinc-300 mb-2">Reserve Price ($)</label>
-                        <input
-                          type="number"
-                          name="reserve_price"
-                          value={formData.reserve_price}
-                          onChange={handleInputChange}
-                          min="0"
-                          step="0.01"
-                          className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
-                          placeholder="50.00"
-                        />
+                        <label className="block text-sm font-medium text-zinc-300 mb-2">
+                          Reserve Price ($) <span className="text-zinc-500">(Optional)</span>
+                        </label>
+                        <div className="relative">
+                          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400">$</div>
+                          <input
+                            type="number"
+                            name="reserve_price"
+                            value={formData.reserve_price}
+                            onChange={handleInputChange}
+                            min="0"
+                            step="0.01"
+                            className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg pl-8 pr-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
+                            placeholder="50.00"
+                          />
+                        </div>
+                        <p className="text-xs text-zinc-400 mt-1">Minimum price to sell</p>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-zinc-300 mb-2">Buy Now Price ($)</label>
-                        <input
-                          type="number"
-                          name="buy_now_price"
-                          value={formData.buy_now_price}
-                          onChange={handleInputChange}
-                          min="0"
-                          step="0.01"
-                          className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
-                          placeholder="100.00"
-                        />
+                        <label className="block text-sm font-medium text-zinc-300 mb-2">
+                          Buy Now Price ($) <span className="text-zinc-500">(Optional)</span>
+                        </label>
+                        <div className="relative">
+                          <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-zinc-400">$</div>
+                          <input
+                            type="number"
+                            name="buy_now_price"
+                            value={formData.buy_now_price}
+                            onChange={handleInputChange}
+                            min="0"
+                            step="0.01"
+                            className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg pl-8 pr-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
+                            placeholder="100.00"
+                          />
+                        </div>
+                        <p className="text-xs text-zinc-400 mt-1">Skip bidding, buy immediately</p>
                       </div>
                     </div>
 
+                    {/* Duration */}
                     <div>
-                      <label className="block text-sm font-medium text-zinc-300 mb-2">Auction Duration</label>
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
+                        Auction Duration *
+                        {!formData.duration_days && <span className="text-red-400 ml-1">Required</span>}
+                      </label>
                       <select
                         name="duration_days"
                         value={formData.duration_days}
                         onChange={handleInputChange}
-                        className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
+                        className={`w-full bg-zinc-800/50 border rounded-lg px-4 py-3 focus:outline-none transition-colors ${
+                          formData.duration_days ? 'border-green-600 focus:border-green-500' : 'border-zinc-700 focus:border-violet-500'
+                        }`}
                       >
+                        <option value="">Select duration</option>
                         <option value="1">1 Day</option>
                         <option value="3">3 Days</option>
-                        <option value="7">7 Days</option>
+                        <option value="7">7 Days (Recommended)</option>
                         <option value="10">10 Days</option>
                         <option value="14">14 Days</option>
                       </select>
@@ -597,43 +786,76 @@ export default function CreateAuctionPage() {
                 </div>
               )}
 
+              {/* Video Step (Optional) */}
               {currentStep === 'video' && (
                 <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6">
-                  <h3 className="text-xl font-semibold mb-6">Video Information</h3>
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-semibold">Video Information</h3>
+                    <div className="text-sm text-zinc-400">
+                      {formData.video_url ? (
+                        <span className="text-green-400">✓ Complete</span>
+                      ) : (
+                        <span className="text-zinc-500">Optional</span>
+                      )}
+                    </div>
+                  </div>
                   <div className="space-y-4">
                     <div>
-                      <label className="block text-sm font-medium text-zinc-300 mb-2">Video URL</label>
+                      <label className="block text-sm font-medium text-zinc-300 mb-2">
+                        Video URL <span className="text-zinc-500">(Optional)</span>
+                      </label>
                       <input
                         type="url"
                         name="video_url"
                         value={formData.video_url}
                         onChange={handleInputChange}
-                        className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
+                        className={`w-full bg-zinc-800/50 border rounded-lg px-4 py-3 focus:outline-none transition-colors ${
+                          formData.video_url ? 'border-green-600 focus:border-green-500' : 'border-zinc-700 focus:border-violet-500'
+                        }`}
                         placeholder="https://youtube.com/watch?v=..."
                       />
+                      <p className="text-xs text-zinc-400 mt-1">Link to video where this item appears</p>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-zinc-300 mb-2">Video Timestamp (seconds)</label>
-                      <input
-                        type="number"
-                        name="video_timestamp"
-                        value={formData.video_timestamp}
-                        onChange={handleInputChange}
-                        min="0"
-                        className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
-                        placeholder="120"
-                      />
-                    </div>
+                    {formData.video_url && (
+                      <div>
+                        <label className="block text-sm font-medium text-zinc-300 mb-2">
+                          Video Timestamp (seconds) <span className="text-zinc-500">(Optional)</span>
+                        </label>
+                        <input
+                          type="number"
+                          name="video_timestamp"
+                          value={formData.video_timestamp}
+                          onChange={handleInputChange}
+                          min="0"
+                          className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
+                          placeholder="120"
+                        />
+                        <p className="text-xs text-zinc-400 mt-1">When the item appears in the video</p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
+              {/* Images Step */}
               {currentStep === 'images' && (
                 <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6">
-                  <h3 className="text-xl font-semibold mb-6">Images</h3>
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className="text-xl font-semibold">Images</h3>
+                    <div className="text-sm text-zinc-400">
+                      {validateImages().isValid ? (
+                        <span className="text-green-400">✓ Complete</span>
+                      ) : (
+                        <span className="text-red-400">⚠ Required</span>
+                      )}
+                    </div>
+                  </div>
                   <div>
-                    <label className="block text-sm font-medium text-zinc-300 mb-2">Upload Images</label>
+                    <label className="block text-sm font-medium text-zinc-300 mb-2">
+                      Upload Images *
+                      {(!selectedImages || selectedImages.length === 0) && <span className="text-red-400 ml-1">At least 1 required</span>}
+                    </label>
                     <input
                       type="file"
                       multiple
@@ -666,6 +888,7 @@ export default function CreateAuctionPage() {
                 </div>
               )}
 
+              {/* Review Step */}
               {currentStep === 'review' && (
                 <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6">
                   <h3 className="text-xl font-semibold mb-6">Review & Submit</h3>
@@ -718,6 +941,14 @@ export default function CreateAuctionPage() {
                       <span>Create Auction</span>
                     )}
                   </button>
+                ) : currentStep === 'welcome' ? (
+                  <button
+                    type="button"
+                    onClick={() => setCurrentStep('basic_info')}
+                    className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-6 py-3 rounded-lg transition-colors"
+                  >
+                    Get Started
+                  </button>
                 ) : (
                   <button
                     type="button"
@@ -741,11 +972,11 @@ export default function CreateAuctionPage() {
                 </div>
                 <div>
                   <h3 className="font-semibold text-white">AI Guide</h3>
-                  <p className="text-xs text-zinc-400">{stepConfig[currentStep].title}</p>
+                  <p className="text-xs text-zinc-400">{stepConfig[currentStep]?.title || 'Welcome'}</p>
                 </div>
               </div>
 
-              {/* Voice Transcript Display (only show when we have transcript) */}
+              {/* Voice Transcript Display */}
               {transcript && (
                 <div className="mb-4 p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50">
                   <p className="text-sm text-zinc-300 mb-2">Voice Input:</p>

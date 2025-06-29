@@ -13,18 +13,15 @@ interface FormData {
   category_id?: string;
   condition?: string;
   starting_price?: string;
+  reserve_price?: string;
+  buy_now_price?: string;
   video_url?: string;
+  video_timestamp?: string;
+  duration_days?: string;
   [key: string]: string | undefined;
 }
 
 interface EnhanceListingRequest {
-  title?: string;
-  description?: string;
-  category?: string;
-  condition?: string;
-  videoUrl?: string;
-  rawInput?: string;
-  enhancementType?: 'voice_parse' | 'existing_enhance' | 'conversational_guide';
   userMessage?: string;
   currentStep?: string;
   currentFormData?: FormData;
@@ -32,7 +29,7 @@ interface EnhanceListingRequest {
 }
 
 export async function POST(request: NextRequest) {
-  let currentStep = 'welcome'; // Default value
+  let currentStep = 'welcome';
 
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -47,37 +44,38 @@ export async function POST(request: NextRequest) {
 
     const body: EnhanceListingRequest = await request.json();
     const { 
-      enhancementType = 'conversational_guide',
       userMessage = '',
       currentFormData = {},
       categories = []
     } = body;
 
-    // Update currentStep from body if provided
     currentStep = body.currentStep || 'welcome';
 
-    const systemPrompt = `You are an AI assistant helping creators list items for auction. Your job is to:
+    // Analyze form completeness with strict validation
+    const formAnalysis = analyzeFormState(currentFormData);
+    
+    const systemPrompt = `You are an AI assistant for auction listings. Your job is to:
 
-1. Guide users through the auction listing process step-by-step
-2. Parse user descriptions and automatically fill form fields
-3. Provide helpful suggestions and ask clarifying questions
-4. Make the process feel conversational and easy
+1. Provide helpful, conversational guidance
+2. Extract specific information to populate form fields
+3. Guide users through: basic_info → pricing → video (optional) → images → review
+4. NEVER include raw JSON or technical data in your responses
+5. Be encouraging and professional
 
-Available categories: ${categories.map(c => c.name).join(', ')}
+Current form analysis:
+${JSON.stringify(formAnalysis, null, 2)}
 
-Current form data: ${JSON.stringify(currentFormData)}
+Available categories: ${categories.map(c => `${c.id}: ${c.name}`).join('\n')}
+
 Current step: ${currentStep}
 
-When a user describes an item, extract relevant information and return it in the formUpdates field.
-Always be helpful, concise, and encouraging.`;
+Respond conversationally without any JSON or technical formatting. When you extract information, I'll handle the form updates separately.`;
 
-    let userPrompt = '';
-    
-    if (enhancementType === 'conversational_guide') {
-      userPrompt = `User message: "${userMessage}"
-      
-Please help guide this user through listing their auction item. If they've described an item, extract the key details and suggest form field values. Respond conversationally and helpfully.`;
-    }
+    const userPrompt = `User message: "${userMessage}"
+
+Current form data: ${JSON.stringify(currentFormData)}
+
+Provide a helpful, conversational response to guide the user. Do NOT include any JSON or formUpdates in your response.`;
 
     const completion = await anthropic.messages.create({
       model: 'claude-3-sonnet-20240229',
@@ -92,46 +90,20 @@ Please help guide this user through listing their auction item. If they've descr
 
     const aiResponse = completion.content[0].type === 'text' ? completion.content[0].text : '';
 
-    // Parse the AI response to extract form updates
-    const formUpdates: Record<string, string> = {};
+    // Enhanced parsing with better extraction
+    const formUpdates = extractFormUpdates(userMessage, currentFormData, categories);
     
-    // Simple parsing logic - in a real app, you'd want more sophisticated parsing
-    if (userMessage.toLowerCase().includes('hat')) {
-      if (userMessage.toLowerCase().includes('santa monica') || userMessage.toLowerCase().includes('beach')) {
-        formUpdates.title = 'Santa Monica Beach Photoshoot Hat';
-        formUpdates.description = 'Authentic hat worn during a professional photoshoot at Santa Monica Beach. This unique piece of content creator memorabilia comes directly from the creator\'s personal collection.';
-        
-        // Find clothing/fashion category
-        const clothingCategory = categories.find(c => 
-          c.name.toLowerCase().includes('clothing') || 
-          c.name.toLowerCase().includes('fashion') ||
-          c.name.toLowerCase().includes('apparel')
-        );
-        if (clothingCategory) {
-          formUpdates.category_id = clothingCategory.id;
-        }
-        
-        formUpdates.condition = 'Used - Good';
-        formUpdates.starting_price = '25';
-      }
-    }
-
-    // Determine next step based on current progress
-    let nextStep = currentStep;
-    if (Object.keys(formUpdates).length > 0) {
-      nextStep = 'pricing';
-    }
+    // Determine what's missing and provide targeted suggestions
+    const missingFields = getMissingFields({ ...currentFormData, ...formUpdates });
+    const suggestions = generateSuggestions(missingFields, currentStep, formUpdates);
 
     return NextResponse.json({
       success: true,
       response: aiResponse,
       formUpdates,
-      nextStep,
-      suggestions: [
-        'Add more details about when and where you wore this item',
-        'Include any special significance or memorable moments',
-        'Consider adding photos from the photoshoot'
-      ]
+      nextStep: currentStep, // Keep same step until validation passes
+      suggestions,
+      formAnalysis
     });
 
   } catch (error) {
@@ -140,8 +112,149 @@ Please help guide this user through listing their auction item. If they've descr
       error: 'Failed to process AI request',
       response: 'Sorry, I encountered an error. Please try again.',
       formUpdates: {},
-      nextStep: currentStep, // Now currentStep is properly in scope
+      nextStep: currentStep,
       suggestions: []
     }, { status: 500 });
   }
+}
+
+function analyzeFormState(formData: FormData) {
+  return {
+    basicInfo: {
+      title: !!formData.title,
+      description: !!formData.description,
+      category_id: !!formData.category_id,
+      condition: !!formData.condition,
+      complete: !!(formData.title && formData.description && formData.category_id && formData.condition)
+    },
+    pricing: {
+      starting_price: !!formData.starting_price,
+      reserve_price: !!formData.reserve_price,
+      buy_now_price: !!formData.buy_now_price,
+      duration_days: !!formData.duration_days,
+      complete: !!formData.starting_price
+    },
+    video: {
+      video_url: !!formData.video_url,
+      video_timestamp: !!formData.video_timestamp,
+      complete: true // Optional section
+    },
+    missingFields: getMissingFields(formData)
+  };
+}
+
+function getMissingFields(formData: FormData): string[] {
+  const missing = [];
+  if (!formData.title) missing.push('title');
+  if (!formData.description) missing.push('description');
+  if (!formData.category_id) missing.push('category');
+  if (!formData.condition) missing.push('condition');
+  if (!formData.starting_price) missing.push('starting_price');
+  return missing;
+}
+
+function generateSuggestions(missingFields: string[], currentStep: string, formUpdates: Record<string, string>): string[] {
+  const suggestions: string[] = [];
+  
+  if (Object.keys(formUpdates).length > 0) {
+    suggestions.push("Click 'Apply to Form' above to use my suggestions");
+  }
+  
+  if (missingFields.includes('title')) {
+    suggestions.push("What should I call this item in the title?");
+  }
+  
+  if (missingFields.includes('category')) {
+    suggestions.push("What category best fits this item?");
+  }
+  
+  if (missingFields.includes('condition')) {
+    suggestions.push("What condition is the item in?");
+  }
+  
+  if (missingFields.includes('starting_price')) {
+    suggestions.push("What should the starting bid price be?");
+  }
+  
+  return suggestions;
+}
+
+// Enhanced extraction function
+function extractFormUpdates(userMessage: string, currentFormData: FormData, categories: Array<{id: string, name: string}>): Record<string, string> {
+  const formUpdates: Record<string, string> = {};
+  const message = userMessage.toLowerCase();
+
+  // Extract location and context for better titles/descriptions
+  let location = '';
+  let context = '';
+  let itemType = '';
+
+  // Location extraction
+  if (message.includes('malibu')) location = 'Malibu';
+  else if (message.includes('santa monica')) location = 'Santa Monica';
+  else if (message.includes('beach')) location = 'Beach';
+
+  // Context extraction
+  if (message.includes('photo shoot') || message.includes('photoshoot')) context = 'photoshoot';
+  else if (message.includes('video')) context = 'video';
+  else if (message.includes('vacation')) context = 'vacation';
+
+  // Item type extraction
+  if (message.includes('hat') || message.includes('cap')) itemType = 'hat';
+  else if (message.includes('shirt') || message.includes('top')) itemType = 'shirt';
+  else if (message.includes('sunglasses') || message.includes('glasses')) itemType = 'sunglasses';
+  else if (message.includes('jewelry') || message.includes('necklace') || message.includes('bracelet')) itemType = 'jewelry';
+
+  // Generate title if we have context
+  if (!currentFormData.title && (location || context || itemType)) {
+    let title = '';
+    if (itemType) {
+      title = itemType.charAt(0).toUpperCase() + itemType.slice(1);
+      if (location) title += ` from ${location}`;
+      if (context === 'photoshoot') title += ' Photoshoot';
+      else if (context === 'video') title += ' Video';
+    } else {
+      title = 'Creator Item';
+      if (location) title += ` from ${location}`;
+      if (context === 'photoshoot') title += ' Photoshoot';
+    }
+    formUpdates.title = title;
+  }
+
+  // Generate description
+  if (!currentFormData.description && (location || context)) {
+    let description = `Authentic item worn by creator`;
+    if (context === 'photoshoot' && location) {
+      description += ` during a professional photoshoot in ${location}`;
+    } else if (context === 'video') {
+      description += ` in a YouTube video`;
+      if (location) description += ` filmed in ${location}`;
+    }
+    description += '. This unique piece of creator memorabilia comes directly from their personal collection and represents a special moment captured in content.';
+    formUpdates.description = description;
+  }
+
+  // Set category for clothing/accessories
+  if (!currentFormData.category_id) {
+    const fashionCategory = categories.find(c => 
+      c.name.toLowerCase().includes('fashion') || 
+      c.name.toLowerCase().includes('clothing') ||
+      c.name.toLowerCase().includes('accessories')
+    );
+    if (fashionCategory) {
+      formUpdates.category_id = fashionCategory.id;
+    }
+  }
+
+  // Default condition
+  if (!currentFormData.condition) {
+    formUpdates.condition = 'Used - Good';
+  }
+
+  // Default starting price
+  if (!currentFormData.starting_price) {
+    formUpdates.starting_price = '35';
+  }
+
+  return formUpdates;
 } 
