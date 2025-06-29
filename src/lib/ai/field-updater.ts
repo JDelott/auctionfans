@@ -35,17 +35,13 @@ async function enhanceFieldWithAI(
 
   try {
     const fieldPrompts = {
-      title: `You are helping enhance an auction listing title. The user wants to: "${userMessage}"
+      title: `Make this auction title ${userMessage.toLowerCase()}: "${currentValue}"
 
-Current title: "${currentValue}"
+Return only the improved title (max 8 words):`,
 
-Please rewrite this title to be ${userMessage.toLowerCase()}. Keep it concise (under 10 words) but compelling for an auction listing. Return only the enhanced title, nothing else.`,
+      description: `Make this auction description ${userMessage.toLowerCase()}: "${currentValue}"
 
-      description: `You are helping enhance an auction listing description. The user wants to: "${userMessage}"
-
-Current description: "${currentValue}"
-
-Please rewrite this description to be ${userMessage.toLowerCase()}. This is for an auction of an authentic item from a content creator. Make it compelling for potential bidders while maintaining authenticity. Return only the enhanced description, nothing else.`
+Return only the improved description (max 50 words):`
     };
 
     const prompt = fieldPrompts[fieldName as keyof typeof fieldPrompts];
@@ -55,7 +51,7 @@ Please rewrite this description to be ${userMessage.toLowerCase()}. This is for 
 
     const completion = await anthropic.messages.create({
       model: 'claude-3-sonnet-20240229',
-      max_tokens: 400,
+      max_tokens: 100, // Much shorter responses
       messages: [
         {
           role: 'user',
@@ -69,7 +65,7 @@ Please rewrite this description to be ${userMessage.toLowerCase()}. This is for 
     if (enhancedText && enhancedText !== currentValue) {
       return {
         value: enhancedText,
-        reason: `Enhanced ${fieldName} using AI: ${userMessage.toLowerCase()}`
+        reason: `AI enhanced: ${userMessage.toLowerCase()}`
       };
     }
     

@@ -51,7 +51,7 @@ export function SmartFormField({
               rows={6}
             />
             {showAIEnhancer && (
-              <div className="absolute top-3 right-3">
+              <div className="absolute top-3 right-3 z-10">
                 <FieldAIEnhancer
                   fieldName={name}
                   onFieldUpdate={onChange}
@@ -82,19 +82,19 @@ export function SmartFormField({
       
       default:
         return (
-          <div className="relative">
+          <div className="relative flex items-center">
             <input
               type={type}
               name={name}
               value={value}
               onChange={handleChange}
               placeholder={placeholder}
-              className={`${baseClassName} ${showAIEnhancer ? 'pr-12' : ''}`}
+              className={`${baseClassName} ${showAIEnhancer ? 'pr-12' : ''} flex-1`}
               min={type === 'number' ? '0' : undefined}
               step={type === 'number' ? '0.01' : undefined}
             />
             {showAIEnhancer && (
-              <div className="absolute top-1/2 right-3 -translate-y-1/2">
+              <div className="absolute right-3 z-10">
                 <FieldAIEnhancer
                   fieldName={name}
                   onFieldUpdate={onChange}
