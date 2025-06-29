@@ -203,19 +203,25 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
 
   if (authLoading || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="relative">
+          <div className="w-12 h-12 border-2 border-violet-400 border-t-transparent rounded-full animate-spin"></div>
+          <div className="absolute inset-0 w-12 h-12 border-2 border-red-400/20 rounded-full animate-ping"></div>
+        </div>
       </div>
     );
   }
 
   if (!user || !user.is_creator) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-heading text-gray-900 mb-4">Access Denied</h1>
-          <p className="text-gray-600 mb-6">You must be a verified creator to edit auctions.</p>
-          <Link href="/dashboard" className="btn-primary">
+          <div className="w-16 h-16 bg-red-600/20 border border-red-600/50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <div className="w-8 h-8 text-red-400">⚠</div>
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-4">Access Denied</h1>
+          <p className="text-zinc-400 mb-6">You must be a verified creator to edit auctions.</p>
+          <Link href="/dashboard" className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
             Go to Dashboard
           </Link>
         </div>
@@ -225,11 +231,14 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
 
   if (!auction) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center">
         <div className="text-center">
-          <h1 className="text-heading text-gray-900 mb-4">Auction Not Found</h1>
-          <p className="text-gray-600 mb-6">The auction you&apos;re trying to edit could not be found.</p>
-          <Link href="/dashboard" className="btn-primary">
+          <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-6">
+            <div className="w-8 h-8 border-2 border-zinc-600 rounded-full"></div>
+          </div>
+          <h1 className="text-2xl font-bold text-white mb-4">Auction Not Found</h1>
+          <p className="text-zinc-400 mb-6">The auction you&apos;re trying to edit could not be found.</p>
+          <Link href="/dashboard" className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-lg font-medium transition-colors">
             Go to Dashboard
           </Link>
         </div>
@@ -244,78 +253,113 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
   const canEditBasicInfo = isPending || isActive; // Allow basic info changes for pending and active
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50">
-      <div className="max-w-4xl mx-auto px-6 py-12">
-        <div className="mb-8">
+    <div className="min-h-screen bg-zinc-950 text-white relative overflow-hidden">
+      {/* Background Grid Pattern */}
+      <div className="absolute inset-0 opacity-[0.02]">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `
+            linear-gradient(rgba(139, 92, 246, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px)
+          `,
+          backgroundSize: '50px 50px'
+        }}></div>
+      </div>
+
+      {/* Geometric Accent Lines */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-32 left-0 w-64 h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent"></div>
+        <div className="absolute top-48 right-0 w-48 h-px bg-gradient-to-l from-transparent via-red-400/20 to-transparent"></div>
+      </div>
+
+      <div className="relative max-w-4xl mx-auto px-6 py-12">
+        {/* Header */}
+        <div className="mb-12">
           <Link 
             href={`/auctions/${auction.id}`} 
-            className="text-caption text-gray-600 hover:text-indigo-600 mb-4 inline-block"
+            className="inline-flex items-center text-zinc-400 hover:text-white text-sm mb-8 transition-colors"
           >
-            ← BACK TO AUCTION
+            ← Back to Auction
           </Link>
-          <div className="accent-bar w-16 mb-4"></div>
-          <h1 className="text-heading text-gray-900 mb-2">Edit Auction</h1>
-          <p className="text-lg text-gray-600">
-            {isActive ? 'Update description and video details (auction is live)' : 'Update your auction details'}
-          </p>
+          
+          <div className="mb-8">
+            <div className="w-12 h-1 bg-violet-400 mb-4"></div>
+            <h1 className="text-4xl font-bold text-white mb-2">
+              Edit Auction
+            </h1>
+            <p className="text-lg text-zinc-300">
+              {isActive ? 'Update description and video details (auction is live)' : 'Update your auction details'}
+            </p>
+          </div>
           
           {/* Status Warning */}
           {isActive && (
-            <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mt-4">
-              <div className="flex items-center">
-                <svg className="w-5 h-5 text-orange-600 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z" />
-                </svg>
-                <p className="text-orange-800">
-                  <strong>Auction is live:</strong> Pricing and timing cannot be changed, but you can update the description and video details.
-                </p>
+            <div className="bg-amber-950/30 border border-amber-800/50 rounded-lg p-6 mb-8">
+              <div className="flex items-start space-x-4">
+                <div className="w-6 h-6 text-amber-400 mt-0.5">⚠</div>
+                <div>
+                  <h3 className="text-amber-400 font-medium mb-2">Auction is Live</h3>
+                  <p className="text-amber-200/80 text-sm">
+                    Pricing and timing cannot be changed while the auction is active, but you can update the description and video details.
+                  </p>
+                </div>
               </div>
             </div>
           )}
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6">
-            <p className="text-red-600">{error}</p>
+          <div className="bg-red-950/50 border border-red-800 rounded-lg p-4 mb-8">
+            <p className="text-red-200">{error}</p>
           </div>
         )}
 
         {/* Current Images Display */}
         {auction.images && auction.images.length > 0 && (
-          <div className="card p-6 mb-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Current Images</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-8 mb-10">
+            <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
+              <div className="w-2 h-2 bg-violet-400 rounded-full mr-3"></div>
+              Current Images
+            </h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {auction.images.map((image) => (
-                <div key={image.id} className="relative">
-                  <Image
-                    src={image.image_url}
-                    alt="Auction item"
-                    width={200}
-                    height={200}
-                    className="w-full h-32 object-cover rounded-lg"
-                  />
-                  {image.is_primary && (
-                    <span className="absolute top-2 left-2 bg-indigo-600 text-white text-xs px-2 py-1 rounded">
-                      Primary
-                    </span>
-                  )}
+                <div key={image.id} className="relative group">
+                  <div className="relative overflow-hidden rounded-lg bg-zinc-800">
+                    <Image
+                      src={image.image_url}
+                      alt="Auction item"
+                      width={200}
+                      height={200}
+                      className="w-full h-32 object-cover"
+                    />
+                    {image.is_primary && (
+                      <div className="absolute top-2 left-2 bg-violet-600 text-white text-xs px-2 py-1 rounded font-mono">
+                        PRIMARY
+                      </div>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
-            <p className="text-sm text-gray-500 mt-3">
-              Note: Image management will be available in a future update. Contact support to change images.
-            </p>
+            <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4">
+              <p className="text-zinc-400 text-sm font-mono">
+                📷 IMAGE MANAGEMENT: Contact support to modify images
+              </p>
+            </div>
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="card p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Basic Information</h3>
+        <form onSubmit={handleSubmit} className="space-y-10">
+          {/* Basic Information */}
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-8">
+            <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
+              <div className="w-2 h-2 bg-violet-400 rounded-full mr-3"></div>
+              Basic Information
+            </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="md:col-span-2">
-                <label htmlFor="title" className="block text-caption text-gray-700 mb-2">
-                  AUCTION TITLE *
+                <label htmlFor="title" className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-3">
+                  Auction Title *
                 </label>
                 <input
                   id="title"
@@ -325,14 +369,16 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
                   value={formData.title}
                   onChange={handleInputChange}
                   disabled={!canEditBasicInfo}
-                  className={`input w-full ${!canEditBasicInfo ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                  className={`w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors ${
+                    !canEditBasicInfo ? 'bg-zinc-900 cursor-not-allowed opacity-50' : ''
+                  }`}
                   placeholder="Enter auction title"
                 />
               </div>
 
               <div className="md:col-span-2">
-                <label htmlFor="description" className="block text-caption text-gray-700 mb-2">
-                  DESCRIPTION
+                <label htmlFor="description" className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-3">
+                  Description
                 </label>
                 <textarea
                   id="description"
@@ -340,14 +386,14 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
                   rows={4}
                   value={formData.description}
                   onChange={handleInputChange}
-                  className="input w-full resize-none"
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors resize-none"
                   placeholder="Describe your item..."
                 />
               </div>
 
               <div>
-                <label htmlFor="category_id" className="block text-caption text-gray-700 mb-2">
-                  CATEGORY *
+                <label htmlFor="category_id" className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-3">
+                  Category *
                 </label>
                 <select
                   id="category_id"
@@ -356,7 +402,9 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
                   value={formData.category_id}
                   onChange={handleInputChange}
                   disabled={!canEditBasicInfo}
-                  className={`input w-full ${!canEditBasicInfo ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                  className={`w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors ${
+                    !canEditBasicInfo ? 'bg-zinc-900 cursor-not-allowed opacity-50' : ''
+                  }`}
                 >
                   <option value="">Select a category</option>
                   {categories.map(category => (
@@ -368,8 +416,8 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
               </div>
 
               <div>
-                <label htmlFor="condition" className="block text-caption text-gray-700 mb-2">
-                  CONDITION *
+                <label htmlFor="condition" className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-3">
+                  Condition *
                 </label>
                 <select
                   id="condition"
@@ -378,7 +426,9 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
                   value={formData.condition}
                   onChange={handleInputChange}
                   disabled={!canEditBasicInfo}
-                  className={`input w-full ${!canEditBasicInfo ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                  className={`w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors ${
+                    !canEditBasicInfo ? 'bg-zinc-900 cursor-not-allowed opacity-50' : ''
+                  }`}
                 >
                   <option value="new">New</option>
                   <option value="like-new">Like New</option>
@@ -390,20 +440,28 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
             </div>
           </div>
 
-          <div className="card p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">
-              Pricing & Timing
-              {!canEditPricing && <span className="text-sm text-gray-500 ml-2">(Cannot be changed - auction is live)</span>}
-            </h3>
+          {/* Pricing & Timing */}
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-8">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-white flex items-center">
+                <div className="w-2 h-2 bg-violet-400 rounded-full mr-3"></div>
+                Pricing & Timing
+              </h3>
+              {!canEditPricing && (
+                <div className="bg-amber-900/30 border border-amber-800/50 rounded px-3 py-1">
+                  <span className="text-amber-400 text-xs font-mono">LOCKED - AUCTION LIVE</span>
+                </div>
+              )}
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
-                <label htmlFor="starting_price" className="block text-caption text-gray-700 mb-2">
-                  STARTING PRICE *
+                <label htmlFor="starting_price" className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-3">
+                  Starting Price *
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500">$</span>
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <span className="text-zinc-500 font-mono">$</span>
                   </div>
                   <input
                     id="starting_price"
@@ -415,19 +473,21 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
                     value={formData.starting_price}
                     onChange={handleInputChange}
                     disabled={!canEditPricing}
-                    className={`input w-full pl-7 ${!canEditPricing ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                    className={`w-full bg-zinc-800 border border-zinc-700 rounded-lg pl-8 pr-4 py-3 text-white placeholder-zinc-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors font-mono ${
+                      !canEditPricing ? 'bg-zinc-900 cursor-not-allowed opacity-50' : ''
+                    }`}
                     placeholder="0.00"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="reserve_price" className="block text-caption text-gray-700 mb-2">
-                  RESERVE PRICE (Optional)
+                <label htmlFor="reserve_price" className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-3">
+                  Reserve Price
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500">$</span>
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <span className="text-zinc-500 font-mono">$</span>
                   </div>
                   <input
                     id="reserve_price"
@@ -438,19 +498,21 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
                     value={formData.reserve_price}
                     onChange={handleInputChange}
                     disabled={!canEditPricing}
-                    className={`input w-full pl-7 ${!canEditPricing ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                    className={`w-full bg-zinc-800 border border-zinc-700 rounded-lg pl-8 pr-4 py-3 text-white placeholder-zinc-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors font-mono ${
+                      !canEditPricing ? 'bg-zinc-900 cursor-not-allowed opacity-50' : ''
+                    }`}
                     placeholder="0.00"
                   />
                 </div>
               </div>
 
               <div>
-                <label htmlFor="buy_now_price" className="block text-caption text-gray-700 mb-2">
-                  BUY NOW PRICE (Optional)
+                <label htmlFor="buy_now_price" className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-3">
+                  Buy Now Price
                 </label>
                 <div className="relative">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500">$</span>
+                  <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <span className="text-zinc-500 font-mono">$</span>
                   </div>
                   <input
                     id="buy_now_price"
@@ -461,15 +523,17 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
                     value={formData.buy_now_price}
                     onChange={handleInputChange}
                     disabled={!canEditPricing}
-                    className={`input w-full pl-7 ${!canEditPricing ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                    className={`w-full bg-zinc-800 border border-zinc-700 rounded-lg pl-8 pr-4 py-3 text-white placeholder-zinc-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors font-mono ${
+                      !canEditPricing ? 'bg-zinc-900 cursor-not-allowed opacity-50' : ''
+                    }`}
                     placeholder="0.00"
                   />
                 </div>
               </div>
 
               <div className="md:col-span-3">
-                <label htmlFor="end_time" className="block text-caption text-gray-700 mb-2">
-                  AUCTION END TIME *
+                <label htmlFor="end_time" className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-3">
+                  Auction End Time *
                 </label>
                 <input
                   id="end_time"
@@ -479,19 +543,25 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
                   value={formData.end_time}
                   onChange={handleInputChange}
                   disabled={!canEditPricing}
-                  className={`input w-full md:w-auto ${!canEditPricing ? 'bg-gray-100 cursor-not-allowed' : ''}`}
+                  className={`bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors font-mono ${
+                    !canEditPricing ? 'bg-zinc-900 cursor-not-allowed opacity-50' : ''
+                  }`}
                 />
               </div>
             </div>
           </div>
 
-          <div className="card p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-6">Video Information</h3>
+          {/* Video Information */}
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-8">
+            <h3 className="text-xl font-semibold text-white mb-6 flex items-center">
+              <div className="w-2 h-2 bg-violet-400 rounded-full mr-3"></div>
+              Video Information
+            </h3>
             
             <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               <div className="md:col-span-3">
-                <label htmlFor="video_url" className="block text-caption text-gray-700 mb-2">
-                  VIDEO URL *
+                <label htmlFor="video_url" className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-3">
+                  Video URL *
                 </label>
                 <input
                   id="video_url"
@@ -500,14 +570,14 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
                   required
                   value={formData.video_url}
                   onChange={handleInputChange}
-                  className="input w-full"
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
                   placeholder="https://youtube.com/watch?v=..."
                 />
               </div>
 
               <div>
-                <label htmlFor="video_timestamp" className="block text-caption text-gray-700 mb-2">
-                  TIMESTAMP (seconds)
+                <label htmlFor="video_timestamp" className="block text-xs font-mono text-zinc-400 uppercase tracking-wider mb-3">
+                  Timestamp (sec)
                 </label>
                 <input
                   id="video_timestamp"
@@ -516,26 +586,34 @@ export default function EditAuctionPage({ params }: { params: Promise<{ id: stri
                   min="0"
                   value={formData.video_timestamp}
                   onChange={handleInputChange}
-                  className="input w-full"
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors font-mono"
                   placeholder="0"
                 />
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end space-x-4">
+          {/* Action Buttons */}
+          <div className="flex justify-end space-x-4 pt-8">
             <Link
               href={`/auctions/${auction.id}`}
-              className="btn-secondary"
+              className="bg-zinc-700 hover:bg-zinc-600 text-white px-8 py-3 rounded-lg font-medium transition-colors"
             >
               Cancel
             </Link>
             <button
               type="submit"
               disabled={saving}
-              className="btn-primary disabled:opacity-50"
+              className="bg-violet-600 hover:bg-violet-700 disabled:bg-zinc-600 disabled:cursor-not-allowed text-white px-8 py-3 rounded-lg font-medium transition-colors flex items-center space-x-2"
             >
-              {saving ? 'Saving Changes...' : 'Save Changes'}
+              {saving ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Saving...</span>
+                </>
+              ) : (
+                <span>Save Changes</span>
+              )}
             </button>
           </div>
         </form>
