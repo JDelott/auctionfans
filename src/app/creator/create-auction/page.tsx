@@ -123,37 +123,54 @@ export default function CreateAuctionPage() {
 
   if (loading || !user) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="w-8 h-8 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
+        <div className="relative">
+          <div className="w-12 h-12 border-2 border-violet-400 border-t-transparent rounded-full animate-spin"></div>
+          <div className="absolute inset-0 w-12 h-12 border-2 border-red-400/20 rounded-full animate-ping"></div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-indigo-50">
-      <div className="max-w-4xl mx-auto px-6 py-12">
-        <div className="mb-8">
-          <Link href="/dashboard" className="text-caption text-gray-600 hover:text-indigo-600 mb-4 inline-block">
-            ← BACK TO DASHBOARD
+    <div className="min-h-screen bg-zinc-950 text-white">
+      <div className="max-w-3xl mx-auto px-6 py-12">
+        {/* Header */}
+        <div className="mb-12">
+          <Link 
+            href="/dashboard" 
+            className="inline-flex items-center text-zinc-400 hover:text-white text-sm mb-8 transition-colors"
+          >
+            ← Back to Dashboard
           </Link>
-          <div className="accent-bar w-16 mb-4"></div>
-          <h1 className="text-heading text-gray-900 mb-2">Create New Auction</h1>
-          <p className="text-lg text-gray-600">List an authentic item from your content</p>
+          
+          <div className="mb-8">
+            <div className="w-12 h-1 bg-violet-400 mb-4"></div>
+            <h1 className="text-4xl font-bold text-white mb-2">
+              Create New Auction
+            </h1>
+            <p className="text-lg text-zinc-300">
+              List an authentic item from your content
+            </p>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="card p-8">
+        {/* Form */}
+        <form onSubmit={handleSubmit} className="space-y-10">
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-6 py-4 rounded-lg mb-6">
-              {error}
+            <div className="bg-red-950/50 border border-red-800 rounded-lg p-4">
+              <p className="text-red-200 text-sm">{error}</p>
             </div>
           )}
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-            {/* Left Column */}
+          {/* Basic Information */}
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-8">
+            <h2 className="text-xl font-semibold text-white mb-6">Basic Information</h2>
+            
             <div className="space-y-6">
               <div>
-                <label htmlFor="title" className="block text-caption text-gray-700 mb-2">
-                  ITEM TITLE *
+                <label htmlFor="title" className="block text-sm font-medium text-zinc-300 mb-2">
+                  Item Title *
                 </label>
                 <input
                   id="title"
@@ -162,14 +179,14 @@ export default function CreateAuctionPage() {
                   required
                   value={formData.title}
                   onChange={handleInputChange}
-                  className="input w-full"
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
                   placeholder="Gaming headset used in stream setup"
                 />
               </div>
 
               <div>
-                <label htmlFor="description" className="block text-caption text-gray-700 mb-2">
-                  DESCRIPTION *
+                <label htmlFor="description" className="block text-sm font-medium text-zinc-300 mb-2">
+                  Description *
                 </label>
                 <textarea
                   id="description"
@@ -178,78 +195,64 @@ export default function CreateAuctionPage() {
                   rows={4}
                   value={formData.description}
                   onChange={handleInputChange}
-                  className="input w-full resize-none"
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors resize-none"
                   placeholder="Describe the item's condition, usage, and any special significance..."
                 />
               </div>
 
-              <div>
-                <label htmlFor="category_id" className="block text-caption text-gray-700 mb-2">
-                  CATEGORY *
-                </label>
-                <select
-                  id="category_id"
-                  name="category_id"
-                  required
-                  value={formData.category_id}
-                  onChange={handleInputChange}
-                  className="input w-full"
-                >
-                  <option value="">Select a category</option>
-                  {categories.map(category => (
-                    <option key={category.id} value={category.id}>
-                      {category.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="category_id" className="block text-sm font-medium text-zinc-300 mb-2">
+                    Category *
+                  </label>
+                  <select
+                    id="category_id"
+                    name="category_id"
+                    required
+                    value={formData.category_id}
+                    onChange={handleInputChange}
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
+                  >
+                    <option value="" className="bg-zinc-800 text-zinc-400">Select a category</option>
+                    {categories.map(category => (
+                      <option key={category.id} value={category.id} className="bg-zinc-800 text-white">
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
 
-              <div>
-                <label htmlFor="condition" className="block text-caption text-gray-700 mb-2">
-                  CONDITION *
-                </label>
-                <select
-                  id="condition"
-                  name="condition"
-                  required
-                  value={formData.condition}
-                  onChange={handleInputChange}
-                  className="input w-full"
-                >
-                  <option value="new">New</option>
-                  <option value="like_new">Like New</option>
-                  <option value="good">Good</option>
-                  <option value="fair">Fair</option>
-                  <option value="poor">Poor</option>
-                </select>
-              </div>
-
-              <div>
-                <label htmlFor="images" className="block text-caption text-gray-700 mb-2">
-                  IMAGES (MAX 5)
-                </label>
-                <input
-                  id="images"
-                  name="images"
-                  type="file"
-                  multiple
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="input w-full"
-                />
-                {formData.images.length > 0 && (
-                  <p className="text-sm text-gray-600 mt-2">
-                    {formData.images.length} file(s) selected
-                  </p>
-                )}
+                <div>
+                  <label htmlFor="condition" className="block text-sm font-medium text-zinc-300 mb-2">
+                    Condition *
+                  </label>
+                  <select
+                    id="condition"
+                    name="condition"
+                    required
+                    value={formData.condition}
+                    onChange={handleInputChange}
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
+                  >
+                    <option value="new" className="bg-zinc-800 text-white">New</option>
+                    <option value="like_new" className="bg-zinc-800 text-white">Like New</option>
+                    <option value="good" className="bg-zinc-800 text-white">Good</option>
+                    <option value="fair" className="bg-zinc-800 text-white">Fair</option>
+                    <option value="poor" className="bg-zinc-800 text-white">Poor</option>
+                  </select>
+                </div>
               </div>
             </div>
+          </div>
 
-            {/* Right Column */}
+          {/* Video Information */}
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-8">
+            <h2 className="text-xl font-semibold text-white mb-6">Video Information</h2>
+            
             <div className="space-y-6">
               <div>
-                <label htmlFor="video_url" className="block text-caption text-gray-700 mb-2">
-                  VIDEO URL *
+                <label htmlFor="video_url" className="block text-sm font-medium text-zinc-300 mb-2">
+                  Video URL *
                 </label>
                 <input
                   id="video_url"
@@ -258,14 +261,17 @@ export default function CreateAuctionPage() {
                   required
                   value={formData.video_url}
                   onChange={handleInputChange}
-                  className="input w-full"
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
                   placeholder="https://youtube.com/watch?v=..."
                 />
+                <p className="text-sm text-zinc-500 mt-2">
+                  Link to the video where this item appears
+                </p>
               </div>
 
               <div>
-                <label htmlFor="video_timestamp" className="block text-caption text-gray-700 mb-2">
-                  VIDEO TIMESTAMP (SECONDS)
+                <label htmlFor="video_timestamp" className="block text-sm font-medium text-zinc-300 mb-2">
+                  Video Timestamp (seconds)
                 </label>
                 <input
                   id="video_timestamp"
@@ -273,14 +279,24 @@ export default function CreateAuctionPage() {
                   type="number"
                   value={formData.video_timestamp}
                   onChange={handleInputChange}
-                  className="input w-full"
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
                   placeholder="120"
                 />
+                <p className="text-sm text-zinc-500 mt-2">
+                  When the item appears in the video (optional)
+                </p>
               </div>
+            </div>
+          </div>
 
+          {/* Pricing */}
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-8">
+            <h2 className="text-xl font-semibold text-white mb-6">Pricing</h2>
+            
+            <div className="space-y-6">
               <div>
-                <label htmlFor="starting_price" className="block text-caption text-gray-700 mb-2">
-                  STARTING PRICE ($) *
+                <label htmlFor="starting_price" className="block text-sm font-medium text-zinc-300 mb-2">
+                  Starting Price ($) *
                 </label>
                 <input
                   id="starting_price"
@@ -291,79 +307,125 @@ export default function CreateAuctionPage() {
                   required
                   value={formData.starting_price}
                   onChange={handleInputChange}
-                  className="input w-full"
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
                   placeholder="25.00"
                 />
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label htmlFor="reserve_price" className="block text-sm font-medium text-zinc-300 mb-2">
+                    Reserve Price ($)
+                  </label>
+                  <input
+                    id="reserve_price"
+                    name="reserve_price"
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    value={formData.reserve_price}
+                    onChange={handleInputChange}
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
+                    placeholder="50.00"
+                  />
+                  <p className="text-xs text-zinc-500 mt-2">
+                    Minimum price to sell
+                  </p>
+                </div>
+
+                <div>
+                  <label htmlFor="buy_now_price" className="block text-sm font-medium text-zinc-300 mb-2">
+                    Buy Now Price ($)
+                  </label>
+                  <input
+                    id="buy_now_price"
+                    name="buy_now_price"
+                    type="number"
+                    step="0.01"
+                    min="1"
+                    value={formData.buy_now_price}
+                    onChange={handleInputChange}
+                    className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
+                    placeholder="100.00"
+                  />
+                  <p className="text-xs text-zinc-500 mt-2">
+                    Instant purchase price
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Images & Duration */}
+          <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-8">
+            <h2 className="text-xl font-semibold text-white mb-6">Images & Duration</h2>
+            
+            <div className="space-y-6">
               <div>
-                <label htmlFor="reserve_price" className="block text-caption text-gray-700 mb-2">
-                  RESERVE PRICE ($)
+                <label htmlFor="images" className="block text-sm font-medium text-zinc-300 mb-2">
+                  Images (max 5)
                 </label>
                 <input
-                  id="reserve_price"
-                  name="reserve_price"
-                  type="number"
-                  step="0.01"
-                  min="1"
-                  value={formData.reserve_price}
-                  onChange={handleInputChange}
-                  className="input w-full"
-                  placeholder="50.00"
+                  id="images"
+                  name="images"
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-violet-600 file:text-white hover:file:bg-violet-700 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
                 />
+                {formData.images.length > 0 && (
+                  <div className="mt-3 flex items-center space-x-2">
+                    <div className="w-2 h-2 bg-green-400 rounded-full"></div>
+                    <p className="text-green-400 text-sm">
+                      {formData.images.length} file(s) selected
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div>
-                <label htmlFor="buy_now_price" className="block text-caption text-gray-700 mb-2">
-                  BUY NOW PRICE ($)
-                </label>
-                <input
-                  id="buy_now_price"
-                  name="buy_now_price"
-                  type="number"
-                  step="0.01"
-                  min="1"
-                  value={formData.buy_now_price}
-                  onChange={handleInputChange}
-                  className="input w-full"
-                  placeholder="100.00"
-                />
-              </div>
-
-              <div>
-                <label htmlFor="duration_days" className="block text-caption text-gray-700 mb-2">
-                  AUCTION DURATION
+                <label htmlFor="duration_days" className="block text-sm font-medium text-zinc-300 mb-2">
+                  Auction Duration
                 </label>
                 <select
                   id="duration_days"
                   name="duration_days"
                   value={formData.duration_days}
                   onChange={handleInputChange}
-                  className="input w-full"
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-colors"
                 >
-                  <option value="1">1 Day</option>
-                  <option value="3">3 Days</option>
-                  <option value="7">7 Days</option>
-                  <option value="10">10 Days</option>
-                  <option value="14">14 Days</option>
+                  <option value="1" className="bg-zinc-800 text-white">1 Day</option>
+                  <option value="3" className="bg-zinc-800 text-white">3 Days</option>
+                  <option value="7" className="bg-zinc-800 text-white">7 Days</option>
+                  <option value="10" className="bg-zinc-800 text-white">10 Days</option>
+                  <option value="14" className="bg-zinc-800 text-white">14 Days</option>
                 </select>
               </div>
             </div>
           </div>
 
-          <div className="flex justify-end space-x-4 mt-8 pt-6 border-t border-gray-200">
+          {/* Form Actions */}
+          <div className="flex justify-end space-x-4 pt-6">
             <Link
               href="/dashboard"
-              className="btn-secondary"
+              className="px-6 py-3 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-zinc-600"
             >
               Cancel
             </Link>
             <button
               type="submit"
               disabled={submitting}
-              className="btn-primary disabled:opacity-50"
+              className="px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-violet-500 flex items-center space-x-2"
             >
-              {submitting ? 'Creating Auction...' : 'Create Auction'}
+              {submitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                  <span>Creating...</span>
+                </>
+              ) : (
+                <span>Create Auction</span>
+              )}
             </button>
           </div>
         </form>
