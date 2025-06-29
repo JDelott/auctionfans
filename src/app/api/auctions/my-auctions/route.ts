@@ -16,12 +16,32 @@ export async function GET(request: NextRequest) {
 
     const result = await query(
       `SELECT 
-        id, title, description, current_price, starting_price, status,
-        start_time, end_time, created_at,
-        (SELECT COUNT(*) FROM bids WHERE auction_item_id = auction_items.id) as bid_count
-       FROM auction_items 
-       WHERE creator_id = $1 
-       ORDER BY created_at DESC`,
+        ai.id, 
+        ai.title, 
+        ai.description, 
+        ai.current_price, 
+        ai.starting_price, 
+        ai.status,
+        ai.start_time, 
+        ai.end_time, 
+        ai.created_at,
+        (SELECT COUNT(*) FROM bids WHERE auction_item_id = ai.id) as bid_count,
+        (
+          SELECT image_url 
+          FROM auction_item_images 
+          WHERE auction_item_id = ai.id AND is_primary = true 
+          LIMIT 1
+        ) as primary_image,
+        (
+          SELECT image_url 
+          FROM auction_item_images 
+          WHERE auction_item_id = ai.id 
+          ORDER BY created_at ASC 
+          LIMIT 1
+        ) as image_url
+       FROM auction_items ai
+       WHERE ai.creator_id = $1 
+       ORDER BY ai.created_at DESC`,
       [decoded.userId]
     );
 

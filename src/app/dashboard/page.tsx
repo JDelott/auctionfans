@@ -191,18 +191,38 @@ export default function DashboardPage() {
     }
   };
 
-  // Improved image URL helper
+  // Helper function to get item ID
+  const getItemId = (item: DashboardItem): string => {
+    if ('id' in item && item.id) return item.id;
+    if ('auction_id' in item && item.auction_id) return item.auction_id;
+    return 'unknown';
+  };
+
+  // Helper function to get item title
+  const getItemTitle = (item: DashboardItem): string => {
+    if ('title' in item && item.title) return item.title;
+    if ('auction_title' in item && item.auction_title) return item.auction_title;
+    return 'unknown';
+  };
+
+  // Improved image URL helper with better debugging
   const getImageUrl = (item: DashboardItem): string | null => {
-    const imageUrl = item.image_url || item.primary_image;
+    // Check for primary_image first (preferred)
+    const imageUrl = item.primary_image || item.image_url;
     
     if (!imageUrl) {
-      console.log('No image URL found for item:', item); // Debug log
+      console.log('No image URL found for item:', {
+        id: getItemId(item),
+        title: getItemTitle(item),
+        primary_image: item.primary_image,
+        image_url: item.image_url
+      });
       return null;
     }
     
     console.log('Image URL found:', imageUrl); // Debug log
     
-    // Handle relative URLs
+    // Handle relative URLs - ensure they start with /
     if (imageUrl.startsWith('/')) {
       return imageUrl;
     }
@@ -212,15 +232,17 @@ export default function DashboardPage() {
       return imageUrl;
     }
     
-    // Handle uploads path
+    // Handle uploads path - ensure proper formatting
     if (imageUrl.includes('uploads/')) {
-      return imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+      const cleanUrl = imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
+      return cleanUrl;
     }
     
-    return imageUrl;
+    // Default case - add leading slash if missing
+    return imageUrl.startsWith('/') ? imageUrl : `/${imageUrl}`;
   };
 
-  // Better image component with debugging
+  // Better image component with improved error handling
   const ItemImage = ({ item, size = 64, className = "" }: { 
     item: DashboardItem; 
     size?: number; 
@@ -231,37 +253,46 @@ export default function DashboardPage() {
     const imageUrl = getImageUrl(item);
 
     const handleError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-      console.error('Image failed to load:', imageUrl, e); // Debug log
+      console.error('Image failed to load:', {
+        url: imageUrl,
+        error: e,
+        item: {
+          id: getItemId(item),
+          title: getItemTitle(item)
+        }
+      });
       setImageError(true);
       setImageLoading(false);
     };
 
     const handleLoad = () => {
-      console.log('Image loaded successfully:', imageUrl); // Debug log
+      console.log('Image loaded successfully:', imageUrl);
       setImageLoading(false);
+      setImageError(false);
     };
 
     const getTitle = (item: DashboardItem): string => {
-      if ('title' in item && item.title) return item.title;
-      if ('auction_title' in item && item.auction_title) return item.auction_title;
-      return 'Item image';
+      return getItemTitle(item);
     };
 
     if (!imageUrl || imageError) {
       return (
-        <div className={`bg-zinc-800 flex items-center justify-center ${className}`}>
-          <div className="w-6 h-6 border border-zinc-600 rounded"></div>
-          {!imageUrl && <div className="sr-only">No image</div>}
-          {imageError && <div className="sr-only">Image failed to load</div>}
+        <div className={`bg-zinc-800 border border-zinc-700 flex items-center justify-center ${className}`}>
+          <div className="flex flex-col items-center justify-center p-2">
+            <div className="w-4 h-4 border border-zinc-600 rounded mb-1"></div>
+            <div className="text-[10px] text-zinc-500 font-mono text-center">
+              {!imageUrl ? 'NO IMG' : 'FAILED'}
+            </div>
+          </div>
         </div>
       );
     }
 
     return (
-      <div className={`relative overflow-hidden ${className}`}>
+      <div className={`relative overflow-hidden bg-zinc-900 ${className}`}>
         {imageLoading && (
           <div className="absolute inset-0 bg-zinc-800 flex items-center justify-center z-10">
-            <div className="w-4 h-4 border border-zinc-600 border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-3 h-3 border border-zinc-600 border-t-transparent rounded-full animate-spin"></div>
           </div>
         )}
         <Image
@@ -272,7 +303,7 @@ export default function DashboardPage() {
           onError={handleError}
           onLoad={handleLoad}
           sizes={`${size}px`}
-          unoptimized={true} // Force unoptimized for debugging
+          unoptimized={false} // Allow Next.js optimization
         />
       </div>
     );
