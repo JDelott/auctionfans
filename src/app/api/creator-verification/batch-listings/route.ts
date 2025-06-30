@@ -91,12 +91,12 @@ export async function POST(request: NextRequest) {
       const startTime = new Date(); // Start immediately
       const endTime = new Date(startTime.getTime() + (listing.duration_days * 24 * 60 * 60 * 1000)); // Add duration in milliseconds
 
-      // Create auction item first
+      // Create auction item first (remove image_url from INSERT)
       const auctionResult = await query(`
         INSERT INTO auction_items (
           creator_id, title, description, category_id, starting_price, buy_now_price, 
-          reserve_price, condition, start_time, end_time, video_url, status, current_price
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+          reserve_price, condition, start_time, end_time, status, current_price
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
         RETURNING id
       `, [
         user.id,
@@ -109,12 +109,25 @@ export async function POST(request: NextRequest) {
         listing.condition,
         startTime,
         endTime,
-        imagePath, // Using image path as video_url temporarily
         'active',
         parseFloat(listing.starting_price) // Set current_price to starting_price
       ]);
 
       const auctionItemId = auctionResult.rows[0].id;
+
+      // Store image in auction_item_images table if uploaded
+      if (imagePath) {
+        await query(`
+          INSERT INTO auction_item_images (
+            auction_item_id, image_url, is_primary, sort_order
+          ) VALUES ($1, $2, $3, $4)
+        `, [
+          auctionItemId,
+          imagePath,
+          true, // Make it the primary image
+          0 // First image, sort order 0
+        ]);
+      }
 
       // Create authenticated listing linking to the auction
       const authListingResult = await query(`
