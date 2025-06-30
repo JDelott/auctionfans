@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useSpeechRecognition } from '@/lib/hooks/useSpeechRecognition';
 
 interface VoiceTextInputProps {
@@ -13,7 +12,6 @@ export function VoiceTextInput({
   currentText, 
   className = ""
 }: VoiceTextInputProps) {
-  const [showOptions, setShowOptions] = useState(false);
   const {
     isListening,
     transcript,
@@ -27,10 +25,14 @@ export function VoiceTextInput({
     if (isListening) {
       stopListening();
       
-      // Show options after stopping recording
+      // Automatically append the transcript to existing text after stopping
       setTimeout(() => {
         if (transcript.trim()) {
-          setShowOptions(true);
+          const newText = currentText.trim() 
+            ? `${currentText.trim()} ${transcript.trim()}`
+            : transcript.trim();
+          onTextUpdate(newText);
+          clearTranscript();
         }
       }, 500);
     } else {
@@ -39,58 +41,44 @@ export function VoiceTextInput({
     }
   };
 
-  const handleReplace = () => {
-    onTextUpdate(transcript.trim());
-    setShowOptions(false);
-    clearTranscript();
-  };
-
-  const handleAppend = () => {
-    const newText = currentText.trim() 
-      ? `${currentText.trim()} ${transcript.trim()}`
-      : transcript.trim();
-    onTextUpdate(newText);
-    setShowOptions(false);
-    clearTranscript();
-  };
-
-  const handleCancel = () => {
-    setShowOptions(false);
-    clearTranscript();
-  };
-
   if (!isSupported) return null;
 
   return (
     <div className="relative">
-      <div className={`flex items-center gap-3 ${className}`}>
+      <div className={`flex items-center gap-4 ${className}`}>
         <button
           type="button"
           onClick={handleMicClick}
-          className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center transition-all duration-200 ${
+          className={`group flex-shrink-0 w-11 h-11 rounded-xl flex items-center justify-center transition-all duration-200 ${
             isListening
-              ? 'bg-red-600 hover:bg-red-700 animate-pulse scale-110'
-              : 'bg-violet-600 hover:bg-violet-700 hover:scale-105'
-          } text-white shadow-lg relative`}
+              ? 'bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/25 scale-105'
+              : 'bg-violet-500 hover:bg-violet-600 hover:shadow-lg hover:shadow-violet-500/25 hover:scale-105'
+          } text-white border border-white/10 backdrop-blur-sm`}
           title={isListening ? 'Stop recording' : 'Start voice input'}
         >
           {isListening ? (
-            <div className="flex items-center justify-center">
-              <span className="text-lg">⏹</span>
-              <div className="absolute -inset-1 rounded-full bg-red-500/30 animate-ping"></div>
+            <div className="relative flex items-center justify-center">
+              <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8 7a1 1 0 00-1 1v4a1 1 0 001 1h4a1 1 0 001-1V8a1 1 0 00-1-1H8z" clipRule="evenodd" />
+              </svg>
+              <div className="absolute -inset-1 rounded-xl bg-red-400/30 animate-ping"></div>
             </div>
           ) : (
-            <span className="text-lg">🎤</span>
+            <svg className="w-5 h-5 group-hover:scale-110 transition-transform duration-200" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
+            </svg>
           )}
         </button>
 
-        <div className="flex-1 text-sm text-zinc-400">
+        <div className="flex-1 text-sm">
           {isListening ? (
-            <div className="text-violet-300">
-              🎤 Listening... <span className="text-zinc-400">(Click stop when done)</span>
+            <div className="flex items-center gap-2 text-violet-300">
+              <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+              <span className="font-medium">Listening...</span>
+              <span className="text-slate-400">(Click stop when done)</span>
             </div>
           ) : (
-            <div>
+            <div className="text-slate-400">
               Click the microphone to add text using voice input
             </div>
           )}
@@ -99,40 +87,14 @@ export function VoiceTextInput({
 
       {/* Live transcript preview */}
       {isListening && transcript && (
-        <div className="mt-3 bg-zinc-800/50 border border-zinc-700 rounded-lg p-3">
-          <div className="text-xs text-violet-400 mb-1">Current transcript:</div>
-          <div className="text-sm text-white italic">&quot;{transcript}&quot;</div>
-        </div>
-      )}
-
-      {/* Action options after recording */}
-      {showOptions && transcript && (
-        <div className="mt-3 bg-zinc-900 border border-zinc-700 rounded-lg p-4">
-          <div className="text-sm text-white mb-3">
-            <div className="text-xs text-zinc-400 mb-2">Recorded text:</div>
-            <div className="italic bg-zinc-800 rounded p-2">&quot;{transcript}&quot;</div>
+        <div className="mt-4 bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+            </svg>
+            <div className="text-xs text-violet-400 font-medium uppercase tracking-wide">Live Transcript</div>
           </div>
-          
-          <div className="flex gap-2">
-            <button
-              onClick={handleReplace}
-              className="flex-1 bg-violet-600 hover:bg-violet-700 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
-            >
-              Replace All Text
-            </button>
-            <button
-              onClick={handleAppend}
-              className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white px-3 py-2 rounded text-sm font-medium transition-colors"
-            >
-              Add to Existing
-            </button>
-            <button
-              onClick={handleCancel}
-              className="bg-zinc-600 hover:bg-zinc-500 text-white px-3 py-2 rounded text-sm transition-colors"
-            >
-              Cancel
-            </button>
-          </div>
+          <div className="text-sm text-white bg-slate-900/50 rounded-lg p-3 italic">&quot;{transcript}&quot;</div>
         </div>
       )}
     </div>

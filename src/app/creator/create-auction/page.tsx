@@ -371,7 +371,7 @@ export default function CreateAuctionPage() {
                 />
                 
                 <p className="text-xs text-zinc-500">
-                  💡 This helps our AI understand the context and generate better titles, descriptions, and categories for your items.
+                  This helps our AI understand the context and generate better titles, descriptions, and categories for your items.
                 </p>
               </div>
 
