@@ -54,6 +54,7 @@ export async function POST(request: NextRequest) {
         item_position_in_video: parseInt(formData.get(`listings[${index}][item_position_in_video]`) as string),
         video_timestamp_start: formData.get(`listings[${index}][video_timestamp_start]`) as string,
         video_timestamp_end: formData.get(`listings[${index}][video_timestamp_end]`) as string,
+        published_content_url: formData.get(`listings[${index}][published_content_url]`) as string,
         image_file: formData.get(`images[${index}]`) as File,
       };
       listings.push(listing);
@@ -133,8 +134,8 @@ export async function POST(request: NextRequest) {
       const authListingResult = await query(`
         INSERT INTO authenticated_listings (
           creator_id, auth_video_id, auction_item_id, item_position_in_video,
-          video_timestamp_start, video_timestamp_end, status
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+          video_timestamp_start, video_timestamp_end, published_content_url, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
         RETURNING id
       `, [
         user.id,
@@ -143,6 +144,7 @@ export async function POST(request: NextRequest) {
         listing.item_position_in_video,
         listing.video_timestamp_start ? parseInt(listing.video_timestamp_start) : null,
         listing.video_timestamp_end ? parseInt(listing.video_timestamp_end) : null,
+        listing.published_content_url,
         'verified'
       ]);
 

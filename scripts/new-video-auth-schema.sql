@@ -104,6 +104,9 @@ CREATE TABLE IF NOT EXISTS authenticated_listings (
     -- Verification status
     status VARCHAR(20) DEFAULT 'pending', -- pending, verified, published, sold
     
+    -- New column
+    published_content_url VARCHAR(500),
+    
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

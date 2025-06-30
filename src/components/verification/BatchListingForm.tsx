@@ -29,6 +29,7 @@ interface ListingItem {
   item_position_in_video: number;
   video_timestamp_start: number | null;
   video_timestamp_end: number | null;
+  published_content_url: string;
   product_image: File | null;
   product_image_preview: string;
 }
@@ -54,6 +55,7 @@ export default function BatchListingForm({ authVideo, onListingsCreated, onCance
       item_position_in_video: 1,
       video_timestamp_start: null,
       video_timestamp_end: null,
+      published_content_url: '',
       product_image: null,
       product_image_preview: '',
     }
@@ -95,6 +97,7 @@ export default function BatchListingForm({ authVideo, onListingsCreated, onCance
       item_position_in_video: listings.length + 1,
       video_timestamp_start: null,
       video_timestamp_end: null,
+      published_content_url: '',
       product_image: null,
       product_image_preview: '',
     }]);
@@ -182,6 +185,10 @@ export default function BatchListingForm({ authVideo, onListingsCreated, onCance
         setError(`Item ${i + 1}: Valid starting price is required`);
         return false;
       }
+      if (!listing.published_content_url.trim()) {
+        setError(`Item ${i + 1}: Published content URL is required`);
+        return false;
+      }
       if (!listing.product_image) {
         console.log(`No product image for listing ${i + 1}`, listing.product_image);
         setError(`Item ${i + 1}: Product image is required`);
@@ -215,6 +222,7 @@ export default function BatchListingForm({ authVideo, onListingsCreated, onCance
         formData.append(`listings[${index}][item_position_in_video]`, listing.item_position_in_video.toString());
         formData.append(`listings[${index}][video_timestamp_start]`, listing.video_timestamp_start?.toString() || '');
         formData.append(`listings[${index}][video_timestamp_end]`, listing.video_timestamp_end?.toString() || '');
+        formData.append(`listings[${index}][published_content_url]`, listing.published_content_url);
         
         if (listing.product_image) {
           formData.append(`images[${index}]`, listing.product_image);

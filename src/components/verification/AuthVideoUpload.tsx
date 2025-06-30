@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 
 interface AuthVideoUploadProps {
   onVideoUploaded: () => void;
@@ -18,15 +18,30 @@ export default function AuthVideoUpload({ onVideoUploaded, onCancel }: AuthVideo
   const fileInputRef = useRef<HTMLInputElement>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
 
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+  // Memoize video URL to prevent recreation on every render
+  const videoUrl = useMemo(() => {
+    return videoFile ? URL.createObjectURL(videoFile) : null;
+  }, [videoFile]);
+
+  // Optimize text change handler
+  const handleDeclarationTextChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setDeclarationText(e.target.value);
+  }, []);
+
+  // Optimize items count change handler
+  const handleItemsCountChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    setDeclaredItemsCount(parseInt(e.target.value));
+  }, []);
+
+  const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setVideoFile(file);
       setStep('upload');
     }
-  };
+  }, []);
 
-  const handleUpload = async () => {
+  const handleUpload = useCallback(async () => {
     if (!videoFile || !declarationText) {
       setError('Please complete all fields');
       return;
@@ -58,7 +73,53 @@ export default function AuthVideoUpload({ onVideoUploaded, onCancel }: AuthVideo
     } finally {
       setLoading(false);
     }
-  };
+  }, [videoFile, declarationText, declaredItemsCount, onVideoUploaded]);
+
+  // Memoize video preview component
+  const VideoPreview = useMemo(() => {
+    if (!videoFile || !videoUrl) return null;
+
+    return (
+      <div className="relative mb-8 overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-violet-500/5 rounded-2xl blur-xl"></div>
+        <div className="relative bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-3 h-3 bg-emerald-400 rounded-full"></div>
+            <h3 className="text-lg font-bold text-white tracking-tight">Video Preview</h3>
+          </div>
+          
+          <div className="relative bg-zinc-950/80 rounded-xl overflow-hidden border border-zinc-800/50 max-w-2xl mx-auto">
+            <video
+              ref={videoRef}
+              controls
+              className="w-full h-auto max-h-96 bg-zinc-900"
+              src={videoUrl}
+              style={{ objectFit: 'contain' }}
+            />
+          </div>
+          
+          <div className="mt-6 bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
+                <span className="text-sm text-zinc-300 font-medium">{videoFile.name}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-zinc-500 font-mono">
+                <span>{(videoFile.size / 1024 / 1024).toFixed(1)} MB</span>
+                <span>•</span>
+                <span className="px-2 py-1 bg-emerald-900/50 text-emerald-300 rounded">
+                  READY
+                </span>
+              </div>
+            </div>
+            <div className="mt-3 text-xs text-zinc-500 font-mono">
+              Preview your video above before submitting for verification
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }, [videoFile, videoUrl]);
 
   if (step === 'instructions') {
     return (
@@ -234,47 +295,8 @@ export default function AuthVideoUpload({ onVideoUploaded, onCancel }: AuthVideo
             </p>
           </div>
 
-          {/* Video Preview */}
-          {videoFile && (
-            <div className="relative mb-8 overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-violet-500/5 rounded-2xl blur-xl"></div>
-              <div className="relative bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6">
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="w-3 h-3 bg-emerald-400 rounded-full"></div>
-                  <h3 className="text-xl font-bold text-white tracking-tight">Video Preview</h3>
-                </div>
-                
-                <div className="relative bg-zinc-950/80 rounded-xl overflow-hidden border border-zinc-800/50 max-w-2xl mx-auto">
-                  <video
-                    ref={videoRef}
-                    controls
-                    className="w-full h-auto max-h-96 bg-zinc-900"
-                    src={URL.createObjectURL(videoFile)}
-                    style={{ objectFit: 'contain' }}
-                  />
-                </div>
-                
-                <div className="mt-6 bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
-                      <span className="text-sm text-zinc-300 font-medium">{videoFile.name}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-zinc-500 font-mono">
-                      <span>{(videoFile.size / 1024 / 1024).toFixed(1)} MB</span>
-                      <span>•</span>
-                      <span className="px-2 py-1 bg-emerald-900/50 text-emerald-300 rounded">
-                        READY
-                      </span>
-                    </div>
-                  </div>
-                  <div className="mt-3 text-xs text-zinc-500 font-mono">
-                    Preview your video above before submitting for verification
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* Video Preview - Memoized */}
+          {VideoPreview}
 
           {/* Form */}
           <div className="space-y-8">
@@ -293,7 +315,7 @@ export default function AuthVideoUpload({ onVideoUploaded, onCancel }: AuthVideo
                 
                 <select
                   value={declaredItemsCount}
-                  onChange={(e) => setDeclaredItemsCount(parseInt(e.target.value))}
+                  onChange={handleItemsCountChange}
                   className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors"
                 >
                   {[1,2,3,4,5,6,7,8,9,10].map(num => (
@@ -320,7 +342,7 @@ export default function AuthVideoUpload({ onVideoUploaded, onCancel }: AuthVideo
                 
                 <textarea
                   value={declarationText}
-                  onChange={(e) => setDeclarationText(e.target.value)}
+                  onChange={handleDeclarationTextChange}
                   placeholder="Example: 'Vintage Nike Air Jordan 1, red and black, size 10, good condition with original box. Supreme Box Logo hoodie, black, size large, worn once.'"
                   rows={4}
                   className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors resize-none"
