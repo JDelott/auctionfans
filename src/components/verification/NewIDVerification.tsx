@@ -2,7 +2,6 @@
 
 import { useState, useRef } from 'react';
 
-
 type VerificationStep = 'instructions' | 'id-upload' | 'selfie-upload' | 'review' | 'submitted';
 
 interface IDVerificationProps {
@@ -103,11 +102,12 @@ export default function NewIDVerification({ onVerificationSubmitted, onCancel }:
   return (
     <div className="max-w-2xl mx-auto">
       {error && (
-        <div className="bg-red-900/50 border border-red-700 rounded-lg p-4 mb-6">
+        <div className="relative bg-red-950/50 backdrop-blur-sm border border-red-800/50 rounded-lg p-4 mb-6 overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-red-500/40 to-transparent"></div>
           <p className="text-red-300 text-sm">{error}</p>
           <button
             onClick={() => setError('')}
-            className="text-red-400 hover:text-red-300 text-xs mt-2"
+            className="text-red-400 hover:text-red-300 text-xs mt-2 transition-colors duration-300"
           >
             Dismiss
           </button>
@@ -115,34 +115,50 @@ export default function NewIDVerification({ onVerificationSubmitted, onCancel }:
       )}
 
       {step === 'instructions' && (
-        <div className="text-center space-y-6">
-          <h3 className="text-2xl font-bold text-white">What You&apos;ll Need</h3>
+        <div className="relative bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-8 overflow-hidden">
+          <div className="absolute top-0 left-1/4 w-32 h-[1px] bg-gradient-to-r from-transparent via-violet-500/50 to-transparent"></div>
+          <div className="absolute bottom-0 right-1/4 w-24 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
           
-          <div className="grid md:grid-cols-2 gap-6">
-            <div className="bg-zinc-800/50 rounded-lg p-6">
-              <div className="text-4xl mb-4">📄</div>
-              <h4 className="text-white font-medium mb-2">Government ID</h4>
-              <p className="text-zinc-400 text-sm">Driver&apos;s license, passport, or national ID card</p>
+          <div className="text-center space-y-8">
+            <div>
+              <h3 className="text-2xl font-bold text-white mb-4 tracking-tight">Identity Verification</h3>
+              <p className="text-zinc-400 leading-relaxed">Secure verification process using government-issued ID</p>
             </div>
-            <div className="bg-zinc-800/50 rounded-lg p-6">
-              <div className="text-4xl mb-4">🤳</div>
-              <h4 className="text-white font-medium mb-2">Selfie Photos</h4>
-              <p className="text-zinc-400 text-sm">Clear photo of yourself and holding your ID</p>
+            
+            <div className="grid md:grid-cols-2 gap-6">
+              <div className="group relative bg-zinc-950/60 backdrop-blur-sm border border-zinc-800/50 rounded-xl p-6 hover:border-zinc-700/50 transition-all duration-300">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[1px] bg-gradient-to-r from-transparent via-violet-500/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="w-3 h-3 bg-violet-500/40 rounded-full mx-auto mb-4 group-hover:bg-violet-400/60 transition-colors duration-300"></div>
+                <h4 className="text-white font-medium mb-2 tracking-wide">Government ID</h4>
+                <p className="text-zinc-400 text-sm leading-relaxed">Driver&apos;s license, passport, or national ID card</p>
+              </div>
+              <div className="group relative bg-zinc-950/60 backdrop-blur-sm border border-zinc-800/50 rounded-xl p-6 hover:border-zinc-700/50 transition-all duration-300">
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                <div className="w-3 h-3 bg-emerald-500/40 rounded-full mx-auto mb-4 group-hover:bg-emerald-400/60 transition-colors duration-300"></div>
+                <h4 className="text-white font-medium mb-2 tracking-wide">Identity Photos</h4>
+                <p className="text-zinc-400 text-sm leading-relaxed">Clear photos of yourself and holding your ID</p>
+              </div>
             </div>
-          </div>
 
-          <div className="bg-amber-900/20 border border-amber-700/30 rounded-lg p-4">
-            <p className="text-amber-200 text-sm">
-              ⚡ Fast track: Verification typically completed within 24 hours
-            </p>
-          </div>
+            <div className="relative bg-violet-950/30 backdrop-blur-sm border border-violet-800/30 rounded-lg p-4 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-transparent"></div>
+              <div className="relative flex items-center gap-3">
+                <div className="w-1.5 h-1.5 bg-violet-400 rounded-full animate-pulse"></div>
+                <p className="text-violet-300 text-sm">Verification processed instantly upon submission</p>
+              </div>
+            </div>
 
-          <button
-            onClick={() => setStep('id-upload')}
-            className="bg-violet-600 hover:bg-violet-700 text-white px-8 py-4 rounded-lg font-medium text-lg transition-colors"
-          >
-            Start Verification
-          </button>
+            <button
+              onClick={() => setStep('id-upload')}
+              className="group relative overflow-hidden border border-violet-500/40 hover:border-violet-400/80 bg-zinc-950/90 px-8 py-4 rounded-lg transition-all duration-300"
+            >
+              <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="relative flex items-center justify-center gap-3">
+                <div className="w-1 h-1 bg-violet-400 rounded-full group-hover:shadow-sm group-hover:shadow-violet-400"></div>
+                <span className="text-violet-300 group-hover:text-white font-medium tracking-wider">BEGIN VERIFICATION</span>
+              </div>
+            </button>
+          </div>
         </div>
       )}
 
@@ -198,16 +214,32 @@ export default function NewIDVerification({ onVerificationSubmitted, onCancel }:
       )}
 
       {step === 'submitted' && (
-        <div className="text-center space-y-6">
-          <div className="text-green-400 text-6xl">✓</div>
-          <h3 className="text-2xl font-bold text-white">Verification Submitted!</h3>
-          <p className="text-zinc-300">
-            Your ID verification has been submitted for review. You&apos;ll receive an email notification once it&apos;s processed.
-          </p>
-          <div className="bg-violet-900/20 border border-violet-700/30 rounded-lg p-4">
-            <p className="text-violet-300 text-sm">
-              📧 Check your email for updates • ⏱️ Processing time: 1-24 hours
+        <div className="relative bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-8 overflow-hidden">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent"></div>
+          
+          <div className="relative text-center space-y-6">
+            <div className="w-16 h-16 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto shadow-lg shadow-emerald-500/30">
+              <div className="text-white text-2xl font-bold">✓</div>
+            </div>
+            <h3 className="text-2xl font-bold text-white tracking-tight">Verification Complete</h3>
+            <p className="text-zinc-300 leading-relaxed max-w-md mx-auto">
+              Your identity has been successfully verified. You can now proceed to the next step.
             </p>
+            <div className="relative bg-violet-950/30 backdrop-blur-sm border border-violet-800/30 rounded-lg p-4 overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-transparent"></div>
+              <div className="relative flex items-center justify-center gap-4 text-violet-300 text-sm">
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-1 bg-emerald-400 rounded-full"></div>
+                  <span>Verification complete</span>
+                </div>
+                <div className="w-[1px] h-4 bg-violet-800/50"></div>
+                <div className="flex items-center gap-2">
+                  <div className="w-1 h-1 bg-emerald-400 rounded-full"></div>
+                  <span>Ready for next step</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -216,7 +248,7 @@ export default function NewIDVerification({ onVerificationSubmitted, onCancel }:
         <div className="flex justify-center mt-8">
           <button
             onClick={onCancel}
-            className="text-zinc-400 hover:text-zinc-300 text-sm transition-colors"
+            className="text-zinc-500 hover:text-zinc-300 text-sm transition-colors duration-300 tracking-wide"
           >
             Cancel Process
           </button>
@@ -226,7 +258,7 @@ export default function NewIDVerification({ onVerificationSubmitted, onCancel }:
   );
 }
 
-// ID Upload Step Component - Fixed ref types
+// ID Upload Step Component
 interface IDUploadStepProps {
   idDocumentType: string;
   setIdDocumentType: (type: string) => void;
@@ -265,110 +297,127 @@ function IDUploadStep({
   const canProceed = idFrontFile && (idDocumentType !== 'driver_license' || idBackFile);
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h3 className="text-xl font-bold text-white mb-4">Upload ID Document</h3>
-        <p className="text-zinc-400 mb-6">Select your ID type and upload clear photos</p>
-      </div>
-
-      {/* ID Type Selection */}
-      <div className="space-y-3">
-        <label className="block text-sm font-medium text-zinc-300">ID Document Type</label>
-        <select
-          value={idDocumentType}
-          onChange={(e) => setIdDocumentType(e.target.value)}
-          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-        >
-          <option value="driver_license">Driver&apos;s License</option>
-          <option value="passport">Passport</option>
-          <option value="national_id">National ID Card</option>
-        </select>
-      </div>
-
-      {/* ID Front Upload */}
-      <div className="space-y-3">
-        <label className="block text-sm font-medium text-zinc-300">
-          {idDocumentType === 'passport' ? 'Passport Photo Page' : 'Front of ID'}
-        </label>
-        <div
-          onClick={() => idFrontRef.current?.click()}
-          className="border-2 border-dashed border-zinc-600 rounded-lg p-8 text-center cursor-pointer hover:border-zinc-500 transition-colors"
-        >
-          {idFrontPreview ? (
-            <div className="mx-auto rounded-lg max-h-48 bg-zinc-800 flex items-center justify-center">
-              <span className="text-zinc-400">ID Front Preview</span>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="text-zinc-400 text-4xl">📄</div>
-              <p className="text-zinc-400">Click to upload ID front</p>
-            </div>
-          )}
+    <div className="relative bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-8 overflow-hidden">
+      <div className="absolute top-0 left-1/4 w-32 h-[1px] bg-gradient-to-r from-transparent via-violet-500/50 to-transparent"></div>
+      
+      <div className="space-y-8">
+        <div className="text-center">
+          <h3 className="text-xl font-bold text-white mb-4 tracking-tight">Upload ID Document</h3>
+          <p className="text-zinc-400 mb-6 leading-relaxed">Select your ID type and upload clear photos</p>
         </div>
-        <input
-          ref={idFrontRef}
-          type="file"
-          accept="image/*"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleFileSelect(file, setIdFrontFile, setIdFrontPreview);
-          }}
-          className="hidden"
-        />
-      </div>
 
-      {/* ID Back Upload (if driver's license) */}
-      {idDocumentType === 'driver_license' && (
+        {/* ID Type Selection */}
         <div className="space-y-3">
-          <label className="block text-sm font-medium text-zinc-300">Back of Driver&apos;s License</label>
-          <div
-            onClick={() => idBackRef.current?.click()}
-            className="border-2 border-dashed border-zinc-600 rounded-lg p-8 text-center cursor-pointer hover:border-zinc-500 transition-colors"
+          <label className="block text-sm font-medium text-zinc-300 tracking-wide uppercase">ID Document Type</label>
+          <select
+            value={idDocumentType}
+            onChange={(e) => setIdDocumentType(e.target.value)}
+            className="w-full bg-zinc-950/80 backdrop-blur-sm border border-zinc-700/50 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50 transition-all duration-300"
           >
-            {idBackPreview ? (
-              <div className="mx-auto rounded-lg max-h-48 bg-zinc-800 flex items-center justify-center">
-                <span className="text-zinc-400">ID Back Preview</span>
+            <option value="driver_license">Driver&apos;s License</option>
+            <option value="passport">Passport</option>
+            <option value="national_id">National ID Card</option>
+          </select>
+        </div>
+
+        {/* ID Front Upload */}
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-zinc-300 tracking-wide uppercase">
+            {idDocumentType === 'passport' ? 'Passport Photo Page' : 'Front of ID'}
+          </label>
+          <div
+            onClick={() => idFrontRef.current?.click()}
+            className="group relative border-2 border-dashed border-zinc-700/50 hover:border-violet-500/50 rounded-lg p-8 text-center cursor-pointer transition-all duration-300 overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            {idFrontPreview ? (
+              <div className="relative mx-auto rounded-lg h-32 bg-zinc-800/50 backdrop-blur-sm border border-zinc-700/50 flex items-center justify-center">
+                <div className="flex items-center gap-2 text-emerald-400">
+                  <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
+                  <span className="font-medium tracking-wide">ID Front Uploaded</span>
+                </div>
               </div>
             ) : (
-              <div className="space-y-2">
-                <div className="text-zinc-400 text-4xl">📄</div>
-                <p className="text-zinc-400">Click to upload ID back</p>
+              <div className="relative space-y-3">
+                <div className="w-4 h-4 bg-violet-500/40 rounded-full mx-auto group-hover:bg-violet-400/60 transition-colors duration-300"></div>
+                <p className="text-zinc-400 group-hover:text-zinc-300 transition-colors duration-300 tracking-wide">Click to upload ID front</p>
               </div>
             )}
           </div>
           <input
-            ref={idBackRef}
+            ref={idFrontRef}
             type="file"
             accept="image/*"
             onChange={(e) => {
               const file = e.target.files?.[0];
-              if (file) handleFileSelect(file, setIdBackFile, setIdBackPreview);
+              if (file) handleFileSelect(file, setIdFrontFile, setIdFrontPreview);
             }}
             className="hidden"
           />
         </div>
-      )}
 
-      <div className="flex gap-4">
-        <button
-          onClick={onBack}
-          className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white py-3 rounded-lg font-medium transition-colors"
-        >
-          Back
-        </button>
-        <button
-          onClick={onNext}
-          disabled={!canProceed}
-          className="flex-1 bg-violet-600 hover:bg-violet-700 disabled:bg-zinc-700 disabled:text-zinc-500 text-white py-3 rounded-lg font-medium transition-colors"
-        >
-          Next: Selfie Photos
-        </button>
+        {/* ID Back Upload (if driver's license) */}
+        {idDocumentType === 'driver_license' && (
+          <div className="space-y-3">
+            <label className="block text-sm font-medium text-zinc-300 tracking-wide uppercase">Back of Driver&apos;s License</label>
+            <div
+              onClick={() => idBackRef.current?.click()}
+              className="group relative border-2 border-dashed border-zinc-700/50 hover:border-violet-500/50 rounded-lg p-8 text-center cursor-pointer transition-all duration-300 overflow-hidden"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              {idBackPreview ? (
+                <div className="relative mx-auto rounded-lg h-32 bg-zinc-800/50 backdrop-blur-sm border border-zinc-700/50 flex items-center justify-center">
+                  <div className="flex items-center gap-2 text-emerald-400">
+                    <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
+                    <span className="font-medium tracking-wide">ID Back Uploaded</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="relative space-y-3">
+                  <div className="w-4 h-4 bg-violet-500/40 rounded-full mx-auto group-hover:bg-violet-400/60 transition-colors duration-300"></div>
+                  <p className="text-zinc-400 group-hover:text-zinc-300 transition-colors duration-300 tracking-wide">Click to upload ID back</p>
+                </div>
+              )}
+            </div>
+            <input
+              ref={idBackRef}
+              type="file"
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleFileSelect(file, setIdBackFile, setIdBackPreview);
+              }}
+              className="hidden"
+            />
+          </div>
+        )}
+
+        <div className="flex gap-4">
+          <button
+            onClick={onBack}
+            className="flex-1 bg-zinc-800/50 backdrop-blur-sm border border-zinc-700/50 hover:border-zinc-600/50 text-white py-3 rounded-lg font-medium transition-all duration-300 tracking-wide"
+          >
+            Back
+          </button>
+          <button
+            onClick={onNext}
+            disabled={!canProceed}
+            className="flex-1 group relative overflow-hidden border border-violet-500/40 hover:border-violet-400/80 bg-zinc-950/90 disabled:border-zinc-700/50 disabled:bg-zinc-800/50 text-white py-3 rounded-lg font-medium transition-all duration-300"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="relative flex items-center justify-center gap-2">
+              <span className={`tracking-wider ${canProceed ? 'text-violet-300 group-hover:text-white' : 'text-zinc-500'}`}>
+                Next: Identity Photos
+              </span>
+            </div>
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-// Selfie Upload Step Component - Fixed ref types
+// Selfie Upload Step Component
 interface SelfieUploadStepProps {
   selfieFile: File | null;
   selfieWithIdFile: File | null;
@@ -403,102 +452,134 @@ function SelfieUploadStep({
   const canProceed = selfieFile && selfieWithIdFile;
 
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h3 className="text-xl font-bold text-white mb-4">Upload Selfie Photos</h3>
-        <p className="text-zinc-400 mb-6">Take clear photos of yourself for identity verification</p>
-      </div>
-
-      {/* Regular Selfie */}
-      <div className="space-y-3">
-        <label className="block text-sm font-medium text-zinc-300">Clear Selfie Photo</label>
-        <div
-          onClick={() => selfieRef.current?.click()}
-          className="border-2 border-dashed border-zinc-600 rounded-lg p-8 text-center cursor-pointer hover:border-zinc-500 transition-colors"
-        >
-          {selfiePreview ? (
-            <div className="mx-auto rounded-lg max-h-48 bg-zinc-800 flex items-center justify-center">
-              <span className="text-zinc-400">Selfie Preview</span>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="text-zinc-400 text-4xl">🤳</div>
-              <p className="text-zinc-400">Click to upload selfie</p>
-            </div>
-          )}
+    <div className="relative bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-8 overflow-hidden">
+      <div className="absolute top-0 right-1/4 w-32 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/50 to-transparent"></div>
+      
+      <div className="space-y-8">
+        <div className="text-center">
+          <h3 className="text-xl font-bold text-white mb-4 tracking-tight">Upload Identity Photos</h3>
+          <p className="text-zinc-400 mb-6 leading-relaxed">Take clear photos of yourself for identity verification</p>
         </div>
-        <input
-          ref={selfieRef}
-          type="file"
-          accept="image/*"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleFileSelect(file, setSelfieFile, setSelfiePreview);
-          }}
-          className="hidden"
-        />
-      </div>
 
-      {/* Selfie with ID */}
-      <div className="space-y-3">
-        <label className="block text-sm font-medium text-zinc-300">Selfie Holding Your ID</label>
-        <div
-          onClick={() => selfieWithIdRef.current?.click()}
-          className="border-2 border-dashed border-zinc-600 rounded-lg p-8 text-center cursor-pointer hover:border-zinc-500 transition-colors"
-        >
-          {selfieWithIdPreview ? (
-            <div className="mx-auto rounded-lg max-h-48 bg-zinc-800 flex items-center justify-center">
-              <span className="text-zinc-400">Selfie with ID Preview</span>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              <div className="text-zinc-400 text-4xl">📱</div>
-              <p className="text-zinc-400">Click to upload selfie with ID</p>
-            </div>
-          )}
+        {/* Regular Selfie */}
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-zinc-300 tracking-wide uppercase">Clear Photo of Yourself</label>
+          <div
+            onClick={() => selfieRef.current?.click()}
+            className="group relative border-2 border-dashed border-zinc-700/50 hover:border-emerald-500/50 rounded-lg p-8 text-center cursor-pointer transition-all duration-300 overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            {selfiePreview ? (
+              <div className="relative mx-auto rounded-lg h-32 bg-zinc-800/50 backdrop-blur-sm border border-zinc-700/50 flex items-center justify-center">
+                <div className="flex items-center gap-2 text-emerald-400">
+                  <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
+                  <span className="font-medium tracking-wide">Selfie Uploaded</span>
+                </div>
+              </div>
+            ) : (
+              <div className="relative space-y-3">
+                <div className="w-4 h-4 bg-emerald-500/40 rounded-full mx-auto group-hover:bg-emerald-400/60 transition-colors duration-300"></div>
+                <p className="text-zinc-400 group-hover:text-zinc-300 transition-colors duration-300 tracking-wide">Click to upload selfie</p>
+              </div>
+            )}
+          </div>
+          <input
+            ref={selfieRef}
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileSelect(file, setSelfieFile, setSelfiePreview);
+            }}
+            className="hidden"
+          />
         </div>
-        <input
-          ref={selfieWithIdRef}
-          type="file"
-          accept="image/*"
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) handleFileSelect(file, setSelfieWithIdFile, setSelfieWithIdPreview);
-          }}
-          className="hidden"
-        />
-      </div>
 
-      <div className="bg-blue-900/20 border border-blue-700/30 rounded-lg p-4">
-        <h4 className="text-blue-300 font-medium mb-2">Photo Tips:</h4>
-        <ul className="text-blue-200 text-sm space-y-1">
-          <li>• Use good lighting and avoid shadows</li>
-          <li>• Face the camera directly</li>
-          <li>• Hold your ID clearly visible next to your face</li>
-          <li>• Make sure all text on ID is readable</li>
-        </ul>
-      </div>
+        {/* Selfie with ID */}
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-zinc-300 tracking-wide uppercase">Photo Holding Your ID</label>
+          <div
+            onClick={() => selfieWithIdRef.current?.click()}
+            className="group relative border-2 border-dashed border-zinc-700/50 hover:border-emerald-500/50 rounded-lg p-8 text-center cursor-pointer transition-all duration-300 overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            {selfieWithIdPreview ? (
+              <div className="relative mx-auto rounded-lg h-32 bg-zinc-800/50 backdrop-blur-sm border border-zinc-700/50 flex items-center justify-center">
+                <div className="flex items-center gap-2 text-emerald-400">
+                  <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
+                  <span className="font-medium tracking-wide">Selfie with ID Uploaded</span>
+                </div>
+              </div>
+            ) : (
+              <div className="relative space-y-3">
+                <div className="w-4 h-4 bg-emerald-500/40 rounded-full mx-auto group-hover:bg-emerald-400/60 transition-colors duration-300"></div>
+                <p className="text-zinc-400 group-hover:text-zinc-300 transition-colors duration-300 tracking-wide">Click to upload selfie with ID</p>
+              </div>
+            )}
+          </div>
+          <input
+            ref={selfieWithIdRef}
+            type="file"
+            accept="image/*"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleFileSelect(file, setSelfieWithIdFile, setSelfieWithIdPreview);
+            }}
+            className="hidden"
+          />
+        </div>
 
-      <div className="flex gap-4">
-        <button
-          onClick={onBack}
-          className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white py-3 rounded-lg font-medium transition-colors"
-        >
-          Back
-        </button>
-        <button
-          onClick={onNext}
-          disabled={!canProceed}
-          className="flex-1 bg-violet-600 hover:bg-violet-700 disabled:bg-zinc-700 disabled:text-zinc-500 text-white py-3 rounded-lg font-medium transition-colors"
-        >
-          Next: Review
-        </button>
+        <div className="relative bg-violet-950/30 backdrop-blur-sm border border-violet-800/30 rounded-lg p-4 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-transparent"></div>
+          <div className="relative">
+            <h4 className="text-violet-300 font-medium mb-3 tracking-wide uppercase text-sm">Photo Guidelines</h4>
+            <ul className="text-violet-200 text-sm space-y-2 leading-relaxed">
+              <li className="flex items-center gap-2">
+                <div className="w-1 h-1 bg-violet-400 rounded-full"></div>
+                Use good lighting and avoid shadows
+              </li>
+              <li className="flex items-center gap-2">
+                <div className="w-1 h-1 bg-violet-400 rounded-full"></div>
+                Face the camera directly
+              </li>
+              <li className="flex items-center gap-2">
+                <div className="w-1 h-1 bg-violet-400 rounded-full"></div>
+                Hold your ID clearly visible next to your face
+              </li>
+              <li className="flex items-center gap-2">
+                <div className="w-1 h-1 bg-violet-400 rounded-full"></div>
+                Ensure all text on ID is readable
+              </li>
+            </ul>
+          </div>
+        </div>
+
+        <div className="flex gap-4">
+          <button
+            onClick={onBack}
+            className="flex-1 bg-zinc-800/50 backdrop-blur-sm border border-zinc-700/50 hover:border-zinc-600/50 text-white py-3 rounded-lg font-medium transition-all duration-300 tracking-wide"
+          >
+            Back
+          </button>
+          <button
+            onClick={onNext}
+            disabled={!canProceed}
+            className="flex-1 group relative overflow-hidden border border-emerald-500/40 hover:border-emerald-400/80 bg-zinc-950/90 disabled:border-zinc-700/50 disabled:bg-zinc-800/50 text-white py-3 rounded-lg font-medium transition-all duration-300"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="relative flex items-center justify-center gap-2">
+              <span className={`tracking-wider ${canProceed ? 'text-emerald-300 group-hover:text-white' : 'text-zinc-500'}`}>
+                Next: Review
+              </span>
+            </div>
+          </button>
+        </div>
       </div>
     </div>
   );
 }
 
-// Review Step Component - Simple previews without images
+// Review Step Component
 interface ReviewStepProps {
   idDocumentType: string;
   idFrontPreview: string;
@@ -521,87 +602,108 @@ function ReviewStep({
   loading
 }: ReviewStepProps) {
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        <h3 className="text-xl font-bold text-white mb-4">Review Your Submission</h3>
-        <p className="text-zinc-400 mb-6">Please review all photos before submitting</p>
-      </div>
+    <div className="relative bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-8 overflow-hidden">
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-[1px] bg-gradient-to-r from-transparent via-violet-500/50 to-transparent"></div>
+      
+      <div className="space-y-8">
+        <div className="text-center">
+          <h3 className="text-xl font-bold text-white mb-4 tracking-tight">Review Submission</h3>
+          <p className="text-zinc-400 mb-6 leading-relaxed">Verify all documents before final submission</p>
+        </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <h4 className="text-white font-medium">ID Document ({idDocumentType.replace('_', ' ')})</h4>
-          <div className="space-y-3">
-            <div>
-              <p className="text-zinc-400 text-sm mb-2">Front:</p>
-              <div className="w-full h-32 bg-zinc-800 rounded-lg border border-zinc-700 flex items-center justify-center">
-                <span className="text-zinc-500">
-                  {idFrontPreview ? 'ID Front Uploaded ✓' : 'No image'}
-                </span>
-              </div>
-            </div>
-            {idBackPreview && (
+        <div className="grid md:grid-cols-2 gap-8">
+          <div className="space-y-4">
+            <h4 className="text-white font-medium tracking-wide uppercase text-sm">ID Document ({idDocumentType.replace('_', ' ')})</h4>
+            <div className="space-y-4">
               <div>
-                <p className="text-zinc-400 text-sm mb-2">Back:</p>
-                <div className="w-full h-32 bg-zinc-800 rounded-lg border border-zinc-700 flex items-center justify-center">
-                  <span className="text-zinc-500">ID Back Uploaded ✓</span>
+                <p className="text-zinc-400 text-sm mb-2 tracking-wide">Front Side</p>
+                <div className="w-full h-32 bg-zinc-950/60 backdrop-blur-sm border border-zinc-700/50 rounded-lg flex items-center justify-center">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${idFrontPreview ? 'bg-emerald-400' : 'bg-zinc-600'}`}></div>
+                    <span className={`text-sm font-medium tracking-wide ${idFrontPreview ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                      {idFrontPreview ? 'ID Front Uploaded' : 'No Image'}
+                    </span>
+                  </div>
                 </div>
               </div>
-            )}
+              {idBackPreview && (
+                <div>
+                  <p className="text-zinc-400 text-sm mb-2 tracking-wide">Back Side</p>
+                  <div className="w-full h-32 bg-zinc-950/60 backdrop-blur-sm border border-zinc-700/50 rounded-lg flex items-center justify-center">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
+                      <span className="text-emerald-400 text-sm font-medium tracking-wide">ID Back Uploaded</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h4 className="text-white font-medium tracking-wide uppercase text-sm">Identity Photos</h4>
+            <div className="space-y-4">
+              <div>
+                <p className="text-zinc-400 text-sm mb-2 tracking-wide">Personal Photo</p>
+                <div className="w-full h-32 bg-zinc-950/60 backdrop-blur-sm border border-zinc-700/50 rounded-lg flex items-center justify-center">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${selfiePreview ? 'bg-emerald-400' : 'bg-zinc-600'}`}></div>
+                    <span className={`text-sm font-medium tracking-wide ${selfiePreview ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                      {selfiePreview ? 'Selfie Uploaded' : 'No Image'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div>
+                <p className="text-zinc-400 text-sm mb-2 tracking-wide">Photo with ID</p>
+                <div className="w-full h-32 bg-zinc-950/60 backdrop-blur-sm border border-zinc-700/50 rounded-lg flex items-center justify-center">
+                  <div className="flex items-center gap-2">
+                    <div className={`w-2 h-2 rounded-full ${selfieWithIdPreview ? 'bg-emerald-400' : 'bg-zinc-600'}`}></div>
+                    <span className={`text-sm font-medium tracking-wide ${selfieWithIdPreview ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                      {selfieWithIdPreview ? 'Selfie with ID Uploaded' : 'No Image'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
-        <div className="space-y-4">
-          <h4 className="text-white font-medium">Selfie Photos</h4>
-          <div className="space-y-3">
-            <div>
-              <p className="text-zinc-400 text-sm mb-2">Selfie:</p>
-              <div className="w-full h-32 bg-zinc-800 rounded-lg border border-zinc-700 flex items-center justify-center">
-                <span className="text-zinc-500">
-                  {selfiePreview ? 'Selfie Uploaded ✓' : 'No image'}
-                </span>
-              </div>
-            </div>
-            <div>
-              <p className="text-zinc-400 text-sm mb-2">Selfie with ID:</p>
-              <div className="w-full h-32 bg-zinc-800 rounded-lg border border-zinc-700 flex items-center justify-center">
-                <span className="text-zinc-500">
-                  {selfieWithIdPreview ? 'Selfie with ID Uploaded ✓' : 'No image'}
-                </span>
-              </div>
-            </div>
+        <div className="relative bg-emerald-950/30 backdrop-blur-sm border border-emerald-800/30 rounded-lg p-4 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-transparent"></div>
+          <div className="relative flex items-center gap-3">
+            <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
+            <p className="text-emerald-300 text-sm">Ready for submission. Verification will be processed instantly.</p>
           </div>
         </div>
-      </div>
 
-      <div className="bg-green-900/20 border border-green-700/30 rounded-lg p-4">
-        <p className="text-green-300 text-sm">
-          ✓ All photos look good? Submit for verification. Our team will review within 24 hours.
-        </p>
-      </div>
-
-      <div className="flex gap-4">
-        <button
-          onClick={onBack}
-          disabled={loading}
-          className="flex-1 bg-zinc-700 hover:bg-zinc-600 disabled:bg-zinc-800 text-white py-3 rounded-lg font-medium transition-colors"
-        >
-          Back
-        </button>
-        <button
-          onClick={onSubmit}
-          disabled={loading}
-          className="flex-1 bg-violet-600 hover:bg-violet-700 disabled:bg-violet-800 text-white py-3 rounded-lg font-medium transition-colors flex items-center justify-center"
-        >
-          {loading ? (
-            <>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-              Submitting...
-            </>
-          ) : (
-            'Submit for Verification'
-          )}
-        </button>
+        <div className="flex gap-4">
+          <button
+            onClick={onBack}
+            disabled={loading}
+            className="flex-1 bg-zinc-800/50 backdrop-blur-sm border border-zinc-700/50 hover:border-zinc-600/50 disabled:border-zinc-800/50 text-white py-3 rounded-lg font-medium transition-all duration-300 tracking-wide"
+          >
+            Back
+          </button>
+          <button
+            onClick={onSubmit}
+            disabled={loading}
+            className="flex-1 group relative overflow-hidden border border-emerald-500/40 hover:border-emerald-400/80 bg-zinc-950/90 disabled:border-zinc-700/50 text-white py-3 rounded-lg font-medium transition-all duration-300"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <div className="relative flex items-center justify-center gap-2">
+              {loading ? (
+                <>
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-emerald-400"></div>
+                  <span className="text-emerald-300 tracking-wider">Submitting...</span>
+                </>
+              ) : (
+                <span className="text-emerald-300 group-hover:text-white tracking-wider">Submit for Verification</span>
+              )}
+            </div>
+          </button>
+        </div>
       </div>
     </div>
   );
-} 
+}

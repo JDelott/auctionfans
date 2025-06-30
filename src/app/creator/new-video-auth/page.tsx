@@ -140,89 +140,113 @@ export default function NewVideoAuthPage() {
     return (
       <div className="min-h-screen bg-zinc-950 py-8">
         <div className="max-w-4xl mx-auto px-6">
-          <div className="text-center mb-12">
-            <h1 className="text-4xl font-black text-white mb-4">
-              New Video Authentication System
+          {/* Header with electric accents */}
+          <div className="text-center mb-12 relative">
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-[1px] bg-gradient-to-r from-transparent via-violet-500/40 to-transparent"></div>
+            <h1 className="text-4xl font-black text-white mb-4 tracking-tight">
+              Verified Creator System
             </h1>
-            <p className="text-xl text-zinc-300 max-w-2xl mx-auto">
-              Streamlined 6-step process for authenticated item listings
+            <p className="text-xl text-zinc-300 max-w-2xl mx-auto font-light">
+              Three-step verification process for authenticated listings
             </p>
           </div>
 
           {/* Progress Steps */}
-          <div className="mb-12">
-            <div className="flex items-center justify-between max-w-3xl mx-auto">
-              <StepIndicator
-                number={1}
-                title="ID Verification"
-                description="Verify identity with ID + selfie"
-                completed={hasVerifiedID}
-                active={!hasVerifiedID}
-              />
-              <div className="flex-1 h-1 bg-zinc-800 mx-4">
-                <div 
-                  className={`h-full transition-all duration-500 ${hasVerifiedID ? 'bg-violet-500 w-full' : 'bg-transparent w-0'}`}
+          <div className="mb-12 relative">
+            <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 via-transparent to-emerald-500/5 rounded-2xl blur-xl"></div>
+            <div className="relative bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-8">
+              <div className="flex items-center justify-between max-w-3xl mx-auto">
+                <StepIndicator
+                  number={1}
+                  title="Identity"
+                  description="Verify with ID + selfie"
+                  completed={hasVerifiedID}
+                  active={!hasVerifiedID}
+                />
+                <div className="flex-1 h-[2px] bg-zinc-800 mx-6 relative overflow-hidden">
+                  <div 
+                    className={`absolute inset-0 transition-all duration-700 ${hasVerifiedID ? 'bg-gradient-to-r from-violet-500 to-violet-400 w-full' : 'bg-transparent w-0'}`}
+                  />
+                </div>
+                <StepIndicator
+                  number={2}
+                  title="Declaration"
+                  description="Record authentication video"
+                  completed={hasValidAuthVideo}
+                  active={hasVerifiedID && !hasValidAuthVideo}
+                />
+                <div className="flex-1 h-[2px] bg-zinc-800 mx-6 relative overflow-hidden">
+                  <div 
+                    className={`absolute inset-0 transition-all duration-700 ${canCreateListings ? 'bg-gradient-to-r from-violet-500 to-emerald-500 w-full' : 'bg-transparent w-0'}`}
+                  />
+                </div>
+                <StepIndicator
+                  number={3}
+                  title="Listings"
+                  description="Create verified auctions"
+                  completed={false}
+                  active={canCreateListings}
                 />
               </div>
-              <StepIndicator
-                number={2}
-                title="Auth Video"
-                description="Record video declaring items"
-                completed={hasValidAuthVideo}
-                active={hasVerifiedID && !hasValidAuthVideo}
-              />
-              <div className="flex-1 h-1 bg-zinc-800 mx-4">
-                <div 
-                  className={`h-full transition-all duration-500 ${canCreateListings ? 'bg-violet-500 w-full' : 'bg-transparent w-0'}`}
-                />
-              </div>
-              <StepIndicator
-                number={3}
-                title="Create Listings"
-                description="Add items via form"
-                completed={false}
-                active={canCreateListings}
-              />
             </div>
           </div>
 
           {/* Current Step Content */}
-          <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-8">
-            <div className="text-center">
-              <h2 className="text-2xl font-bold text-white mb-6">Get Started</h2>
+          <div className="relative bg-zinc-950/80 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-8 overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-violet-500/10 to-transparent rounded-full blur-2xl"></div>
+            <div className="relative text-center">
+              <h2 className="text-2xl font-bold text-white mb-6 tracking-tight">Get Started</h2>
               
               {!hasVerifiedID && (
                 <div>
-                  <p className="text-zinc-300 mb-6">First, verify your identity to get started with authenticated listings.</p>
+                  <p className="text-zinc-300 mb-8 max-w-md mx-auto leading-relaxed">
+                    Begin your verification journey to unlock authenticated listing capabilities.
+                  </p>
                   <button
                     onClick={() => setStep('id-verification')}
-                    className="bg-violet-600 hover:bg-violet-700 text-white px-8 py-4 rounded-lg font-medium text-lg transition-colors"
+                    className="group relative overflow-hidden border border-violet-500/40 hover:border-violet-400/80 bg-zinc-950/90 px-8 py-4 rounded-lg transition-all duration-300"
                   >
-                    Start ID Verification
+                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="relative flex items-center justify-center gap-3">
+                      <div className="w-1.5 h-1.5 bg-violet-400 rounded-full group-hover:shadow-lg group-hover:shadow-violet-400/50"></div>
+                      <span className="text-violet-300 group-hover:text-white font-medium tracking-wider">START VERIFICATION</span>
+                    </div>
                   </button>
                 </div>
               )}
 
               {hasVerifiedID && !hasValidAuthVideo && (
                 <div>
-                  <p className="text-zinc-300 mb-6">Great! Your ID is verified. Now record your authentication video.</p>
+                  <p className="text-zinc-300 mb-8 max-w-md mx-auto leading-relaxed">
+                    Identity verified. Record your authentication video to continue.
+                  </p>
                   <button
                     onClick={() => setStep('auth-video')}
-                    className="bg-violet-600 hover:bg-violet-700 text-white px-8 py-4 rounded-lg font-medium text-lg transition-colors"
+                    className="group relative overflow-hidden border border-violet-500/40 hover:border-violet-400/80 bg-zinc-950/90 px-8 py-4 rounded-lg transition-all duration-300"
                   >
-                    Record Auth Video
+                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="relative flex items-center justify-center gap-3">
+                      <div className="w-1.5 h-1.5 bg-violet-400 rounded-full group-hover:shadow-lg group-hover:shadow-violet-400/50"></div>
+                      <span className="text-violet-300 group-hover:text-white font-medium tracking-wider">RECORD VIDEO</span>
+                    </div>
                   </button>
                 </div>
               )}
 
               {canCreateListings && (
                 <div>
-                  <p className="text-zinc-300 mb-6">Perfect! You&apos;re ready to create authenticated listings.</p>
+                  <p className="text-zinc-300 mb-8 max-w-md mx-auto leading-relaxed">
+                    Verification complete. Ready to create authenticated listings.
+                  </p>
                   <button
                     onClick={() => setStep('batch-listings')}
-                    className="bg-violet-600 hover:bg-violet-700 text-white px-8 py-4 rounded-lg font-medium text-lg transition-colors"
+                    className="group relative overflow-hidden border border-emerald-500/40 hover:border-emerald-400/80 bg-zinc-950/90 px-8 py-4 rounded-lg transition-all duration-300"
                   >
-                    Create Listings
+                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                    <div className="relative flex items-center justify-center gap-3">
+                      <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full group-hover:shadow-lg group-hover:shadow-emerald-400/50"></div>
+                      <span className="text-emerald-300 group-hover:text-white font-medium tracking-wider">CREATE LISTINGS</span>
+                    </div>
                   </button>
                 </div>
               )}
@@ -230,21 +254,18 @@ export default function NewVideoAuthPage() {
           </div>
 
           {/* Benefits Section */}
-          <div className="mt-16 grid md:grid-cols-3 gap-8">
+          <div className="mt-16 grid md:grid-cols-3 gap-6">
             <BenefitCard
-              icon="🛡️"
-              title="Enhanced Trust"
-              description="Buyers see verified creator badges and authentication certificates"
+              title="Trust Protocol"
+              description="Verified creator badges build buyer confidence and command premium prices"
             />
             <BenefitCard
-              icon="⚡"
-              title="Batch Efficiency"
-              description="Create multiple authenticated listings from one verification video"
+              title="Batch Processing"
+              description="One verification unlocks unlimited authenticated listings with minimal friction"
             />
             <BenefitCard
-              icon="🏆"
-              title="Premium Positioning"
-              description="Authenticated items stand out and command higher prices"
+              title="Market Position"
+              description="Stand out in the marketplace with official verification status"
             />
           </div>
         </div>
@@ -258,7 +279,7 @@ export default function NewVideoAuthPage() {
         {/* Back Button */}
         <button
           onClick={() => setStep('overview')}
-          className="mb-6 text-violet-400 hover:text-violet-300 flex items-center gap-2"
+          className="mb-6 text-violet-400 hover:text-violet-300 flex items-center gap-2 transition-colors duration-300"
         >
           ← Back to Overview
         </button>
@@ -300,20 +321,23 @@ interface StepIndicatorProps {
 
 function StepIndicator({ number, title, description, completed, active }: StepIndicatorProps) {
   return (
-    <div className="text-center">
-      <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg mb-3 transition-all duration-300 ${
+    <div className="text-center relative">
+      <div className={`w-14 h-14 rounded-full flex items-center justify-center font-bold text-lg mb-4 transition-all duration-500 relative overflow-hidden ${
         completed 
-          ? 'bg-violet-500 text-white shadow-lg shadow-violet-500/30' 
+          ? 'bg-gradient-to-br from-violet-500 to-violet-600 text-white shadow-lg shadow-violet-500/30' 
           : active 
-            ? 'bg-violet-600/20 border-2 border-violet-500 text-violet-400' 
-            : 'bg-zinc-800 text-zinc-500'
+            ? 'bg-zinc-950 border-2 border-violet-500/60 text-violet-400' 
+            : 'bg-zinc-900 border border-zinc-700 text-zinc-500'
       }`}>
-        {completed ? '✓' : number}
+        {completed && (
+          <div className="absolute inset-0 bg-gradient-to-br from-violet-400/20 to-transparent"></div>
+        )}
+        <span className="relative">{completed ? '✓' : number}</span>
       </div>
-      <h3 className={`font-medium mb-1 ${active || completed ? 'text-white' : 'text-zinc-500'}`}>
+      <h3 className={`font-medium mb-2 text-sm tracking-wider uppercase ${active || completed ? 'text-white' : 'text-zinc-500'}`}>
         {title}
       </h3>
-      <p className={`text-sm ${active || completed ? 'text-zinc-300' : 'text-zinc-600'}`}>
+      <p className={`text-xs leading-relaxed ${active || completed ? 'text-zinc-300' : 'text-zinc-600'}`}>
         {description}
       </p>
     </div>
@@ -321,17 +345,17 @@ function StepIndicator({ number, title, description, completed, active }: StepIn
 }
 
 interface BenefitCardProps {
-  icon: string;
   title: string;
   description: string;
 }
 
-function BenefitCard({ icon, title, description }: BenefitCardProps) {
+function BenefitCard({ title, description }: BenefitCardProps) {
   return (
-    <div className="bg-zinc-900/30 border border-zinc-800/50 rounded-xl p-6 text-center">
-      <div className="text-4xl mb-4">{icon}</div>
-      <h3 className="text-white font-bold mb-2">{title}</h3>
-      <p className="text-zinc-400 text-sm">{description}</p>
+    <div className="group relative bg-zinc-900/30 backdrop-blur-sm border border-zinc-800/50 rounded-xl p-6 text-center transition-all duration-300 hover:border-zinc-700/50">
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-[1px] bg-gradient-to-r from-transparent via-violet-500/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+      <div className="w-3 h-3 bg-violet-500/40 rounded-full mx-auto mb-4 group-hover:bg-violet-400/60 transition-colors duration-300"></div>
+      <h3 className="text-white font-bold mb-3 tracking-tight">{title}</h3>
+      <p className="text-zinc-400 text-sm leading-relaxed">{description}</p>
     </div>
   );
-} 
+}
