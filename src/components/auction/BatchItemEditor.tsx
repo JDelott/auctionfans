@@ -59,11 +59,6 @@ export function BatchItemEditor({
               fill
               className="object-cover"
             />
-            {item.aiConfidence && (
-              <div className="absolute top-1 right-1 bg-violet-500 text-white text-xs px-1 py-0.5 rounded">
-                {Math.round(item.aiConfidence * 100)}%
-              </div>
-            )}
           </div>
           
           <div className="flex-1 min-w-0">

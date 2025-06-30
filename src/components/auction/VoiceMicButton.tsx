@@ -24,6 +24,7 @@ export function VoiceMicButton({
 }: VoiceMicButtonProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [lastGoodFormData, setLastGoodFormData] = useState<AuctionFormData | null>(null);
+  
   const {
     isListening,
     transcript,
@@ -121,7 +122,7 @@ export function VoiceMicButton({
             }
             
           } catch (error) {
-            console.error('❌ Error processing voice input:', error);
+            console.error('Error processing voice input:', error);
             
             // Try fallback if contextual fails
             try {
@@ -145,7 +146,7 @@ export function VoiceMicButton({
                 }
               }
             } catch (fallbackError) {
-              console.error('❌ Fallback also failed:', fallbackError);
+              console.error('Fallback also failed:', fallbackError);
             }
           } finally {
             setIsProcessing(false);
@@ -188,24 +189,28 @@ export function VoiceMicButton({
           type="button"
           onClick={handleMicClick}
           disabled={isProcessing}
-          className={`w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200 ${
+          className={`group relative w-9 h-9 rounded-lg flex items-center justify-center transition-all duration-200 ${
             isListening
-              ? 'bg-red-600 hover:bg-red-700 animate-pulse scale-110'
+              ? 'bg-red-500 hover:bg-red-600 shadow-lg shadow-red-500/25 scale-105'
               : isProcessing
-              ? 'bg-violet-600/50 cursor-not-allowed'
-              : 'bg-violet-600 hover:bg-violet-700 hover:scale-105'
-          } text-white shadow-lg relative`}
+              ? 'bg-violet-500/50 cursor-not-allowed'
+              : 'bg-violet-500 hover:bg-violet-600 hover:shadow-lg hover:shadow-violet-500/25 hover:scale-105'
+          } text-white border border-white/10 backdrop-blur-sm`}
           title={isListening ? 'Stop recording and auto-fill fields' : isProcessing ? 'Processing with AI...' : getTooltip()}
         >
           {isProcessing ? (
-            <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin"></div>
+            <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
           ) : isListening ? (
-            <div className="flex items-center justify-center">
-              <span className="text-sm">🎤</span>
-              <div className="absolute -inset-1 rounded-full bg-red-500/30 animate-ping"></div>
+            <div className="relative flex items-center justify-center">
+              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
+              </svg>
+              <div className="absolute -inset-1 rounded-lg bg-red-400/30 animate-ping"></div>
             </div>
           ) : (
-            <span className="text-sm">🎤</span>
+            <svg className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 015 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" clipRule="evenodd" />
+            </svg>
           )}
         </button>
 
@@ -214,10 +219,12 @@ export function VoiceMicButton({
           <button
             type="button"
             onClick={handleRecovery}
-            className="w-6 h-6 rounded-full bg-zinc-600 hover:bg-zinc-500 flex items-center justify-center text-white text-xs transition-colors"
+            className="group w-7 h-7 rounded-lg bg-zinc-600 hover:bg-zinc-500 flex items-center justify-center text-white transition-all duration-200 hover:scale-105 border border-white/10 backdrop-blur-sm"
             title="Restore last good state"
           >
-            ↶
+            <svg className="w-3 h-3 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
           </button>
         )}
       </div>
