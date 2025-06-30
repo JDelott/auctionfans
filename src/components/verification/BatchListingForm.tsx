@@ -2,6 +2,10 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
+import { SmartFormField } from '@/components/auction/SmartFormField';
+import { VoiceMicButton } from '@/components/auction/VoiceMicButton';
+import { AIContextManager } from '@/lib/ai/context-manager';
+import { AuctionFormData, Category } from '@/lib/auction-forms/types';
 
 interface AuthVideo {
   id: string;
@@ -10,11 +14,6 @@ interface AuthVideo {
   declared_items_count: number;
   max_items_allowed: number;
   status: string;
-}
-
-interface Category {
-  id: string;
-  name: string;
 }
 
 interface ListingItem {
@@ -62,6 +61,9 @@ export default function BatchListingForm({ authVideo, onListingsCreated, onCance
   ]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // AI Context Management
+  const [contextManager] = useState(() => new AIContextManager());
 
   const fileInputRefs = useRef<Record<number, HTMLInputElement | null>>({});
 
@@ -116,6 +118,45 @@ export default function BatchListingForm({ authVideo, onListingsCreated, onCance
     setListings(prev => {
       const newListings = [...prev];
       newListings[index] = { ...newListings[index], [field]: value };
+      return newListings;
+    });
+  }, []);
+
+  // Convert ListingItem to AuctionFormData for compatibility with AI components
+  const convertToAuctionFormData = (listing: ListingItem): AuctionFormData => ({
+    title: listing.title,
+    description: listing.description,
+    category_id: listing.category_id,
+    condition: listing.condition,
+    starting_price: listing.starting_price,
+    reserve_price: listing.reserve_price,
+    buy_now_price: listing.buy_now_price,
+    duration_days: listing.duration_days.toString(),
+    video_url: listing.published_content_url,
+    video_timestamp: listing.video_timestamp_start?.toString() || '',
+    images: !!listing.product_image
+  });
+
+  // Handle voice updates for specific listing
+  const handleVoiceUpdate = useCallback((index: number, updates: Partial<AuctionFormData>) => {
+    setListings(prev => {
+      const newListings = [...prev];
+      const listing = newListings[index];
+      
+      // Map AuctionFormData updates back to ListingItem
+      if (updates.title !== undefined) listing.title = updates.title;
+      if (updates.description !== undefined) listing.description = updates.description;
+      if (updates.category_id !== undefined) listing.category_id = updates.category_id;
+      if (updates.condition !== undefined) listing.condition = updates.condition;
+      if (updates.starting_price !== undefined) listing.starting_price = updates.starting_price;
+      if (updates.reserve_price !== undefined) listing.reserve_price = updates.reserve_price;
+      if (updates.buy_now_price !== undefined) listing.buy_now_price = updates.buy_now_price;
+      if (updates.duration_days !== undefined) listing.duration_days = parseInt(updates.duration_days) || 7;
+      if (updates.video_url !== undefined) listing.published_content_url = updates.video_url;
+      if (updates.video_timestamp !== undefined) {
+        listing.video_timestamp_start = updates.video_timestamp ? parseInt(updates.video_timestamp) : null;
+      }
+      
       return newListings;
     });
   }, []);
@@ -325,7 +366,7 @@ export default function BatchListingForm({ authVideo, onListingsCreated, onCance
             <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 via-transparent to-emerald-500/5 rounded-2xl blur-xl"></div>
             <div className="relative bg-zinc-950/80 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-8">
               
-              {/* Item Header */}
+              {/* Item Header with Voice Control */}
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 bg-violet-500/20 border border-violet-500/30 rounded-lg flex items-center justify-center">
@@ -333,15 +374,26 @@ export default function BatchListingForm({ authVideo, onListingsCreated, onCance
                   </div>
                   <h3 className="text-xl font-bold text-white tracking-tight">Item {index + 1}</h3>
                 </div>
-                {listings.length > 1 && (
-                  <button
-                    onClick={() => removeListing(index)}
-                    className="group relative overflow-hidden border border-red-500/40 hover:border-red-400/80 bg-zinc-950/90 px-3 py-1 rounded-lg transition-all duration-300"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <span className="relative text-red-400 group-hover:text-red-300 text-sm font-medium tracking-wider">Remove</span>
-                  </button>
-                )}
+                <div className="flex items-center gap-2">
+                  {/* Voice Control for this specific item */}
+                  <VoiceMicButton
+                    onFormUpdate={(updates) => handleVoiceUpdate(index, updates)}
+                    categories={categories}
+                    currentFormData={convertToAuctionFormData(listing)}
+                    currentStep="review_edit"
+                    contextManager={contextManager}
+                    itemId={`item-${index}`}
+                  />
+                  {listings.length > 1 && (
+                    <button
+                      onClick={() => removeListing(index)}
+                      className="group relative overflow-hidden border border-red-500/40 hover:border-red-400/80 bg-zinc-950/90 px-3 py-1 rounded-lg transition-all duration-300"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-red-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      <span className="relative text-red-400 group-hover:text-red-300 text-sm font-medium tracking-wider">Remove</span>
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -397,55 +449,41 @@ export default function BatchListingForm({ authVideo, onListingsCreated, onCance
                     )}
                   </div>
 
-                  {/* Title */}
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-300 mb-2">
-                      Item Title *
-                    </label>
-                    <input
-                      type="text"
-                      value={listing.title}
-                      onChange={(e) => updateListing(index, 'title', e.target.value)}
-                      placeholder="e.g., Vintage Nike Air Jordan 1"
-                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors"
-                      required
-                    />
-                  </div>
+                  {/* Smart Form Fields with AI Enhancement */}
+                  <SmartFormField
+                    label="Item Title"
+                    name="title"
+                    value={listing.title}
+                    onChange={(value) => updateListing(index, 'title', value)}
+                    categories={categories}
+                    currentFormData={convertToAuctionFormData(listing)}
+                    placeholder="e.g., Vintage Nike Air Jordan 1"
+                    required
+                  />
 
-                  {/* Category */}
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-300 mb-2">
-                      Category *
-                    </label>
-                    <select
-                      value={listing.category_id}
-                      onChange={(e) => updateListing(index, 'category_id', e.target.value)}
-                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors"
-                      required
-                    >
-                      <option value="" className="bg-zinc-800">Select Category</option>
-                      {categories.map((category) => (
-                        <option key={category.id} value={category.id} className="bg-zinc-800">
-                          {category.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                  <SmartFormField
+                    label="Category"
+                    name="category_id"
+                    type="select"
+                    value={listing.category_id}
+                    onChange={(value) => updateListing(index, 'category_id', value)}
+                    options={categories.map(cat => ({ value: cat.id, label: cat.name }))}
+                    categories={categories}
+                    currentFormData={convertToAuctionFormData(listing)}
+                    required
+                  />
 
-                  {/* Description */}
-                  <div>
-                    <label className="block text-sm font-medium text-zinc-300 mb-2">
-                      Description *
-                    </label>
-                    <textarea
-                      value={listing.description}
-                      onChange={(e) => updateListing(index, 'description', e.target.value)}
-                      placeholder="Describe the item's condition, size, unique features, etc."
-                      rows={4}
-                      className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors resize-none"
-                      required
-                    />
-                  </div>
+                  <SmartFormField
+                    label="Description"
+                    name="description"
+                    type="textarea"
+                    value={listing.description}
+                    onChange={(value) => updateListing(index, 'description', value)}
+                    categories={categories}
+                    currentFormData={convertToAuctionFormData(listing)}
+                    placeholder="Describe the item's condition, size, unique features, etc."
+                    required
+                  />
                 </div>
 
                 {/* Right Column - Pricing & Authentication */}
@@ -459,75 +497,67 @@ export default function BatchListingForm({ authVideo, onListingsCreated, onCance
                     </h4>
                     
                     <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-zinc-400 mb-2">
-                          Starting Price ($) *
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={listing.starting_price}
-                          onChange={(e) => updateListing(index, 'starting_price', e.target.value)}
-                          placeholder="0.00"
-                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors"
-                          required
-                        />
-                      </div>
+                      <SmartFormField
+                        label="Starting Price ($)"
+                        name="starting_price"
+                        type="number"
+                        value={listing.starting_price}
+                        onChange={(value) => updateListing(index, 'starting_price', value)}
+                        categories={categories}
+                        currentFormData={convertToAuctionFormData(listing)}
+                        placeholder="0.00"
+                        required
+                      />
 
-                      <div>
-                        <label className="block text-sm font-medium text-zinc-400 mb-2">
-                          Buy Now Price ($)
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          value={listing.buy_now_price}
-                          onChange={(e) => updateListing(index, 'buy_now_price', e.target.value)}
-                          placeholder="Optional"
-                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors"
-                        />
-                      </div>
+                      <SmartFormField
+                        label="Buy Now Price ($)"
+                        name="buy_now_price"
+                        type="number"
+                        value={listing.buy_now_price}
+                        onChange={(value) => updateListing(index, 'buy_now_price', value)}
+                        categories={categories}
+                        currentFormData={convertToAuctionFormData(listing)}
+                        placeholder="Optional"
+                      />
 
                       <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-sm font-medium text-zinc-400 mb-2">
-                            Condition *
-                          </label>
-                          <select
-                            value={listing.condition}
-                            onChange={(e) => updateListing(index, 'condition', e.target.value)}
-                            className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors"
-                            required
-                          >
-                            <option value="new" className="bg-zinc-800">New</option>
-                            <option value="like_new" className="bg-zinc-800">Like New</option>
-                            <option value="good" className="bg-zinc-800">Good</option>
-                            <option value="fair" className="bg-zinc-800">Fair</option>
-                            <option value="poor" className="bg-zinc-800">Poor</option>
-                          </select>
-                        </div>
+                        <SmartFormField
+                          label="Condition"
+                          name="condition"
+                          type="select"
+                          value={listing.condition}
+                          onChange={(value) => updateListing(index, 'condition', value)}
+                          options={[
+                            { value: 'new', label: 'New' },
+                            { value: 'like_new', label: 'Like New' },
+                            { value: 'good', label: 'Good' },
+                            { value: 'fair', label: 'Fair' },
+                            { value: 'poor', label: 'Poor' }
+                          ]}
+                          categories={categories}
+                          currentFormData={convertToAuctionFormData(listing)}
+                          required
+                        />
 
                         <div>
-                          <label className="block text-sm font-medium text-zinc-400 mb-2">
-                            Duration
-                          </label>
+                          <label className="block text-sm font-medium text-zinc-400 mb-2">Duration</label>
                           <select
                             value={listing.duration_days}
                             onChange={(e) => updateListing(index, 'duration_days', parseInt(e.target.value))}
                             className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white focus:ring-2 focus:ring-violet-500 focus:border-violet-500 transition-colors"
                           >
-                            <option value={1} className="bg-zinc-800">1 Day</option>
-                            <option value={3} className="bg-zinc-800">3 Days</option>
-                            <option value={7} className="bg-zinc-800">7 Days</option>
-                            <option value={10} className="bg-zinc-800">10 Days</option>
-                            <option value={14} className="bg-zinc-800">14 Days</option>
+                            <option value={1}>1 Day</option>
+                            <option value={3}>3 Days</option>
+                            <option value={7}>7 Days</option>
+                            <option value={10}>10 Days</option>
+                            <option value={14}>14 Days</option>
                           </select>
                         </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Video Authentication Details - Fixed uniform styling */}
+                  {/* Video Authentication Details */}
                   <div className="bg-zinc-900/30 border border-zinc-800/50 rounded-lg p-4">
                     <h4 className="text-sm font-medium text-zinc-300 mb-4 flex items-center gap-2">
                       <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
@@ -535,29 +565,20 @@ export default function BatchListingForm({ authVideo, onListingsCreated, onCance
                     </h4>
                     
                     <div className="space-y-4">
-                      {/* Published Content URL - Fixed styling */}
-                      <div>
-                        <label className="block text-sm font-medium text-zinc-400 mb-2">
-                          Published Content URL *
-                        </label>
-                        <input
-                          type="url"
-                          value={listing.published_content_url}
-                          onChange={(e) => updateListing(index, 'published_content_url', e.target.value)}
-                          placeholder="https://youtube.com/watch?v=... or https://twitch.tv/videos/..."
-                          className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-500 focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition-colors"
-                          required
-                        />
-                        <p className="text-xs text-zinc-500 mt-1">
-                          Link to where this item appeared in your content
-                        </p>
-                      </div>
+                      <SmartFormField
+                        label="Published Content URL"
+                        name="video_url"
+                        value={listing.published_content_url}
+                        onChange={(value) => updateListing(index, 'published_content_url', value)}
+                        categories={categories}
+                        currentFormData={convertToAuctionFormData(listing)}
+                        placeholder="https://youtube.com/watch?v=... or https://twitch.tv/videos/..."
+                        required
+                      />
 
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-sm font-medium text-zinc-400 mb-2">
-                            Start (seconds)
-                          </label>
+                          <label className="block text-sm font-medium text-zinc-400 mb-2">Start (seconds)</label>
                           <input
                             type="number"
                             value={listing.video_timestamp_start || ''}
@@ -567,9 +588,7 @@ export default function BatchListingForm({ authVideo, onListingsCreated, onCance
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-zinc-400 mb-2">
-                            End (seconds)
-                          </label>
+                          <label className="block text-sm font-medium text-zinc-400 mb-2">End (seconds)</label>
                           <input
                             type="number"
                             value={listing.video_timestamp_end || ''}
@@ -587,7 +606,7 @@ export default function BatchListingForm({ authVideo, onListingsCreated, onCance
           </div>
         ))}
 
-        {/* Add Item Button - Properly aligned */}
+        {/* Add Item Button */}
         {listings.length < authVideo.max_items_allowed - authVideo.declared_items_count && (
           <div className="flex justify-center">
             <button
@@ -600,24 +619,7 @@ export default function BatchListingForm({ authVideo, onListingsCreated, onCance
           </div>
         )}
 
-        {/* Error Display */}
-        {error && (
-          <div className="relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-red-500/5 to-transparent rounded-2xl blur-xl"></div>
-            <div className="relative bg-zinc-950/80 backdrop-blur-sm border border-red-500/30 rounded-2xl p-6">
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 bg-red-500/20 border border-red-500/30 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <svg className="w-3 h-3 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </div>
-                <p className="text-red-300">{error}</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Action Buttons - Properly aligned */}
+        {/* Action Buttons */}
         <div className="flex gap-4 justify-center pt-8">
           <button
             onClick={onCancel}
@@ -637,6 +639,22 @@ export default function BatchListingForm({ authVideo, onListingsCreated, onCance
               {loading ? 'Creating...' : `Create ${listings.length} Authenticated Listing${listings.length > 1 ? 's' : ''}`}
             </span>
           </button>
+        </div>
+      </div>
+
+      {/* Voice Command Helper */}
+      <div className="mt-8 bg-zinc-900/30 border border-zinc-800/50 rounded-lg p-6">
+        <h4 className="text-sm font-medium text-zinc-300 mb-4 flex items-center gap-2">
+          <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 115 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" />
+          </svg>
+          Voice Command Examples
+        </h4>
+        <div className="text-xs text-zinc-400 space-y-2">
+          <div><strong>Complete item:</strong> &quot;Nike Air Max shoes, excellent condition, sneakers category, starting at 75 dollars, reserve 100, YouTube link starts at 2 minutes 30 seconds&quot;</div>
+          <div><strong>Pricing:</strong> &quot;Starting price 50, reserve 75, buy now 150, 7 day auction&quot;</div>
+          <div><strong>Video timing:</strong> &quot;Video starts at 3 minutes 45 seconds&quot; → auto-converts to 225 seconds</div>
+          <div><strong>Condition:</strong> &quot;mint condition&quot; | &quot;used but good&quot; | &quot;vintage worn&quot;</div>
         </div>
       </div>
     </div>
