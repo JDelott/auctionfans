@@ -49,8 +49,12 @@ export function VoiceMicButton({
           
           try {
             console.log('🎤 Processing contextual voice input:', transcript);
+            console.log('🔍 Debug - contextManager exists:', !!contextManager);
+            console.log('🔍 Debug - initialDescription:', initialDescription);
+            console.log('🔍 Debug - itemId:', itemId);
 
             if (contextManager) {
+              console.log('✅ Using contextual-parse API');
               // Use contextual API parsing
               const response = await fetch('/api/ai/contextual-parse', {
                 method: 'POST',
@@ -67,54 +71,50 @@ export function VoiceMicButton({
 
               if (response.ok) {
                 const data = await response.json();
-                console.log('🔍 Full API Response:', data); // Debug logging
+                console.log('🔍 Full API Response:', data);
                 
-                if (data.success && data.formUpdates && Object.keys(data.formUpdates).length > 0) {
-                  console.log('✅ Applying contextual updates:', data.formUpdates);
+                if (data.success) {
+                  // FIXED: Merge both formUpdates and fieldUpdates
+                  const allUpdates: Record<string, string> = {
+                    ...data.formUpdates // Get updates like description
+                  };
                   
-                  // SIMPLIFIED: Just apply all form updates without confidence filtering for now
-                  // The API should already be filtering for reasonable updates
-                  onFormUpdate(data.formUpdates);
+                  // Add fieldUpdates to the same object
+                  if (data.fieldUpdates && Array.isArray(data.fieldUpdates)) {
+                    data.fieldUpdates.forEach((update: { field: string; value: string }) => {
+                      allUpdates[update.field] = update.value;
+                    });
+                  }
+                  
+                  console.log('🔄 Merged updates to apply:', allUpdates);
+                  
+                  // Apply the merged updates
+                  if (Object.keys(allUpdates).length > 0) {
+                    onFormUpdate(allUpdates);
+                  } else {
+                    console.warn('⚠️ No updates to apply from contextual-parse');
+                  }
                   
                   // Update context manager properly
                   if (data.updatedContext && contextManager) {
                     try {
                       const updatedManager = AIContextManager.fromSerialized(data.updatedContext);
-                      // Properly merge the context
                       Object.assign(contextManager, updatedManager);
                     } catch (error) {
                       console.warn('Failed to update context manager:', error);
                     }
                   }
                 } else {
-                  console.log('❌ No updates from contextual parsing, trying fallback');
-                  // Fallback to enhance-listing API
-                  const fallbackResponse = await fetch('/api/ai/enhance-listing', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      userMessage: transcript,
-                      currentFormData,
-                      currentStep: currentStep || 'review_edit',
-                      categories: categories.map(c => ({ id: c.id, name: c.name })),
-                      rejectedFields: []
-                    })
-                  });
-
-                  if (fallbackResponse.ok) {
-                    const fallbackData = await fallbackResponse.json();
-                    const formUpdates = fallbackData.formUpdates || {};
-                    if (Object.keys(formUpdates).length > 0) {
-                      console.log('✅ Applying fallback updates:', formUpdates);
-                      onFormUpdate(formUpdates);
-                    }
-                  }
+                  console.log('❌ Contextual-parse returned success: false');
+                  throw new Error('Contextual parsing returned failure');
                 }
               } else {
-                throw new Error('Contextual parsing failed');
+                console.log('❌ Contextual-parse HTTP error:', response.status);
+                throw new Error('Contextual parsing HTTP failed');
               }
             } else {
-              // Fallback to regular API with confidence filtering
+              console.log('⚠️ No contextManager, falling back to enhance-listing API');
+              // Fallback to regular API
               const response = await fetch('/api/ai/enhance-listing', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -139,7 +139,33 @@ export function VoiceMicButton({
             
           } catch (error) {
             console.error('❌ Error processing voice input:', error);
-            // Could add rollback logic here if needed
+            
+            // Try fallback if contextual fails
+            console.log('🔄 Trying fallback enhance-listing API after error');
+            try {
+              const response = await fetch('/api/ai/enhance-listing', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userMessage: transcript,
+                  currentFormData,
+                  currentStep: currentStep || 'review_edit',
+                  categories: categories.map(c => ({ id: c.id, name: c.name })),
+                  rejectedFields: []
+                })
+              });
+
+              if (response.ok) {
+                const data = await response.json();
+                const formUpdates = data.formUpdates || {};
+                if (Object.keys(formUpdates).length > 0) {
+                  console.log('✅ Applying emergency fallback updates:', formUpdates);
+                  onFormUpdate(formUpdates);
+                }
+              }
+            } catch (fallbackError) {
+              console.error('❌ Fallback also failed:', fallbackError);
+            }
           } finally {
             setIsProcessing(false);
             clearTranscript();

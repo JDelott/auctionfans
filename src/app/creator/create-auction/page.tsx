@@ -540,6 +540,8 @@ export default function CreateAuctionPage() {
                     item={item}
                     categories={categories}
                     onItemUpdate={updateItem}
+                    contextManager={contextManager}
+                    initialDescription={initialDescription}
                   />
                 ))}
               </div>

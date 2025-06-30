@@ -5,14 +5,23 @@ import Image from 'next/image';
 import { BatchItem, Category } from '@/lib/auction-forms/types';
 import { SmartFormField } from './SmartFormField';
 import { VoiceMicButton } from './VoiceMicButton';
+import { AIContextManager } from '@/lib/ai/context-manager';
 
 interface BatchItemEditorProps {
   item: BatchItem;
   categories: Category[];
   onItemUpdate: (itemId: string, updates: Partial<BatchItem>) => void;
+  contextManager?: AIContextManager;
+  initialDescription?: string;
 }
 
-export function BatchItemEditor({ item, categories, onItemUpdate }: BatchItemEditorProps) {
+export function BatchItemEditor({ 
+  item, 
+  categories, 
+  onItemUpdate, 
+  contextManager, 
+  initialDescription 
+}: BatchItemEditorProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const handleFieldChange = (fieldName: string, value: string) => {
@@ -77,6 +86,9 @@ export function BatchItemEditor({ item, categories, onItemUpdate }: BatchItemEdi
                   categories={categories}
                   currentFormData={formData}
                   currentStep="review_edit"
+                  contextManager={contextManager}
+                  initialDescription={initialDescription}
+                  itemId={item.id}
                 />
                 
                 <button
