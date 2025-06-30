@@ -90,25 +90,29 @@ export async function POST(request: NextRequest) {
                   type: 'text',
                   text: `Analyze this image and identify any sellable items/products that could be auctioned. 
 
+IMPORTANT: You must respond with ONLY a valid JSON array, no other text.
+
 For each item you find, provide:
 - Item name (concise, marketable)
-- Description (detailed, appealing for buyers)
+- Description (detailed, appealing for buyers)  
 - Suggested category from this list: ${categories.map(c => c.name).join(', ')}
 - Estimated condition (new, like_new, good, fair, poor)
 - Confidence score (0.0 to 1.0)
 
-Return your response as a JSON array like this:
+Response format - ONLY return this JSON structure:
 [
   {
     "name": "Vintage Leather Jacket",
     "description": "Classic brown leather jacket with quilted lining, appears to be in excellent condition with minimal wear",
-    "category": "Clothing",
+    "category": "Fashion & Accessories", 
     "condition": "good",
     "confidence": 0.85
   }
 ]
 
-If no sellable items are clearly visible, return an empty array: []`
+If no sellable items are visible, return: []
+
+DO NOT include any explanatory text, only the JSON array.`
                 }
               ]
             }

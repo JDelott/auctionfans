@@ -8,6 +8,8 @@ interface DetectedItem {
   item_description: string;
   suggested_category: string;
   condition: string;
+  confidence_score?: number;
+  screenshot_timestamp?: number;
 }
 
 interface AuctionConfig {
@@ -46,7 +48,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
     }
 
-    // Get video session (no verification check needed)
+    // Get video session
     const sessionResult = await query(
       `SELECT * FROM video_sessions WHERE id = $1 AND creator_id = $2`,
       [videoSessionId, user.id]
@@ -67,26 +69,21 @@ export async function POST(request: NextRequest) {
         const item = items.find((item: DetectedItem) => item.id === config.itemId);
         if (!item) continue;
 
-        // Get screenshots for this video session to use as auction images
-        const screenshotsResult = await client.query(
-          `SELECT image_url FROM video_screenshots 
-           WHERE video_session_id = $1 
-           ORDER BY timestamp_seconds`,
-          [videoSessionId]
+        // Get the specific detected item from database to find its screenshot
+        const detectedItemResult = await client.query(
+          `SELECT di.*, vs.image_url, vs.timestamp_seconds 
+           FROM detected_items di
+           JOIN video_screenshots vs ON di.screenshot_id = vs.id
+           WHERE di.id = $1 AND di.video_session_id = $2`,
+          [item.id, videoSessionId]
         );
 
-        const screenshots = screenshotsResult.rows;
+        if (detectedItemResult.rows.length === 0) {
+          console.warn(`No detected item found for ID: ${item.id}`);
+          continue;
+        }
 
-        // Get timestamp from first screenshot if available
-        const timestampResult = await client.query(
-          `SELECT timestamp_seconds FROM video_screenshots 
-           WHERE video_session_id = $1 
-           ORDER BY timestamp_seconds 
-           LIMIT 1`,
-          [videoSessionId]
-        );
-
-        const timestamp = timestampResult.rows[0]?.timestamp_seconds || 0;
+        const detectedItemData = detectedItemResult.rows[0];
 
         // Create auction
         const startTime = new Date();
@@ -104,7 +101,7 @@ export async function POST(request: NextRequest) {
             item.item_name,
             item.item_description,
             session.video_url,
-            timestamp,
+            detectedItemData.timestamp_seconds,
             parseFloat(config.starting_price),
             config.buy_now_price ? parseFloat(config.buy_now_price) : null,
             config.reserve_price ? parseFloat(config.reserve_price) : null,
@@ -116,36 +113,36 @@ export async function POST(request: NextRequest) {
 
         const auction = auctionResult.rows[0];
 
-        // Add screenshots as auction images
-        for (let i = 0; i < screenshots.length; i++) {
-          const screenshot = screenshots[i];
-          await client.query(
-            `INSERT INTO auction_item_images (
-              auction_item_id, image_url, is_primary, sort_order, created_at
-            ) VALUES ($1, $2, $3, $4, NOW())`,
-            [
-              auction.id,
-              screenshot.image_url,
-              i === 0, // First image is primary
-              i
-            ]
-          );
-        }
+        // Add the specific screenshot as the auction image
+        await client.query(
+          `INSERT INTO auction_item_images (
+            auction_item_id, image_url, is_primary, sort_order, created_at
+          ) VALUES ($1, $2, true, 0, NOW())`,
+          [
+            auction.id,
+            detectedItemData.image_url
+          ]
+        );
 
-        // Create a simple certificate (no verification needed)
-        const certificate = {
-          video_session_id: videoSessionId,
-          item_timestamp: timestamp,
-          auction_id: auction.id,
-          created_at: new Date().toISOString(),
-          certificate_hash: `${videoSessionId}-${item.id}-${Date.now()}`.substring(0, 32)
-        };
+        // Create item-auction link
+        await client.query(
+          `INSERT INTO item_auction_links (
+            detected_item_id, auction_item_id, created_at
+          ) VALUES ($1, $2, NOW())`,
+          [detectedItemData.id, auction.id]
+        );
+
+        // Update detected item status
+        await client.query(
+          'UPDATE detected_items SET status = $1, updated_at = NOW() WHERE id = $2',
+          ['auction_created', detectedItemData.id]
+        );
 
         auctions.push({
           ...auction,
-          certificate,
           item_name: item.item_name,
-          images: screenshots.map(s => s.image_url) // Include images in response
+          image_url: detectedItemData.image_url,
+          timestamp: detectedItemData.timestamp_seconds
         });
       }
 
