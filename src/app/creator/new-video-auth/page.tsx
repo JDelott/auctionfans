@@ -34,7 +34,7 @@ export default function NewVideoAuthPage() {
   const [idVerificationStatus, setIdVerificationStatus] = useState<IDVerificationStatus | null>(null);
   const [authVideos, setAuthVideos] = useState<AuthVideo[]>([]);
   const [loadingStatus, setLoadingStatus] = useState(true);
-  const [step, setStep] = useState<Step>('overview');
+  const [step, setStep] = useState<Step>('overview'); // Always start with overview
 
   useEffect(() => {
     if (!loading && user?.is_creator) {
@@ -43,31 +43,31 @@ export default function NewVideoAuthPage() {
     }
   }, [user, loading]);
 
-  // Auto-advance through steps based on completion status
-  useEffect(() => {
-    if (step === 'overview' && idVerificationStatus && authVideos.length >= 0) {
-      if (!idVerificationStatus.verified) {
-        // ID not verified, start there
-      } else if (!authVideos.some(v => v.status === 'verified')) {
-        // ID verified but no auth video, go to video step
-        setStep('auth-video');
-      } else {
-        // Both completed, ready for listings
-        setStep('batch-listings');
-      }
-    }
-  }, [idVerificationStatus, authVideos, step]);
-
   const checkVerificationStatus = async () => {
     try {
-      // Mock for now since we don't have the ID verification API yet
-      setIdVerificationStatus({
-        verified: false,
-        status: 'pending',
-        canSubmit: true
-      });
+      const response = await fetch('/api/creator-verification/id-verification');
+      const data = await response.json();
+      
+      if (response.ok) {
+        setIdVerificationStatus({
+          verified: data.verified,
+          status: data.status,
+          canSubmit: data.canSubmit
+        });
+      } else {
+        setIdVerificationStatus({
+          verified: false,
+          status: 'none',
+          canSubmit: true
+        });
+      }
     } catch (error) {
       console.error('Failed to check ID verification status:', error);
+      setIdVerificationStatus({
+        verified: false,
+        status: 'error',
+        canSubmit: true
+      });
     }
   };
 
@@ -76,7 +76,6 @@ export default function NewVideoAuthPage() {
       const response = await fetch('/api/creator-verification/auth-video');
       const data = await response.json();
       if (data.success) {
-        // Transform the data to match our interface
         const transformedVideos = data.authVideos.map((video: AuthVideo) => ({
           id: video.id,
           video_url: video.video_url || '',
@@ -98,22 +97,18 @@ export default function NewVideoAuthPage() {
   };
 
   const handleIDVerificationSubmitted = () => {
-    // Refresh status and advance to next step
     checkVerificationStatus();
-    setStep('auth-video');
+    setStep('overview'); // Return to overview to see updated status
   };
 
   const handleVideoUploaded = () => {
-    // Refresh videos and advance to listings
     fetchAuthVideos();
-    setStep('batch-listings');
+    setStep('overview'); // Return to overview to see new video
   };
 
   const handleListingsCreated = () => {
-    // Refresh data
     fetchAuthVideos();
-    // Could redirect to listings page or show success
-    alert('Listings created successfully!');
+    setStep('overview'); // Return to overview
   };
 
   if (loading || loadingStatus) {
@@ -130,28 +125,25 @@ export default function NewVideoAuthPage() {
   }
 
   const hasVerifiedID = idVerificationStatus?.verified ?? false;
-  const hasValidAuthVideo = authVideos.some(video => video.status === 'verified');
-  const canCreateListings = hasVerifiedID && hasValidAuthVideo;
-
-  // Get the verified auth video for batch listings
-  const verifiedAuthVideo = authVideos.find(video => video.status === 'verified');
+  const verifiedVideos = authVideos.filter(video => video.status === 'verified');
+  const canCreateListings = hasVerifiedID && verifiedVideos.length > 0;
 
   if (step === 'overview') {
     return (
       <div className="min-h-screen bg-zinc-950 py-8">
         <div className="max-w-4xl mx-auto px-6">
-          {/* Header with electric accents */}
+          {/* Header */}
           <div className="text-center mb-12 relative">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-[1px] bg-gradient-to-r from-transparent via-violet-500/40 to-transparent"></div>
             <h1 className="text-4xl font-black text-white mb-4 tracking-tight">
               Verified Creator System
             </h1>
             <p className="text-xl text-zinc-300 max-w-2xl mx-auto font-light">
-              Three-step verification process for authenticated listings
+              Manage your verification status and authenticated videos
             </p>
           </div>
 
-          {/* Progress Steps */}
+          {/* Progress Overview */}
           <div className="mb-12 relative">
             <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 via-transparent to-emerald-500/5 rounded-2xl blur-xl"></div>
             <div className="relative bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-8">
@@ -161,7 +153,7 @@ export default function NewVideoAuthPage() {
                   title="Identity"
                   description="Verify with ID + selfie"
                   completed={hasVerifiedID}
-                  active={!hasVerifiedID}
+                  active={false}
                 />
                 <div className="flex-1 h-[2px] bg-zinc-800 mx-6 relative overflow-hidden">
                   <div 
@@ -170,10 +162,10 @@ export default function NewVideoAuthPage() {
                 </div>
                 <StepIndicator
                   number={2}
-                  title="Declaration"
-                  description="Record authentication video"
-                  completed={hasValidAuthVideo}
-                  active={hasVerifiedID && !hasValidAuthVideo}
+                  title="Videos"
+                  description={`${verifiedVideos.length} verified videos`}
+                  completed={verifiedVideos.length > 0}
+                  active={false}
                 />
                 <div className="flex-1 h-[2px] bg-zinc-800 mx-6 relative overflow-hidden">
                   <div 
@@ -191,82 +183,150 @@ export default function NewVideoAuthPage() {
             </div>
           </div>
 
-          {/* Current Step Content */}
-          <div className="relative bg-zinc-950/80 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-8 overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-violet-500/10 to-transparent rounded-full blur-2xl"></div>
-            <div className="relative text-center">
-              <h2 className="text-2xl font-bold text-white mb-6 tracking-tight">Get Started</h2>
-              
-              {!hasVerifiedID && (
+          {/* Action Cards */}
+          <div className="grid gap-6">
+            
+            {/* ID Verification Card */}
+            <div className="relative bg-zinc-950/80 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6 overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-violet-500/10 to-transparent rounded-full blur-2xl"></div>
+              <div className="relative flex items-center justify-between">
                 <div>
-                  <p className="text-zinc-300 mb-8 max-w-md mx-auto leading-relaxed">
-                    Begin your verification journey to unlock authenticated listing capabilities.
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`w-3 h-3 rounded-full ${hasVerifiedID ? 'bg-emerald-400' : 'bg-zinc-600'}`}></div>
+                    <h3 className="text-xl font-bold text-white tracking-tight">Identity Verification</h3>
+                  </div>
+                  <p className="text-zinc-300 mb-4">
+                    {hasVerifiedID 
+                      ? "✓ Your identity is verified and active" 
+                      : "Upload government ID and selfie photos for verification"}
                   </p>
-                  <button
-                    onClick={() => setStep('id-verification')}
-                    className="group relative overflow-hidden border border-violet-500/40 hover:border-violet-400/80 bg-zinc-950/90 px-8 py-4 rounded-lg transition-all duration-300"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <div className="relative flex items-center justify-center gap-3">
-                      <div className="w-1.5 h-1.5 bg-violet-400 rounded-full group-hover:shadow-lg group-hover:shadow-violet-400/50"></div>
-                      <span className="text-violet-300 group-hover:text-white font-medium tracking-wider">START VERIFICATION</span>
-                    </div>
-                  </button>
+                  <div className="text-sm text-zinc-400">
+                    Status: <span className={hasVerifiedID ? 'text-emerald-400' : 'text-zinc-300'}>{idVerificationStatus?.status || 'Not started'}</span>
+                  </div>
                 </div>
-              )}
+                <button
+                  onClick={() => setStep('id-verification')}
+                  className={`group relative overflow-hidden border px-6 py-3 rounded-lg transition-all duration-300 ${
+                    hasVerifiedID 
+                      ? 'border-emerald-500/40 hover:border-emerald-400/80 bg-zinc-950/90'
+                      : 'border-violet-500/40 hover:border-violet-400/80 bg-zinc-950/90'
+                  }`}
+                >
+                  <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
+                    hasVerifiedID 
+                      ? 'bg-gradient-to-r from-emerald-500/10 to-transparent'
+                      : 'bg-gradient-to-r from-violet-500/10 to-transparent'
+                  }`}></div>
+                  <span className={`relative font-medium tracking-wider ${
+                    hasVerifiedID 
+                      ? 'text-emerald-300 group-hover:text-white'
+                      : 'text-violet-300 group-hover:text-white'
+                  }`}>
+                    {hasVerifiedID ? 'VIEW STATUS' : 'START VERIFICATION'}
+                  </span>
+                </button>
+              </div>
+            </div>
 
-              {hasVerifiedID && !hasValidAuthVideo && (
-                <div>
-                  <p className="text-zinc-300 mb-8 max-w-md mx-auto leading-relaxed">
-                    Identity verified. Record your authentication video to continue.
-                  </p>
+            {/* Auth Videos Card */}
+            <div className="relative bg-zinc-950/80 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6 overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-full blur-2xl"></div>
+              <div className="relative">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className={`w-3 h-3 rounded-full ${verifiedVideos.length > 0 ? 'bg-emerald-400' : 'bg-zinc-600'}`}></div>
+                      <h3 className="text-xl font-bold text-white tracking-tight">Authentication Videos</h3>
+                    </div>
+                    <p className="text-zinc-300">
+                      {hasVerifiedID 
+                        ? `Record videos declaring items for authentication. You have ${verifiedVideos.length} verified videos.`
+                        : "Complete ID verification first to upload videos"}
+                    </p>
+                  </div>
                   <button
                     onClick={() => setStep('auth-video')}
-                    className="group relative overflow-hidden border border-violet-500/40 hover:border-violet-400/80 bg-zinc-950/90 px-8 py-4 rounded-lg transition-all duration-300"
-                  >
-                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <div className="relative flex items-center justify-center gap-3">
-                      <div className="w-1.5 h-1.5 bg-violet-400 rounded-full group-hover:shadow-lg group-hover:shadow-violet-400/50"></div>
-                      <span className="text-violet-300 group-hover:text-white font-medium tracking-wider">RECORD VIDEO</span>
-                    </div>
-                  </button>
-                </div>
-              )}
-
-              {canCreateListings && (
-                <div>
-                  <p className="text-zinc-300 mb-8 max-w-md mx-auto leading-relaxed">
-                    Verification complete. Ready to create authenticated listings.
-                  </p>
-                  <button
-                    onClick={() => setStep('batch-listings')}
-                    className="group relative overflow-hidden border border-emerald-500/40 hover:border-emerald-400/80 bg-zinc-950/90 px-8 py-4 rounded-lg transition-all duration-300"
+                    disabled={!hasVerifiedID}
+                    className={`group relative overflow-hidden border px-6 py-3 rounded-lg transition-all duration-300 ${
+                      hasVerifiedID
+                        ? 'border-emerald-500/40 hover:border-emerald-400/80 bg-zinc-950/90'
+                        : 'border-zinc-700/50 bg-zinc-800/50 cursor-not-allowed'
+                    }`}
                   >
                     <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <div className="relative flex items-center justify-center gap-3">
-                      <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full group-hover:shadow-lg group-hover:shadow-emerald-400/50"></div>
-                      <span className="text-emerald-300 group-hover:text-white font-medium tracking-wider">CREATE LISTINGS</span>
-                    </div>
+                    <span className={`relative font-medium tracking-wider ${
+                      hasVerifiedID
+                        ? 'text-emerald-300 group-hover:text-white'
+                        : 'text-zinc-500'
+                    }`}>
+                      {verifiedVideos.length > 0 ? 'ADD VIDEO' : 'RECORD VIDEO'}
+                    </span>
                   </button>
                 </div>
-              )}
-            </div>
-          </div>
 
-          {/* Benefits Section */}
-          <div className="mt-16 grid md:grid-cols-3 gap-6">
-            <BenefitCard
-              title="Trust Protocol"
-              description="Verified creator badges build buyer confidence and command premium prices"
-            />
-            <BenefitCard
-              title="Batch Processing"
-              description="One verification unlocks unlimited authenticated listings with minimal friction"
-            />
-            <BenefitCard
-              title="Market Position"
-              description="Stand out in the marketplace with official verification status"
-            />
+                {/* Videos List */}
+                {authVideos.length > 0 && (
+                  <div className="mt-4 space-y-2">
+                    <h4 className="text-sm font-medium text-zinc-400 tracking-wide uppercase">Your Videos</h4>
+                    {authVideos.map((video, index) => (
+                      <div key={video.id} className="flex items-center justify-between py-2 px-3 bg-zinc-900/50 rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <div className={`w-2 h-2 rounded-full ${video.status === 'verified' ? 'bg-emerald-400' : 'bg-yellow-400'}`}></div>
+                          <span className="text-sm text-zinc-300">Video {index + 1}</span>
+                          <span className="text-xs text-zinc-500">({video.declared_items_count} items)</span>
+                        </div>
+                        <span className={`text-xs px-2 py-1 rounded ${
+                          video.status === 'verified' 
+                            ? 'bg-emerald-900/50 text-emerald-300' 
+                            : 'bg-yellow-900/50 text-yellow-300'
+                        }`}>
+                          {video.status}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Batch Listings Card */}
+            <div className="relative bg-zinc-950/80 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6 overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-violet-500/10 to-transparent rounded-full blur-2xl"></div>
+              <div className="relative flex items-center justify-between">
+                <div>
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className={`w-3 h-3 rounded-full ${canCreateListings ? 'bg-violet-400' : 'bg-zinc-600'}`}></div>
+                    <h3 className="text-xl font-bold text-white tracking-tight">Create Listings</h3>
+                  </div>
+                  <p className="text-zinc-300 mb-4">
+                    {canCreateListings 
+                      ? "Create authenticated auction listings from your verified videos"
+                      : "Complete verification and record videos to create listings"}
+                  </p>
+                  <div className="text-sm text-zinc-400">
+                    Available videos: <span className="text-white">{verifiedVideos.length}</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setStep('batch-listings')}
+                  disabled={!canCreateListings}
+                  className={`group relative overflow-hidden border px-6 py-3 rounded-lg transition-all duration-300 ${
+                    canCreateListings
+                      ? 'border-violet-500/40 hover:border-violet-400/80 bg-zinc-950/90'
+                      : 'border-zinc-700/50 bg-zinc-800/50 cursor-not-allowed'
+                  }`}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <span className={`relative font-medium tracking-wider ${
+                    canCreateListings
+                      ? 'text-violet-300 group-hover:text-white'
+                      : 'text-zinc-500'
+                  }`}>
+                    CREATE LISTINGS
+                  </span>
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -299,9 +359,9 @@ export default function NewVideoAuthPage() {
           />
         )}
 
-        {step === 'batch-listings' && verifiedAuthVideo && (
+        {step === 'batch-listings' && verifiedVideos.length > 0 && (
           <BatchListingForm
-            authVideo={verifiedAuthVideo}
+            authVideo={verifiedVideos[0]} // For now, use first verified video
             onListingsCreated={handleListingsCreated}
             onCancel={() => setStep('overview')}
           />
@@ -340,22 +400,6 @@ function StepIndicator({ number, title, description, completed, active }: StepIn
       <p className={`text-xs leading-relaxed ${active || completed ? 'text-zinc-300' : 'text-zinc-600'}`}>
         {description}
       </p>
-    </div>
-  );
-}
-
-interface BenefitCardProps {
-  title: string;
-  description: string;
-}
-
-function BenefitCard({ title, description }: BenefitCardProps) {
-  return (
-    <div className="group relative bg-zinc-900/30 backdrop-blur-sm border border-zinc-800/50 rounded-xl p-6 text-center transition-all duration-300 hover:border-zinc-700/50">
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-16 h-[1px] bg-gradient-to-r from-transparent via-violet-500/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-      <div className="w-3 h-3 bg-violet-500/40 rounded-full mx-auto mb-4 group-hover:bg-violet-400/60 transition-colors duration-300"></div>
-      <h3 className="text-white font-bold mb-3 tracking-tight">{title}</h3>
-      <p className="text-zinc-400 text-sm leading-relaxed">{description}</p>
     </div>
   );
 }

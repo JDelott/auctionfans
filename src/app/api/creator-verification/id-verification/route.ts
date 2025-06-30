@@ -53,13 +53,13 @@ export async function POST(request: NextRequest) {
     const selfiePath = await saveFile(selfieFile, uploadDir, `selfie-${timestamp}`);
     const selfieWithIdPath = await saveFile(selfieWithIdFile, uploadDir, `selfie-with-id-${timestamp}`);
 
-    // Create verification record
+    // Create verification record - auto-verify for now since you said it's instant
     const result = await query(`
       INSERT INTO creator_id_verification (
         creator_id, id_document_type, id_document_front_path, id_document_back_path,
-        selfie_image_path, selfie_with_id_path, status, attempt_number
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      RETURNING id, status, created_at
+        selfie_image_path, selfie_with_id_path, status, verified_at, expires_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING id, status, created_at, verified_at
     `, [
       user.id,
       idDocumentType,
@@ -67,8 +67,9 @@ export async function POST(request: NextRequest) {
       idBackPath,
       selfiePath,
       selfieWithIdPath,
-      'pending',
-      1
+      'verified', // Auto-verify instantly
+      new Date(), // verified_at
+      new Date(Date.now() + 365 * 24 * 60 * 60 * 1000) // expires in 1 year
     ]);
 
     const verification = result.rows[0];
@@ -78,7 +79,8 @@ export async function POST(request: NextRequest) {
       verification: {
         id: verification.id,
         status: verification.status,
-        submittedAt: verification.created_at
+        submittedAt: verification.created_at,
+        verifiedAt: verification.verified_at
       }
     });
 
@@ -110,7 +112,7 @@ export async function GET(request: NextRequest) {
 
     // Get verification status
     const result = await query(`
-      SELECT id, status, created_at, verified_at, rejection_reason, attempt_number, max_attempts, expires_at
+      SELECT id, status, created_at, verified_at, admin_notes, expires_at
       FROM creator_id_verification 
       WHERE creator_id = $1 
       ORDER BY created_at DESC 
@@ -118,7 +120,11 @@ export async function GET(request: NextRequest) {
     `, [user.id]);
 
     if (result.rows.length === 0) {
-      return NextResponse.json({ verified: false, canSubmit: true });
+      return NextResponse.json({ 
+        verified: false, 
+        status: 'none',
+        canSubmit: true 
+      });
     }
 
     const verification = result.rows[0];
@@ -127,11 +133,9 @@ export async function GET(request: NextRequest) {
       status: verification.status,
       submittedAt: verification.created_at,
       verifiedAt: verification.verified_at,
-      rejectionReason: verification.rejection_reason,
-      attemptNumber: verification.attempt_number,
-      maxAttempts: verification.max_attempts,
+      adminNotes: verification.admin_notes,
       expiresAt: verification.expires_at,
-      canSubmit: verification.status !== 'verified' && verification.attempt_number < verification.max_attempts
+      canSubmit: verification.status !== 'verified'
     });
 
   } catch (error) {
@@ -151,5 +155,6 @@ async function saveFile(file: File, uploadDir: string, baseName: string): Promis
   const bytes = await file.arrayBuffer();
   await writeFile(filePath, Buffer.from(bytes));
   
-  return filePath;
+  // Return relative path for database storage
+  return `/uploads/id-verification/${path.basename(uploadDir)}/${fileName}`;
 } 
