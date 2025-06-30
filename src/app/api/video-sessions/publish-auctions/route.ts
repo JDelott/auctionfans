@@ -67,8 +67,18 @@ export async function POST(request: NextRequest) {
         const item = items.find((item: DetectedItem) => item.id === config.itemId);
         if (!item) continue;
 
-        // Get screenshot for timestamp if needed
-        const screenshotResult = await client.query(
+        // Get screenshots for this video session to use as auction images
+        const screenshotsResult = await client.query(
+          `SELECT image_url FROM video_screenshots 
+           WHERE video_session_id = $1 
+           ORDER BY timestamp_seconds`,
+          [videoSessionId]
+        );
+
+        const screenshots = screenshotsResult.rows;
+
+        // Get timestamp from first screenshot if available
+        const timestampResult = await client.query(
           `SELECT timestamp_seconds FROM video_screenshots 
            WHERE video_session_id = $1 
            ORDER BY timestamp_seconds 
@@ -76,7 +86,7 @@ export async function POST(request: NextRequest) {
           [videoSessionId]
         );
 
-        const timestamp = screenshotResult.rows[0]?.timestamp_seconds || 0;
+        const timestamp = timestampResult.rows[0]?.timestamp_seconds || 0;
 
         // Create auction
         const startTime = new Date();
@@ -106,6 +116,22 @@ export async function POST(request: NextRequest) {
 
         const auction = auctionResult.rows[0];
 
+        // Add screenshots as auction images
+        for (let i = 0; i < screenshots.length; i++) {
+          const screenshot = screenshots[i];
+          await client.query(
+            `INSERT INTO auction_item_images (
+              auction_item_id, image_url, is_primary, sort_order, created_at
+            ) VALUES ($1, $2, $3, $4, NOW())`,
+            [
+              auction.id,
+              screenshot.image_url,
+              i === 0, // First image is primary
+              i
+            ]
+          );
+        }
+
         // Create a simple certificate (no verification needed)
         const certificate = {
           video_session_id: videoSessionId,
@@ -118,7 +144,8 @@ export async function POST(request: NextRequest) {
         auctions.push({
           ...auction,
           certificate,
-          item_name: item.item_name
+          item_name: item.item_name,
+          images: screenshots.map(s => s.image_url) // Include images in response
         });
       }
 
