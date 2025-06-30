@@ -151,4 +151,68 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// DELETE endpoint to remove auth video
+export async function DELETE(request: NextRequest) {
+  try {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
+    const decoded = verifyToken(token);
+    if (!decoded) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    const user = await getUserById(decoded.userId);
+    if (!user || !user.is_creator) {
+      return NextResponse.json({ error: 'Only creators can delete auth videos' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const videoId = searchParams.get('id');
+
+    if (!videoId) {
+      return NextResponse.json({ error: 'Video ID is required' }, { status: 400 });
+    }
+
+    // Check if video belongs to this creator
+    const videoResult = await query(
+      'SELECT * FROM auth_videos WHERE id = $1 AND creator_id = $2',
+      [videoId, user.id]
+    );
+
+    if (videoResult.rows.length === 0) {
+      return NextResponse.json({ error: 'Video not found or access denied' }, { status: 404 });
+    }
+
+    // Check if video has any listings associated with it
+    const listingsResult = await query(
+      'SELECT COUNT(*) as count FROM authenticated_listings WHERE auth_video_id = $1',
+      [videoId]
+    );
+
+    if (parseInt(listingsResult.rows[0].count) > 0) {
+      return NextResponse.json({ 
+        error: 'Cannot delete video with associated listings. Delete listings first.' 
+      }, { status: 400 });
+    }
+
+    // Delete the video
+    await query('DELETE FROM auth_videos WHERE id = $1', [videoId]);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Auth video deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Delete auth video error:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete auth video' },
+      { status: 500 }
+    );
+  }
 } 

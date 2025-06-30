@@ -227,4 +227,76 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// DELETE endpoint to remove authenticated listing
+export async function DELETE(request: NextRequest) {
+  try {
+    const token = request.cookies.get('auth-token')?.value;
+    if (!token) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 });
+    }
+
+    const decoded = verifyToken(token);
+    if (!decoded) {
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    }
+
+    const user = await getUserById(decoded.userId);
+    if (!user || !user.is_creator) {
+      return NextResponse.json({ error: 'Only creators can delete authenticated listings' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(request.url);
+    const listingId = searchParams.get('id');
+
+    if (!listingId) {
+      return NextResponse.json({ error: 'Listing ID is required' }, { status: 400 });
+    }
+
+    // Get the authenticated listing and verify ownership
+    const listingResult = await query(
+      `SELECT al.*, ai.id as auction_item_id, ai.status as auction_status 
+       FROM authenticated_listings al
+       JOIN auction_items ai ON al.auction_item_id = ai.id
+       WHERE al.id = $1 AND al.creator_id = $2`,
+      [listingId, user.id]
+    );
+
+    if (listingResult.rows.length === 0) {
+      return NextResponse.json({ error: 'Listing not found or access denied' }, { status: 404 });
+    }
+
+    const listing = listingResult.rows[0];
+
+    // Check if auction has bids
+    const bidsResult = await query(
+      'SELECT COUNT(*) as count FROM bids WHERE auction_item_id = $1',
+      [listing.auction_item_id]
+    );
+
+    if (parseInt(bidsResult.rows[0].count) > 0) {
+      return NextResponse.json({ 
+        error: 'Cannot delete listing with active bids' 
+      }, { status: 400 });
+    }
+
+    // Delete in cascade order: badges -> listings -> auction images -> auction items
+    await query('DELETE FROM listing_authentication_badges WHERE listing_id = $1', [listingId]);
+    await query('DELETE FROM authenticated_listings WHERE id = $1', [listingId]);
+    await query('DELETE FROM auction_item_images WHERE auction_item_id = $1', [listing.auction_item_id]);
+    await query('DELETE FROM auction_items WHERE id = $1', [listing.auction_item_id]);
+
+    return NextResponse.json({
+      success: true,
+      message: 'Authenticated listing deleted successfully'
+    });
+
+  } catch (error) {
+    console.error('Delete authenticated listing error:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete authenticated listing' },
+      { status: 500 }
+    );
+  }
 } 
