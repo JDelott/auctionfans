@@ -1,5 +1,6 @@
 import { AuctionFormData, Category } from '../auction-forms/types';
 import Anthropic from '@anthropic-ai/sdk';
+import { parseVoiceInputWithKeywords } from './enhanced-field-parser';
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
@@ -12,27 +13,30 @@ export async function extractFormUpdates(
   categories: Category[],
   currentStep: string = 'basic_info'
 ): Promise<Record<string, string>> {
-  console.log('extractFormUpdates called:', { userMessage, currentStep });
   
-  // Step-specific extraction
-  switch (currentStep) {
-    case 'basic_info':
-      return extractBasicInfo(userMessage, currentFormData, categories);
+  console.log('extractFormUpdates called with:', { userMessage, currentStep });
+
+  // Use the enhanced keyword-based parser
+  try {
+    const updates = await parseVoiceInputWithKeywords(userMessage, currentFormData, categories);
     
+    if (Object.keys(updates).length > 0) {
+      return updates;
+    }
+  } catch (error) {
+    console.error('Enhanced parser failed, falling back:', error);
+  }
+
+  // Fallback to step-specific parsing if enhanced parser fails
+  switch (currentStep) {
     case 'pricing':
       return await extractPricingInfoWithAI(userMessage, currentFormData);
-    
     case 'video':
       return await extractVideoInfoWithAI(userMessage, currentFormData);
-    
-    case 'images':
-    case 'review':
-    case 'review_edit': // Add the new step from batch system
-      // Use AI-powered extraction for review steps
-      return await extractGeneralUpdatesWithAI(userMessage, currentFormData, categories);
-    
+    case 'review_edit':
+    case 'basic_info':
     default:
-      return extractBasicInfo(userMessage, currentFormData, categories);
+      return await extractGeneralUpdatesWithAI(userMessage, currentFormData, categories);
   }
 }
 

@@ -1,15 +1,27 @@
 import { useState } from 'react';
 import { useSpeechRecognition } from '@/lib/hooks/useSpeechRecognition';
 import { AuctionFormData, Category } from '@/lib/auction-forms/types';
+import { AIContextManager } from '@/lib/ai/context-manager';
 
 interface VoiceMicButtonProps {
   onFormUpdate: (updates: Partial<AuctionFormData>) => void;
   categories: Category[];
   currentFormData: AuctionFormData;
   currentStep?: string;
+  contextManager?: AIContextManager;
+  initialDescription?: string;
+  itemId?: string;
 }
 
-export function VoiceMicButton({ onFormUpdate, categories, currentFormData, currentStep }: VoiceMicButtonProps) {
+export function VoiceMicButton({ 
+  onFormUpdate, 
+  categories, 
+  currentFormData, 
+  currentStep,
+  contextManager,
+  initialDescription,
+  itemId
+}: VoiceMicButtonProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const {
     isListening,
@@ -31,41 +43,65 @@ export function VoiceMicButton({ onFormUpdate, categories, currentFormData, curr
         if (transcript.trim()) {
           setIsProcessing(true);
           try {
-            console.log('Processing voice input:', transcript);
-            console.log('Current form context:', currentFormData);
-            console.log('Available categories:', categories.length);
-            
-            const response = await fetch('/api/ai/enhance-listing', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                userMessage: transcript,
-                currentFormData,
-                currentStep: currentStep || 'review_edit',
-                categories: categories.map(c => ({ id: c.id, name: c.name })),
-                rejectedFields: []
-              })
-            });
+            console.log('🎤 Processing contextual voice input:', transcript);
 
-            if (!response.ok) {
-              throw new Error(`HTTP error! status: ${response.status}`);
-            }
+            if (contextManager) {
+              // Use contextual API parsing
+              const response = await fetch('/api/ai/contextual-parse', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userInput: transcript,
+                  currentFormData,
+                  categories: categories.map(c => ({ id: c.id, name: c.name })),
+                  contextData: contextManager.serializeContext(),
+                  initialDescription,
+                  itemId
+                })
+              });
 
-            const data = await response.json();
-            console.log('Voice AI Response:', data);
-            
-            if (data.formUpdates && Object.keys(data.formUpdates).length > 0) {
-              console.log('Applying form updates:', data.formUpdates);
-              onFormUpdate(data.formUpdates);
-              
-              // Show user feedback about what was updated
-              const updatedFields = Object.keys(data.formUpdates);
-              console.log(`✅ Updated fields: ${updatedFields.join(', ')}`);
+              if (response.ok) {
+                const data = await response.json();
+                if (data.success && data.formUpdates && Object.keys(data.formUpdates).length > 0) {
+                  console.log('✅ Applying contextual updates:', data.formUpdates);
+                  onFormUpdate(data.formUpdates);
+                  
+                  // Update context manager with new data
+                  if (data.updatedContext) {
+                    Object.assign(contextManager.getContext(), data.updatedContext);
+                  }
+                } else {
+                  console.log('❌ No updates from contextual parsing');
+                }
+              } else {
+                throw new Error('Contextual parsing failed');
+              }
             } else {
-              console.log('No form updates received from AI');
+              // Fallback to regular API
+              const response = await fetch('/api/ai/enhance-listing', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  userMessage: transcript,
+                  currentFormData,
+                  currentStep: currentStep || 'review_edit',
+                  categories: categories.map(c => ({ id: c.id, name: c.name })),
+                  rejectedFields: []
+                })
+              });
+
+              if (response.ok) {
+                const data = await response.json();
+                const formUpdates = data.formUpdates || {};
+                if (Object.keys(formUpdates).length > 0) {
+                  console.log('✅ Applying fallback updates:', formUpdates);
+                  onFormUpdate(formUpdates);
+                }
+              }
             }
+            
           } catch (error) {
-            console.error('Error processing voice input:', error);
+            console.error('❌ Error processing voice input:', error);
           } finally {
             setIsProcessing(false);
             clearTranscript();

@@ -1,17 +1,26 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { BatchItem, Category } from '@/lib/auction-forms/types';
 import { VoiceMicButton } from './VoiceMicButton';
+import { AIContextManager } from '@/lib/ai/context-manager';
 
 interface BatchVoiceControlProps {
   items: BatchItem[];
   categories: Category[];
   onBatchUpdate: (updates: Partial<BatchItem>) => void;
   onItemUpdate: (itemId: string, updates: Partial<BatchItem>) => void;
+  contextManager?: AIContextManager;
 }
 
-export function BatchVoiceControl({ items, categories, onBatchUpdate, onItemUpdate }: BatchVoiceControlProps) {
+export function BatchVoiceControl({ 
+  items, 
+  categories, 
+  onBatchUpdate, 
+  onItemUpdate,
+  contextManager 
+}: BatchVoiceControlProps) {
   const [selectedMode, setSelectedMode] = useState<'all' | 'selected'>('all');
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
@@ -59,6 +68,7 @@ export function BatchVoiceControl({ items, categories, onBatchUpdate, onItemUpda
           categories={categories}
           currentFormData={representativeFormData}
           currentStep="review_edit"
+          contextManager={contextManager}
         />
       </div>
       
@@ -98,16 +108,17 @@ export function BatchVoiceControl({ items, categories, onBatchUpdate, onItemUpda
               <button
                 key={item.id}
                 onClick={() => toggleItemSelection(item.id)}
-                className={`aspect-square rounded-lg border-2 overflow-hidden transition-all ${
+                className={`aspect-square rounded-lg border-2 overflow-hidden transition-all relative ${
                   selectedItems.includes(item.id)
                     ? 'border-violet-500 ring-2 ring-violet-500/50'
                     : 'border-zinc-700 hover:border-zinc-600'
                 }`}
               >
-                <img 
+                <Image 
                   src={item.imagePreview} 
                   alt={item.title}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
                 />
               </button>
             ))}

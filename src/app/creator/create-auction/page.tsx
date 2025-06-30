@@ -7,6 +7,8 @@ import Image from 'next/image';
 import { type BatchItem, type Category, newStepConfig, type FormStep } from '@/lib/auction-forms/types';
 import { BatchItemEditor } from '@/components/auction/BatchItemEditor';
 import { BatchVoiceControl } from '@/components/auction/BatchVoiceControl';
+import { VoiceTextInput } from '@/components/auction/VoiceTextInput';
+import { AIContextManager } from '@/lib/ai/context-manager';
 
 export default function CreateAuctionPage() {
   const { user, loading } = useAuth();
@@ -21,6 +23,9 @@ export default function CreateAuctionPage() {
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [dragActive, setDragActive] = useState(false);
   
+  // NEW: Initial context description
+  const [initialDescription, setInitialDescription] = useState('');
+  
   // Batch/Single mode toggle
   const [batchMode, setBatchMode] = useState(false);
   const [items, setItems] = useState<BatchItem[]>([]);
@@ -29,6 +34,9 @@ export default function CreateAuctionPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState('');
+
+  // NEW: AI Context Management (client-side only, no parser)
+  const [contextManager] = useState(() => new AIContextManager());
 
   // Fetch categories
   useEffect(() => {
@@ -120,7 +128,7 @@ export default function CreateAuctionPage() {
     }
   };
 
-  // Process images with AI (when user clicks Next)
+  // Process images with AI (enhanced with context)
   const handleProcessImages = async () => {
     if (selectedFiles.length === 0) {
       setError('Please select at least one image');
@@ -131,11 +139,19 @@ export default function CreateAuctionPage() {
     setError('');
 
     try {
+      // Update context manager with initial description
+      contextManager.getContext().initialDescription = initialDescription;
+
       // Create form data for API
       const formData = new FormData();
       selectedFiles.forEach(file => {
         formData.append('images', file);
       });
+
+      // Add initial description to form data
+      if (initialDescription.trim()) {
+        formData.append('initialDescription', initialDescription);
+      }
 
       // Send to AI analysis
       const response = await fetch('/api/auctions/analyze-images', {
@@ -149,13 +165,21 @@ export default function CreateAuctionPage() {
 
       const { results } = await response.json();
 
-      // Create batch items from results
+      // Create batch items from results with enhanced context
       const newItems: BatchItem[] = [];
       
       for (let i = 0; i < selectedFiles.length; i++) {
         const file = selectedFiles[i];
         const result = results[i];
         const preview = imagePreviews[i];
+        const itemId = `item-${Date.now()}-${i}`;
+        
+        // Add item to context manager
+        contextManager.addItemContext(
+          itemId,
+          JSON.stringify(result.analysis),
+          initialDescription
+        );
         
         // Find category ID
         const category = categories.find(cat => 
@@ -163,7 +187,7 @@ export default function CreateAuctionPage() {
         );
 
         newItems.push({
-          id: `item-${Date.now()}-${i}`,
+          id: itemId,
           imageFile: file,
           imagePreview: preview,
           title: result.analysis.title,
@@ -193,15 +217,15 @@ export default function CreateAuctionPage() {
     setAnalyzing(false);
   };
 
-  // Handle single item updates
-  const updateItem = (itemId: string, updates: Partial<BatchItem>) => {
+  // Enhanced item update with context
+  const updateItem = async (itemId: string, updates: Partial<BatchItem>) => {
     setItems(prev => prev.map(item => 
       item.id === itemId ? { ...item, ...updates } : item
     ));
   };
 
-  // Handle batch updates
-  const updateAllItems = (updates: Partial<BatchItem>) => {
+  // Enhanced batch update with context  
+  const updateAllItems = async (updates: Partial<BatchItem>) => {
     setItems(prev => prev.map(item => ({ ...item, ...updates })));
   };
 
@@ -268,6 +292,11 @@ export default function CreateAuctionPage() {
     setPublishing(false);
   };
 
+  // Add a handler for voice text updates
+  const handleVoiceTextUpdate = (text: string) => {
+    setInitialDescription(text);
+  };
+
   if (loading) {
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
       <div className="text-white">Loading...</div>
@@ -315,7 +344,34 @@ export default function CreateAuctionPage() {
                 <h2 className="text-2xl font-semibold mb-4">Upload Your Item Images</h2>
                 <p className="text-zinc-400 mb-8">
                   Upload one image for a single auction, or multiple images to create several auctions at once.
-                  Our AI will analyze each image and suggest titles, descriptions, and categories.
+                  Provide an initial description to give our AI context about your items.
+                </p>
+              </div>
+
+              {/* NEW: Initial Description Field */}
+              <div className="bg-zinc-900/50 rounded-lg p-6 space-y-4">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-lg font-semibold">Tell us about your item(s)</h3>
+                  <span className="text-xs bg-violet-600/20 text-violet-300 px-2 py-1 rounded">Optional but recommended</span>
+                </div>
+                
+                <textarea
+                  value={initialDescription}
+                  onChange={(e) => setInitialDescription(e.target.value)}
+                  placeholder="Describe what you're selling... (e.g., 'Vintage Nike Air Jordan sneakers from 1995, size 10, barely worn, from my personal collection. Also have some rare Pokemon cards and a signed baseball.')"
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-3 text-white placeholder-zinc-400 focus:outline-none focus:border-violet-500 resize-none"
+                  rows={4}
+                />
+                
+                {/* Voice Input Component */}
+                <VoiceTextInput
+                  onTextUpdate={handleVoiceTextUpdate}
+                  currentText={initialDescription}
+                  className="mt-3"
+                />
+                
+                <p className="text-xs text-zinc-500">
+                  💡 This helps our AI understand the context and generate better titles, descriptions, and categories for your items.
                 </p>
               </div>
 
