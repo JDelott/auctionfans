@@ -27,8 +27,9 @@ export async function extractFormUpdates(
     
     case 'images':
     case 'review':
-      // For images and review, enhance any field mentioned
-      return extractGeneralUpdates(userMessage, currentFormData, categories);
+    case 'review_edit': // Add the new step from batch system
+      // Use AI-powered extraction for review steps
+      return await extractGeneralUpdatesWithAI(userMessage, currentFormData, categories);
     
     default:
       return extractBasicInfo(userMessage, currentFormData, categories);
@@ -219,31 +220,75 @@ function extractBasicInfo(
   return formUpdates;
 }
 
-function extractGeneralUpdates(
+// NEW: AI-powered general extraction for review step
+async function extractGeneralUpdatesWithAI(
   userMessage: string, 
   currentFormData: AuctionFormData, 
   categories: Category[]
-): Record <string, string> {
-  const formUpdates: Record<string, string> = {};
-  const message = userMessage.toLowerCase();
+): Promise<Record<string, string>> {
+  try {
+    console.log('Using AI to extract general updates from:', userMessage);
 
-  // Handle field-specific update requests
-  if (message.includes('change title') || message.includes('update title')) {
-    const titleMatch = message.match(/(?:change|update)\s+title\s+to\s+(.+)/i);
-    if (titleMatch) {
-      formUpdates.title = titleMatch[1].trim();
+    const prompt = `Parse this auction update request from speech: "${userMessage}"
+
+The user wants to update their auction listing. Extract any field updates mentioned and return as JSON.
+
+Possible fields to update:
+- title: Item title/name
+- description: Item description  
+- starting_price: Starting bid price (numbers only, no $)
+- reserve_price: Reserve price (numbers only, no $)
+- buy_now_price: Buy it now price (numbers only, no $)
+- condition: Item condition (new, like-new, good, fair, poor)
+- duration_days: Auction duration (1, 3, 5, 7, 10, 14)
+
+Current auction data:
+- Title: "${currentFormData.title || 'untitled'}"
+- Description: "${currentFormData.description || 'no description'}"
+- Starting price: "$${currentFormData.starting_price || '0'}"
+- Condition: "${currentFormData.condition || 'new'}"
+
+Natural language patterns to recognize:
+- "I need the title to be..." → update title
+- "Change the title to..." → update title  
+- "Set title as..." → update title
+- "Make the price..." → update starting_price
+- "The condition should be..." → update condition
+- "Update description to..." → update description
+
+Return ONLY valid JSON with fields that need updating. If no updates needed, return {}.
+
+Example: {"title": "Sneaker.io AR Shoes Snapchat Conference 2025"}`;
+
+    const completion = await anthropic.messages.create({
+      model: 'claude-3-sonnet-20240229',
+      max_tokens: 200,
+      messages: [
+        {
+          role: 'user',
+          content: prompt
+        }
+      ]
+    });
+
+    const aiResponse = completion.content[0].type === 'text' ? completion.content[0].text.trim() : '';
+    console.log('AI general updates response:', aiResponse);
+
+    try {
+      const parsed = JSON.parse(aiResponse);
+      console.log('AI extracted general updates:', parsed);
+      return parsed;
+    } catch (parseError) {
+      console.error('Failed to parse AI general updates response:', parseError);
+      // Fallback to old method
+      return extractGeneralUpdates(userMessage, currentFormData, categories);
     }
-  }
 
-  if (message.includes('change price') || message.includes('update price')) {
-    const priceMatch = message.match(/(?:change|update)\s+price\s+to\s+\$?(\d+(?:\.\d{2})?)/i);
-    if (priceMatch) {
-      formUpdates.starting_price = priceMatch[1];
-    }
+  } catch (error) {
+    console.error('AI general extraction error:', error);
+    // Fallback to old method
+    return extractGeneralUpdates(userMessage, currentFormData, categories);
   }
-
-  // Fallback to basic extraction for any other content
-  return { ...formUpdates, ...extractBasicInfo(userMessage, currentFormData, categories) };
 }
 
 function extractCondition(userMessage: string): string | null {
@@ -328,4 +373,59 @@ export function findSimpleCategory(userMessage: string, categories: Category[]):
   }
   
   return null;
+}
+
+// Keep the old function as fallback
+function extractGeneralUpdates(
+  userMessage: string, 
+  currentFormData: AuctionFormData, 
+  categories: Category[]
+): Record <string, string> {
+  const formUpdates: Record<string, string> = {};
+  const message = userMessage.toLowerCase();
+
+  // Handle field-specific update requests with more patterns
+  if (message.includes('title')) {
+    // More patterns for title updates
+    const titlePatterns = [
+      /(?:change|update|set|make)\s+(?:the\s+)?title\s+(?:to\s+|as\s+)(.+)/i,
+      /(?:i\s+need|i\s+want)\s+(?:the\s+)?title\s+(?:to\s+be\s+|as\s+)(.+)/i,
+      /title\s+(?:should\s+be\s+|is\s+)(.+)/i
+    ];
+    
+    for (const pattern of titlePatterns) {
+      const match = userMessage.match(pattern);
+      if (match) {
+        formUpdates.title = match[1].trim().replace(/[.,!?]+$/, ''); // Remove trailing punctuation
+        break;
+      }
+    }
+  }
+
+  if (message.includes('price')) {
+    const priceMatch = message.match(/(?:change|update|set|make)\s+(?:the\s+)?price\s+(?:to\s+)?\$?(\d+(?:\.\d{2})?)/i);
+    if (priceMatch) {
+      formUpdates.starting_price = priceMatch[1];
+    }
+  }
+
+  if (message.includes('condition')) {
+    const condition = extractCondition(userMessage);
+    if (condition) formUpdates.condition = condition;
+  }
+
+  if (message.includes('description')) {
+    const descMatch = message.match(/(?:change|update|set|make)\s+(?:the\s+)?description\s+(?:to\s+)(.+)/i);
+    if (descMatch) {
+      formUpdates.description = descMatch[1].trim();
+    }
+  }
+
+  // If no specific patterns matched, try basic extraction
+  if (Object.keys(formUpdates).length === 0) {
+    const basicUpdates = extractBasicInfo(userMessage, currentFormData, categories);
+    return basicUpdates;
+  }
+
+  return formUpdates;
 } 

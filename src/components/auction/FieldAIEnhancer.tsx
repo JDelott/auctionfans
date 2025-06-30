@@ -31,14 +31,55 @@ export function FieldAIEnhancer({
   ], []);
 
   const updateDropdownPosition = useCallback(() => {
-    if (buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
-      setDropdownPosition({
-        top: rect.bottom + window.scrollY + 4,
-        left: rect.right + window.scrollX - 192 // 192px = w-48
-      });
+    if (!buttonRef.current || !isOpen) return;
+
+    const button = buttonRef.current;
+    const rect = button.getBoundingClientRect();
+    
+    // Get the actual viewport dimensions
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    
+    // Dropdown dimensions
+    const dropdownWidth = 192; // w-48 = 12rem = 192px
+    const dropdownHeight = 240; // approximate height
+    const gap = 8; // gap between button and dropdown
+    
+    let left = 0;
+    let top = 0;
+    
+    // Try to position to the right of the button first
+    const rightEdge = rect.right + gap + dropdownWidth;
+    const leftEdge = rect.left - gap - dropdownWidth;
+    
+    if (rightEdge <= viewportWidth) {
+      // Position to the right
+      left = rect.right + gap;
+    } else if (leftEdge >= 0) {
+      // Position to the left
+      left = rect.left - gap - dropdownWidth;
+    } else {
+      // Center on button if neither side has space
+      left = Math.max(gap, Math.min(rect.left - dropdownWidth / 2, viewportWidth - dropdownWidth - gap));
     }
-  }, []);
+    
+    // Vertical positioning - try to align with button top
+    const bottomEdge = rect.top + dropdownHeight;
+    
+    if (bottomEdge <= viewportHeight) {
+      // Position aligned with button top
+      top = rect.top;
+    } else {
+      // Position above button if no space below
+      top = Math.max(gap, rect.bottom - dropdownHeight);
+    }
+    
+    console.log('Button rect:', rect);
+    console.log('Calculated position:', { top, left });
+    console.log('Viewport:', { viewportWidth, viewportHeight });
+    
+    setDropdownPosition({ top, left });
+  }, [isOpen]);
 
   const enhanceField = useCallback(async (prompt: string) => {
     setIsProcessing(true);
@@ -77,8 +118,11 @@ export function FieldAIEnhancer({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node) &&
-          buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
+      if (isOpen && 
+          menuRef.current && 
+          !menuRef.current.contains(event.target as Node) &&
+          buttonRef.current && 
+          !buttonRef.current.contains(event.target as Node)) {
         setIsOpen(false);
         setFocusedIndex(-1);
       }
@@ -91,7 +135,6 @@ export function FieldAIEnhancer({
         case 'Escape':
           setIsOpen(false);
           setFocusedIndex(-1);
-          buttonRef.current?.focus();
           break;
         case 'ArrowDown':
           event.preventDefault();
@@ -113,7 +156,14 @@ export function FieldAIEnhancer({
 
     const handleScroll = () => {
       if (isOpen) {
-        updateDropdownPosition();
+        // Update position on scroll
+        requestAnimationFrame(updateDropdownPosition);
+      }
+    };
+
+    const handleResize = () => {
+      if (isOpen) {
+        requestAnimationFrame(updateDropdownPosition);
       }
     };
 
@@ -121,24 +171,35 @@ export function FieldAIEnhancer({
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleKeyDown);
       window.addEventListener('scroll', handleScroll, true);
-      window.addEventListener('resize', handleScroll);
+      window.addEventListener('resize', handleResize);
+      
+      // Update position immediately
+      requestAnimationFrame(updateDropdownPosition);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('scroll', handleScroll, true);
-      window.removeEventListener('resize', handleScroll);
+      window.removeEventListener('resize', handleResize);
     };
   }, [isOpen, focusedIndex, menuItems, enhanceField, updateDropdownPosition]);
 
   const handleOpenDropdown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    updateDropdownPosition();
-    setIsOpen(!isOpen);
+    
+    const newIsOpen = !isOpen;
+    setIsOpen(newIsOpen);
     setFocusedIndex(-1);
-  }, [updateDropdownPosition, isOpen]);
+    
+    if (newIsOpen) {
+      // Force position update after state change
+      setTimeout(() => {
+        updateDropdownPosition();
+      }, 0);
+    }
+  }, [isOpen, updateDropdownPosition]);
 
   const fieldDisplayName = fieldName.replace('_', ' ');
 
@@ -146,7 +207,7 @@ export function FieldAIEnhancer({
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 z-[9998]" 
+        className="fixed inset-0 z-[9998] bg-black/5" 
         onClick={() => {
           setIsOpen(false);
           setFocusedIndex(-1);
@@ -157,21 +218,24 @@ export function FieldAIEnhancer({
       {/* Dropdown */}
       <div
         ref={menuRef}
-        className="fixed z-[9999] w-48 max-h-64 overflow-y-auto bg-zinc-900 border-2 border-zinc-700 rounded-lg shadow-2xl py-1"
+        className="fixed z-[9999] w-48 bg-zinc-900 border border-zinc-700 rounded-lg shadow-xl"
         role="menu"
         aria-label={`AI enhancement options for ${fieldDisplayName}`}
         style={{
           top: `${dropdownPosition.top}px`,
           left: `${dropdownPosition.left}px`,
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(0, 0, 0, 0.8)'
+          transform: 'translateZ(0)', // Force hardware acceleration
+          willChange: 'transform' // Optimize for position changes
         }}
       >
-        <div className="px-3 py-2 border-b-2 border-zinc-700 bg-zinc-800">
-          <div className="text-xs text-zinc-300 uppercase tracking-wide font-medium">AI Enhance</div>
+        {/* Header */}
+        <div className="px-3 py-2 border-b border-zinc-700 bg-zinc-800 rounded-t-lg">
+          <div className="text-xs text-zinc-400 uppercase tracking-wide font-medium">AI ENHANCE</div>
           <div className="text-sm text-white font-medium capitalize">{fieldDisplayName}</div>
         </div>
         
-        <div className="py-1">
+        {/* Menu Items */}
+        <div className="py-1 max-h-48 overflow-y-auto">
           {menuItems.map((item, index) => (
             <button
               key={index}
@@ -181,16 +245,17 @@ export function FieldAIEnhancer({
                 enhanceField(item.prompt);
               }}
               onMouseEnter={() => setFocusedIndex(index)}
-              className={`w-full text-left px-3 py-2 text-sm transition-colors flex items-center gap-2 focus:outline-none ${
+              onMouseLeave={() => setFocusedIndex(-1)}
+              className={`w-full text-left px-3 py-2.5 text-sm transition-colors flex items-center gap-2 focus:outline-none ${
                 focusedIndex === index 
-                  ? 'bg-violet-600/30 text-violet-200' 
-                  : 'text-zinc-200 hover:bg-zinc-800 hover:text-white'
+                  ? 'bg-violet-600/20 text-violet-200' 
+                  : 'text-zinc-200 hover:bg-zinc-800/50 hover:text-white'
               }`}
               role="menuitem"
               tabIndex={focusedIndex === index ? 0 : -1}
               title={item.prompt}
             >
-              <span className="text-xs flex-shrink-0" aria-hidden="true">✨</span>
+              <span className="text-violet-400 flex-shrink-0" aria-hidden="true">✨</span>
               <span className="flex-1">{item.label}</span>
             </button>
           ))}
@@ -201,29 +266,32 @@ export function FieldAIEnhancer({
 
   return (
     <>
-      <div className="relative">
-        <button
-          ref={buttonRef}
-          type="button"
-          onClick={handleOpenDropdown}
-          disabled={isProcessing}
-          className="w-8 h-8 bg-violet-600/40 hover:bg-violet-600/60 border border-violet-600/60 rounded-lg flex items-center justify-center transition-all duration-200 group disabled:opacity-50 hover:scale-105 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-zinc-900"
-          aria-label={`AI enhance ${fieldDisplayName} field`}
-          aria-expanded={isOpen}
-          aria-haspopup="menu"
-        >
-          {isProcessing ? (
-            <div 
-              className="w-3 h-3 border border-violet-400 border-t-transparent rounded-full animate-spin"
-              aria-label="Processing AI enhancement"
-            />
-          ) : (
-            <span className="text-sm text-violet-200 group-hover:text-violet-100" aria-hidden="true">✨</span>
-          )}
-        </button>
-      </div>
+      <button
+        ref={buttonRef}
+        type="button"
+        onClick={handleOpenDropdown}
+        disabled={isProcessing}
+        className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all duration-200 group focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:ring-offset-1 focus:ring-offset-zinc-900 ${
+          isOpen 
+            ? 'bg-violet-600/60 border border-violet-500 scale-105' 
+            : 'bg-violet-600/20 border border-violet-600/40 hover:bg-violet-600/40 hover:border-violet-500/60'
+        } ${isProcessing ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
+        aria-label={`AI enhance ${fieldDisplayName} field`}
+        aria-expanded={isOpen}
+        aria-haspopup="menu"
+        title={`Enhance ${fieldDisplayName} with AI`}
+      >
+        {isProcessing ? (
+          <div 
+            className="w-3 h-3 border border-violet-300 border-t-transparent rounded-full animate-spin"
+            aria-label="Processing AI enhancement"
+          />
+        ) : (
+          <span className="text-violet-200 group-hover:text-violet-100" aria-hidden="true">✨</span>
+        )}
+      </button>
 
-      {/* Render dropdown using Portal to escape form hierarchy */}
+      {/* Portal the dropdown to document.body for better positioning */}
       {typeof window !== 'undefined' && dropdown && createPortal(dropdown, document.body)}
     </>
   );

@@ -4,38 +4,26 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import Image from 'next/image';
-import { VoiceMicButton } from '@/components/auction/VoiceMicButton';
-import { SmartFormField } from '@/components/auction/SmartFormField';
-import { useFormSteps } from '@/lib/hooks/useFormSteps';
-import { validateBasicInfo, validatePricing, validateImages } from '@/lib/auction-forms/validation';
-import { type AuctionFormData, type Category } from '@/lib/auction-forms/types';
+import { type BatchItem, type Category, newStepConfig, type FormStep } from '@/lib/auction-forms/types';
+import { BatchItemEditor } from '@/components/auction/BatchItemEditor';
+import { BatchVoiceControl } from '@/components/auction/BatchVoiceControl';
 
 export default function CreateAuctionPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
   
-  const { currentStep, nextStep, prevStep, stepConfig } = useFormSteps();
-
-  // Form States
-  const [formData, setFormData] = useState<AuctionFormData>({
-    title: '',
-    description: '',
-    category_id: '',
-    condition: 'new',
-    starting_price: '',
-    reserve_price: '',
-    buy_now_price: '',
-    video_url: '',
-    video_timestamp: '',
-    duration_days: '7',
-    images: false
-  });
-
-  const [selectedImages, setSelectedImages] = useState<FileList | null>(null);
-  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  // Step management
+  const [currentStep, setCurrentStep] = useState<FormStep>('upload');
+  const [categories, setCategories] = useState<Category[]>([]);
+  
+  // Batch/Single mode toggle
+  const [batchMode, setBatchMode] = useState(false);
+  const [items, setItems] = useState<BatchItem[]>([]);
+  
+  // Processing states
+  const [analyzing, setAnalyzing] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [error, setError] = useState('');
 
   // Fetch categories
   useEffect(() => {
@@ -50,132 +38,155 @@ export default function CreateAuctionPage() {
         console.error('Error fetching categories:', error);
       }
     };
-
     fetchCategories();
   }, []);
 
-  // Handle input changes
-  const handleInputChange = (name: string, value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
-
-  // Handle form updates from voice input - ENHANCED for all steps
-  const handleFormUpdate = (updates: Partial<AuctionFormData>) => {
-    setFormData(prev => ({ ...prev, ...updates }));
-    // Clear any validation errors when voice input successfully updates the form
-    if (Object.keys(updates).length > 0) {
-      setError('');
-    }
-  };
-
-  // Handle image changes  
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      setSelectedImages(files);
-      setFormData(prev => ({ ...prev, images: files.length > 0 }));
-      
-      // Create image previews
-      const previews: string[] = [];
-      Array.from(files).forEach(file => {
-        const reader = new FileReader();
-        reader.onload = (e) => {
-          if (e.target?.result) {
-            previews.push(e.target.result as string);
-            if (previews.length === files.length) {
-              setImagePreviews(previews);
-            }
-          }
-        };
-        reader.readAsDataURL(file);
-      });
-    }
-  };
-
-  // Enhanced nextStep function with step-specific validation
-  const handleNextStep = () => {
-    const validation = (() => {
-      switch (currentStep) {
-        case 'basic_info': return validateBasicInfo(formData);
-        case 'pricing': return validatePricing(formData);
-        case 'video': return { isValid: true, missingFields: [] }; // Optional
-        case 'images': return validateImages(selectedImages);
-        default: return { isValid: true, missingFields: [] };
-      }
-    })();
-
-    if (!validation.isValid) {
-      setError(`Please complete the required fields: ${validation.missingFields.join(', ')}`);
-      return;
-    }
-
-    setError('');
-    nextStep();
-  };
-
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (submitting) return;
-
-    setSubmitting(true);
+  // Handle image upload and AI analysis
+  const handleImagesUpload = async (files: FileList) => {
+    setAnalyzing(true);
     setError('');
 
     try {
-      // Create auction
-      const auctionData = {
-        title: formData.title,
-        description: formData.description,
-        category_id: formData.category_id,
-        condition: formData.condition,
-        starting_price: parseFloat(formData.starting_price),
-        reserve_price: formData.reserve_price ? parseFloat(formData.reserve_price) : null,
-        buy_now_price: formData.buy_now_price ? parseFloat(formData.buy_now_price) : null,
-        video_url: formData.video_url || null,
-        video_timestamp: formData.video_timestamp ? parseInt(formData.video_timestamp) : null,
-        duration_days: parseInt(formData.duration_days) || 7
-      };
-
-      const response = await fetch('/api/auctions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(auctionData),
+      // Create form data for API
+      const formData = new FormData();
+      Array.from(files).forEach(file => {
+        formData.append('images', file);
       });
 
-      if (response.ok) {
-        const { auction } = await response.json();
+      // Send to AI analysis
+      const response = await fetch('/api/auctions/analyze-images', {
+        method: 'POST',
+        body: formData
+      });
 
-        // Upload images if any
-        if (selectedImages && selectedImages.length > 0) {
-          const imageFormData = new FormData();
-          Array.from(selectedImages).forEach((file, index) => {
-            imageFormData.append('images', file);
-            imageFormData.append(`isPrimary_${index}`, index === 0 ? 'true' : 'false');
-          });
-
-          await fetch(`/api/auctions/${auction.id}/images`, {
-            method: 'POST',
-            body: imageFormData,
-          });
-        }
-
-        router.push(`/auctions/${auction.id}`);
-      } else {
-        const data = await response.json();
-        setError(data.error || 'Failed to create auction');
+      if (!response.ok) {
+        throw new Error('Failed to analyze images');
       }
-    } catch (error) {
-      console.error('Error creating auction:', error);
-      setError('Failed to create auction. Please try again.');
-    }
 
-    setSubmitting(false);
+      const { results } = await response.json();
+
+      // Create batch items from results
+      const newItems: BatchItem[] = [];
+      
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const result = results[i];
+        
+        // Create image preview
+        const preview = URL.createObjectURL(file);
+        
+        // Find category ID
+        const category = categories.find(cat => 
+          cat.name.toLowerCase().includes(result.analysis.category.toLowerCase())
+        );
+
+        newItems.push({
+          id: `item-${Date.now()}-${i}`,
+          imageFile: file,
+          imagePreview: preview,
+          title: result.analysis.title,
+          description: result.analysis.description,
+          category_id: category?.id || '',
+          condition: result.analysis.condition,
+          starting_price: '10.00',
+          reserve_price: '',
+          buy_now_price: '',
+          video_url: '',
+          video_timestamp: '',
+          duration_days: '7',
+          images: true,
+          aiAnalyzed: true,
+          aiConfidence: result.analysis.confidence
+        });
+      }
+
+      setItems(newItems);
+      setBatchMode(files.length > 1);
+      setCurrentStep('review_edit');
+      
+    } catch (error) {
+      console.error('Error analyzing images:', error);
+      setError('Failed to analyze images. Please try again.');
+    }
+    
+    setAnalyzing(false);
   };
 
-  // Redirect if not authenticated
+  // Handle single item updates
+  const updateItem = (itemId: string, updates: Partial<BatchItem>) => {
+    setItems(prev => prev.map(item => 
+      item.id === itemId ? { ...item, ...updates } : item
+    ));
+  };
+
+  // Handle batch updates
+  const updateAllItems = (updates: Partial<BatchItem>) => {
+    setItems(prev => prev.map(item => ({ ...item, ...updates })));
+  };
+
+  // Handle publishing
+  const handlePublish = async () => {
+    setPublishing(true);
+    setError('');
+
+    try {
+      const publishPromises = items.map(async (item) => {
+        // Create auction
+        const auctionData = {
+          title: item.title,
+          description: item.description,
+          category_id: item.category_id,
+          condition: item.condition,
+          starting_price: parseFloat(item.starting_price),
+          reserve_price: item.reserve_price ? parseFloat(item.reserve_price) : null,
+          buy_now_price: item.buy_now_price ? parseFloat(item.buy_now_price) : null,
+          video_url: item.video_url || null,
+          video_timestamp: item.video_timestamp ? parseInt(item.video_timestamp) : null,
+          duration_days: parseInt(item.duration_days) || 7
+        };
+
+        const response = await fetch('/api/auctions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(auctionData),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Failed to create auction for ${item.title}`);
+        }
+
+        const { auction } = await response.json();
+
+        // Upload image
+        const imageFormData = new FormData();
+        imageFormData.append('images', item.imageFile);
+        imageFormData.append('isPrimary_0', 'true');
+
+        await fetch(`/api/auctions/${auction.id}/images`, {
+          method: 'POST',
+          body: imageFormData,
+        });
+
+        return auction;
+      });
+
+      const createdAuctions = await Promise.all(publishPromises);
+      
+      // Navigate to success or auction list
+      if (createdAuctions.length === 1) {
+        router.push(`/auctions/${createdAuctions[0].id}`);
+      } else {
+        router.push('/creator/auctions');
+      }
+      
+    } catch (error) {
+      console.error('Error publishing auctions:', error);
+      setError('Failed to publish some auctions. Please try again.');
+    }
+    
+    setPublishing(false);
+  };
+
   if (loading) {
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
       <div className="text-white">Loading...</div>
@@ -188,427 +199,179 @@ export default function CreateAuctionPage() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white relative overflow-hidden">
-      {/* Background Effects */}
-      <div className="absolute inset-0 opacity-[0.02]">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `
-            linear-gradient(rgba(139, 92, 246, 0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px)
-          `,
-          backgroundSize: '32px 32px'
-        }}></div>
-      </div>
-
-      <div className="relative max-w-4xl mx-auto px-4 py-8">
+    <div className="min-h-screen bg-zinc-950 text-white">
+      <div className="container mx-auto px-4 py-8">
+        
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-violet-400 to-indigo-400 bg-clip-text text-transparent mb-4">
-            Create New Auction
-          </h1>
-          <p className="text-zinc-400">
-            Tell us about your item and we&apos;ll help you create the perfect listing
-          </p>
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold mb-2">Create Auction Listing</h1>
+          <div className="text-zinc-400">
+            {newStepConfig[currentStep].title}
+          </div>
+          
+          {/* Progress Bar */}
+          <div className="w-full bg-zinc-800 rounded-full h-2 mt-4">
+            <div 
+              className="bg-violet-500 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${newStepConfig[currentStep].progress}%` }}
+            ></div>
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Progress Indicator */}
-          <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-4">
-            <div className="flex items-center justify-between text-sm">
-              {Object.entries(stepConfig).map(([step, config], index) => {
-                if (step === 'welcome') return null;
-                const isActive = currentStep === step;
-                const isCompleted = (() => {
-                  switch (step) {
-                    case 'basic_info': return validateBasicInfo(formData).isValid;
-                    case 'pricing': return validatePricing(formData).isValid;
-                    case 'video': return !!formData.video_url;
-                    case 'images': return validateImages(selectedImages).isValid;
-                    case 'review': return false;
-                    default: return false;
-                  }
-                })();
-                
-                return (
-                  <div key={step} className={`flex items-center ${
-                    isActive ? 'text-violet-400' : 
-                    isCompleted ? 'text-green-400' : 'text-zinc-500'
-                  }`}>
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
-                      isActive ? 'bg-violet-600' : 
-                      isCompleted ? 'bg-green-600' : 'bg-zinc-700'
-                    }`}>
-                      {isCompleted ? '✓' : index}
-                    </div>
-                    <span className="ml-2 hidden sm:inline">{config.title}</span>
-                  </div>
-                );
-              })}
-            </div>
+        {error && (
+          <div className="mb-6 p-4 bg-red-900/20 border border-red-500/20 rounded-lg text-red-400">
+            {error}
           </div>
+        )}
 
-          {/* Form sections */}
-          {currentStep === 'basic_info' && (
-            <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6 relative">
-              {/* Voice Mic Button in corner */}
-              <div className="absolute top-4 right-4">
-                <VoiceMicButton 
-                  onFormUpdate={handleFormUpdate}
-                  categories={categories}
-                  currentFormData={formData}
-                  currentStep={currentStep}
-                />
+        {/* Step Content */}
+        <div className="max-w-6xl mx-auto">
+          
+          {/* STEP 1: Upload Images */}
+          {currentStep === 'upload' && (
+            <div className="space-y-6">
+              <div className="text-center">
+                <h2 className="text-2xl font-semibold mb-4">Upload Your Item Images</h2>
+                <p className="text-zinc-400 mb-8">
+                  Upload one image for a single auction, or multiple images to create several auctions at once.
+                  Our AI will analyze each image and suggest titles, descriptions, and categories.
+                </p>
               </div>
 
-              <h3 className="text-xl font-semibold mb-6">Basic Information</h3>
-              
-              <div className="space-y-4">
-                <SmartFormField
-                  label="Item Title"
-                  name="title"
-                  value={formData.title}
-                  onChange={(value) => handleInputChange('title', value)}
-                  placeholder="Enter a descriptive title for your item"
-                  required
-                  categories={categories}
-                  currentFormData={formData}
+              {/* File Upload Area */}
+              <div className="border-2 border-dashed border-zinc-700 rounded-lg p-12 text-center hover:border-violet-500 transition-colors">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={(e) => e.target.files && handleImagesUpload(e.target.files)}
+                  className="hidden"
+                  id="image-upload"
+                  disabled={analyzing}
                 />
+                <label htmlFor="image-upload" className="cursor-pointer">
+                  <div className="text-6xl mb-4">📸</div>
+                  <h3 className="text-xl font-semibold mb-2">
+                    {analyzing ? 'Analyzing Images...' : 'Drop images here or click to upload'}
+                  </h3>
+                  <p className="text-zinc-400">
+                    Support for JPG, PNG, WebP • Max 10MB per image
+                  </p>
+                  {analyzing && (
+                    <div className="mt-4">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-500 mx-auto"></div>
+                    </div>
+                  )}
+                </label>
+              </div>
+            </div>
+          )}
 
-                <SmartFormField
-                  label="Description"
-                  name="description"
-                  value={formData.description}
-                  onChange={(value) => handleInputChange('description', value)}
-                  type="textarea"
-                  placeholder="Describe your item in detail - what is it, where did you get it, what makes it special?"
-                  required
-                  categories={categories}
-                  currentFormData={formData}
-                />
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <SmartFormField
-                    label="Category"
-                    name="category_id"
-                    value={formData.category_id}
-                    onChange={(value) => handleInputChange('category_id', value)}
-                    type="select"
-                    required
-                    options={categories.map(cat => ({ value: cat.id, label: cat.name }))}
-                    categories={categories}
-                    currentFormData={formData}
-                  />
-
-                  <SmartFormField
-                    label="Condition"
-                    name="condition"
-                    value={formData.condition}
-                    onChange={(value) => handleInputChange('condition', value)}
-                    type="select"
-                    required
-                    options={[
-                      { value: 'New', label: 'New' },
-                      { value: 'Used - Excellent', label: 'Used - Excellent' },
-                      { value: 'Used - Good', label: 'Used - Good' },
-                      { value: 'Used - Fair', label: 'Used - Fair' }
-                    ]}
-                    categories={categories}
-                    currentFormData={formData}
-                  />
+          {/* STEP 2: Review & Edit Items */}
+          {currentStep === 'review_edit' && (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center">
+                <h2 className="text-2xl font-semibold">
+                  Review Your Items ({items.length})
+                </h2>
+                <div className="text-sm text-zinc-400">
+                  AI analyzed • Use voice or edit any field
                 </div>
               </div>
-            </div>
-          )}
 
-          {/* Pricing Step - ENHANCED with Voice */}
-          {currentStep === 'pricing' && (
-            <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6 relative">
-              {/* Voice Mic Button in corner */}
-              <div className="absolute top-4 right-4">
-                <VoiceMicButton 
-                  onFormUpdate={handleFormUpdate}
+              {/* Batch Voice Control */}
+              {batchMode && (
+                <BatchVoiceControl
+                  items={items}
                   categories={categories}
-                  currentFormData={formData}
-                  currentStep={currentStep}
+                  onBatchUpdate={updateAllItems}
+                  onItemUpdate={updateItem}
                 />
-              </div>
+              )}
 
-              <h3 className="text-xl font-semibold mb-6">Auction Pricing</h3>
-              <p className="text-zinc-400 text-sm mb-4">
-                💡 Try voice: &quot;Starting price 25 dollars, reserve 50, buy now 100&quot;
-              </p>
-              
+              {/* Items List */}
               <div className="space-y-4">
-                <SmartFormField
-                  label="Starting Price ($)"
-                  name="starting_price"
-                  value={formData.starting_price}
-                  onChange={(value) => handleInputChange('starting_price', value)}
-                  type="number"
-                  placeholder="25.00"
-                  required
-                  categories={categories}
-                  currentFormData={formData}
-                />
-
-                <SmartFormField
-                  label="Reserve Price ($)"
-                  name="reserve_price"
-                  value={formData.reserve_price}
-                  onChange={(value) => handleInputChange('reserve_price', value)}
-                  type="number"
-                  placeholder="50.00"
-                  categories={categories}
-                  currentFormData={formData}
-                />
-
-                <SmartFormField
-                  label="Buy Now Price ($)"
-                  name="buy_now_price"
-                  value={formData.buy_now_price}
-                  onChange={(value) => handleInputChange('buy_now_price', value)}
-                  type="number"
-                  placeholder="100.00"
-                  categories={categories}
-                  currentFormData={formData}
-                />
-
-                {/* Duration field as SmartFormField with select type - NO AI enhancement */}
-                <SmartFormField
-                  label="Auction Duration"
-                  name="duration_days"
-                  value={formData.duration_days}
-                  onChange={(value) => handleInputChange('duration_days', value)}
-                  type="select"
-                  required
-                  options={[
-                    { value: '1', label: '1 Day' },
-                    { value: '3', label: '3 Days' },
-                    { value: '7', label: '7 Days' },
-                    { value: '10', label: '10 Days' },
-                    { value: '14', label: '14 Days' }
-                  ]}
-                  categories={categories}
-                  currentFormData={formData}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Video Information Step - ENHANCED with Voice */}
-          {currentStep === 'video' && (
-            <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6 relative">
-              {/* Voice Mic Button in corner */}
-              <div className="absolute top-4 right-4">
-                <VoiceMicButton 
-                  onFormUpdate={handleFormUpdate}
-                  categories={categories}
-                  currentFormData={formData}
-                  currentStep={currentStep}
-                />
-              </div>
-
-              <h3 className="text-xl font-semibold mb-6">Video Information (Optional)</h3>
-              <p className="text-zinc-400 text-sm mb-4">
-                💡 Try voice: &quot;YouTube video at youtube.com/watch?v=abc123, start at 2 minutes&quot;
-              </p>
-              
-              <div className="space-y-4">
-                <SmartFormField
-                  label="Video URL"
-                  name="video_url"
-                  value={formData.video_url}
-                  onChange={(value) => handleInputChange('video_url', value)}
-                  placeholder="https://youtube.com/watch?v=..."
-                  categories={categories}
-                  currentFormData={formData}
-                />
-
-                <SmartFormField
-                  label="Video Timestamp (seconds)"
-                  name="video_timestamp"
-                  value={formData.video_timestamp}
-                  onChange={(value) => handleInputChange('video_timestamp', value)}
-                  type="number"
-                  placeholder="120"
-                  categories={categories}
-                  currentFormData={formData}
-                />
-              </div>
-            </div>
-          )}
-
-          {/* Images Step - ENHANCED with Voice for descriptions */}
-          {currentStep === 'images' && (
-            <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6 relative">
-              {/* Voice Mic Button in corner */}
-              <div className="absolute top-4 right-4">
-                <VoiceMicButton 
-                  onFormUpdate={handleFormUpdate}
-                  categories={categories}
-                  currentFormData={formData}
-                  currentStep={currentStep}
-                />
-              </div>
-
-              <h3 className="text-xl font-semibold mb-6">Images</h3>
-              <p className="text-zinc-400 text-sm mb-4">
-                💡 Upload your images below. Use voice to enhance your listing description while here.
-              </p>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-zinc-300 mb-2">
-                    Upload Images *
-                  </label>
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleImageChange}
-                    className="w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
+                {items.map((item) => (
+                  <BatchItemEditor
+                    key={item.id}
+                    item={item}
+                    categories={categories}
+                    onItemUpdate={updateItem}
                   />
-                </div>
+                ))}
+              </div>
 
-                {/* Image Previews */}
-                {imagePreviews.length > 0 && (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                    {imagePreviews.map((preview, index) => (
-                      <div key={index} className="relative">
+              <div className="flex justify-center pt-6">
+                <button
+                  onClick={() => setCurrentStep('publish')}
+                  className="bg-violet-500 hover:bg-violet-600 px-8 py-3 rounded-lg font-semibold transition-colors"
+                >
+                  Review & Publish →
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: Publish */}
+          {currentStep === 'publish' && (
+            <div className="space-y-6">
+              <h2 className="text-2xl font-semibold text-center">Ready to Publish Your Auctions</h2>
+              
+              <div className="bg-zinc-900 rounded-lg p-6">
+                <h3 className="font-semibold mb-4">Summary</h3>
+                <div className="grid gap-4">
+                  <div className="text-sm text-zinc-400">
+                    You&apos;re about to create <span className="text-white font-semibold">{items.length} auction{items.length > 1 ? 's' : ''}</span>
+                  </div>
+                  
+                  {items.map((item) => (
+                    <div key={item.id} className="flex items-center gap-4 py-2 border-b border-zinc-800 last:border-b-0">
+                      <div className="w-12 h-12 relative rounded overflow-hidden">
                         <Image
-                          src={preview}
-                          alt={`Preview ${index + 1}`}
-                          width={200}
-                          height={200}
-                          className="w-full h-32 object-cover rounded-lg border border-zinc-700"
+                          src={item.imagePreview}
+                          alt={item.title}
+                          fill
+                          className="object-cover"
                         />
-                        {index === 0 && (
-                          <div className="absolute top-2 left-2 bg-violet-600 text-white text-xs px-2 py-1 rounded">
-                            Main
-                          </div>
-                        )}
                       </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* Review Step - ENHANCED with Voice for final touches */}
-          {currentStep === 'review' && (
-            <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6 relative">
-              {/* Voice Mic Button in corner */}
-              <div className="absolute top-4 right-4">
-                <VoiceMicButton 
-                  onFormUpdate={handleFormUpdate}
-                  categories={categories}
-                  currentFormData={formData}
-                  currentStep={currentStep}
-                />
-              </div>
-
-              <h3 className="text-xl font-semibold mb-6">Review & Submit</h3>
-              <p className="text-zinc-400 text-sm mb-4">
-                💡 Use voice to make final adjustments: &quot;Change the title to...&quot; or &quot;Update description to...&quot;
-              </p>
-              
-              <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-zinc-400">Title:</span>
-                    <p className="text-white">{formData.title || 'Not set'}</p>
-                  </div>
-                  <div>
-                    <span className="text-zinc-400">Starting Price:</span>
-                    <p className="text-white">${formData.starting_price || '0.00'}</p>
-                  </div>
-                  <div>
-                    <span className="text-zinc-400">Category:</span>
-                    <p className="text-white">{categories.find(c => c.id === formData.category_id)?.name || 'Not set'}</p>
-                  </div>
-                  <div>
-                    <span className="text-zinc-400">Condition:</span>
-                    <p className="text-white">{formData.condition}</p>
-                  </div>
-                  {formData.reserve_price && (
-                    <div>
-                      <span className="text-zinc-400">Reserve Price:</span>
-                      <p className="text-white">${formData.reserve_price}</p>
+                      <div className="flex-1">
+                        <div className="font-medium">{item.title}</div>
+                        <div className="text-sm text-zinc-400">
+                          Starting: ${item.starting_price} • Duration: {item.duration_days} days
+                        </div>
+                      </div>
                     </div>
-                  )}
-                  {formData.buy_now_price && (
-                    <div>
-                      <span className="text-zinc-400">Buy Now Price:</span>
-                      <p className="text-white">${formData.buy_now_price}</p>
-                    </div>
-                  )}
-                  {formData.video_url && (
-                    <div>
-                      <span className="text-zinc-400">Video:</span>
-                      <p className="text-white truncate">{formData.video_url}</p>
-                    </div>
-                  )}
-                  <div>
-                    <span className="text-zinc-400">Duration:</span>
-                    <p className="text-white">{formData.duration_days} days</p>
-                  </div>
+                  ))}
                 </div>
-                
-                {formData.description && (
-                  <div className="mt-4">
-                    <span className="text-zinc-400">Description:</span>
-                    <p className="text-white mt-1">{formData.description}</p>
-                  </div>
-                )}
+              </div>
+
+              <div className="flex justify-center space-x-4">
+                <button
+                  onClick={() => setCurrentStep('review_edit')}
+                  className="bg-zinc-700 hover:bg-zinc-600 px-8 py-3 rounded-lg font-semibold transition-colors"
+                  disabled={publishing}
+                >
+                  ← Back to Review
+                </button>
+                <button
+                  onClick={handlePublish}
+                  disabled={publishing}
+                  className="bg-green-600 hover:bg-green-700 disabled:bg-green-800 px-8 py-3 rounded-lg font-semibold transition-colors"
+                >
+                  {publishing ? (
+                    <div className="flex items-center gap-2">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                      Publishing...
+                    </div>
+                  ) : (
+                    `Publish ${items.length} Auction${items.length > 1 ? 's' : ''}`
+                  )}
+                </button>
               </div>
             </div>
           )}
 
-          {/* Error Display */}
-          {error && (
-            <div className="bg-red-950/50 border border-red-800 rounded-2xl p-4">
-              <p className="text-red-200 text-sm">{error}</p>
-            </div>
-          )}
-
-          {/* Navigation Buttons */}
-          <div className="flex justify-between">
-            <button
-              type="button"
-              onClick={prevStep}
-              disabled={currentStep === 'basic_info'}
-              className="bg-zinc-700 hover:bg-zinc-600 disabled:bg-zinc-800 disabled:cursor-not-allowed text-white px-6 py-3 rounded-lg transition-colors"
-            >
-              Previous
-            </button>
-
-            {currentStep === 'review' ? (
-              <button
-                type="submit"
-                disabled={submitting}
-                className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 disabled:from-zinc-700 disabled:to-zinc-700 text-white px-8 py-3 rounded-lg font-medium transition-all duration-200 flex items-center gap-2"
-              >
-                {submitting ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                    <span>Creating...</span>
-                  </>
-                ) : (
-                  <span>Create Auction</span>
-                )}
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleNextStep}
-                className="bg-gradient-to-r from-violet-600 to-indigo-600 hover:from-violet-700 hover:to-indigo-700 text-white px-6 py-3 rounded-lg transition-colors"
-              >
-                Next
-              </button>
-            )}
-          </div>
-        </form>
+        </div>
       </div>
     </div>
   );

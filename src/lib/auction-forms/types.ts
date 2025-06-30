@@ -58,7 +58,34 @@ export interface FormAnalysis {
   missingFields: string[];
 }
 
-export type FormStep = 'welcome' | 'basic_info' | 'pricing' | 'video' | 'images' | 'review';
+// NEW BATCH TYPES
+export interface BatchItem extends AuctionFormData {
+  id: string;
+  imageFile: File;
+  imagePreview: string;
+  aiAnalyzed: boolean;
+  aiConfidence?: number;
+}
+
+export interface BatchFormData {
+  items: BatchItem[];
+  sharedSettings: {
+    video_url: string;
+    duration_days: string;
+  };
+}
+
+// Updated FormStep to include new image-first flow
+export type FormStep = 'upload' | 'ai_analysis' | 'review_edit' | 'pricing' | 'publish';
+
+// Updated StepConfig for new flow
+export const newStepConfig: Record<FormStep, StepConfig> = {
+  upload: { title: 'Upload Images', progress: 20 },
+  ai_analysis: { title: 'AI Analysis', progress: 40 },
+  review_edit: { title: 'Review & Edit', progress: 60 },
+  pricing: { title: 'Pricing Setup', progress: 80 },
+  publish: { title: 'Publish Auctions', progress: 100 }
+};
 
 export interface StepConfig {
   title: string;
