@@ -559,57 +559,145 @@ export default function CreateAuctionPage() {
 
           {/* STEP 3: Publish */}
           {currentStep === 'publish' && (
-            <div className="space-y-6">
-              <h2 className="text-2xl font-semibold text-center">Ready to Publish Your Auctions</h2>
-              
-              <div className="bg-zinc-900 rounded-lg p-6">
-                <h3 className="font-semibold mb-4">Summary</h3>
-                <div className="grid gap-4">
-                  <div className="text-sm text-zinc-400">
-                    You&apos;re about to create <span className="text-white font-semibold">{items.length} auction{items.length > 1 ? 's' : ''}</span>
+            <div className="space-y-12">
+              {/* Hero Section */}
+              <div className="text-center space-y-4">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-violet-600 to-indigo-700 rounded-2xl mb-6 shadow-lg shadow-violet-500/20">
+                  <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l14 9-14 9V3z" />
+                  </svg>
+                </div>
+                <h2 className="text-4xl font-bold bg-gradient-to-r from-white to-slate-200 bg-clip-text text-transparent">
+                  Ready to Launch
+                </h2>
+                <p className="text-lg text-slate-300 max-w-2xl mx-auto">
+                  Your {items.length > 1 ? 'auctions are' : 'auction is'} ready to go live and start receiving bids from collectors worldwide
+                </p>
+              </div>
+
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="bg-gradient-to-br from-violet-500/10 to-indigo-500/10 backdrop-blur-sm border border-violet-500/30 rounded-xl p-6 text-center">
+                  <div className="text-3xl font-bold text-violet-300">{items.length}</div>
+                  <div className="text-sm text-slate-400 mt-1">Auction{items.length > 1 ? 's' : ''}</div>
+                </div>
+                <div className="bg-gradient-to-br from-blue-500/10 to-cyan-500/10 backdrop-blur-sm border border-blue-500/30 rounded-xl p-6 text-center">
+                  <div className="text-3xl font-bold text-blue-300">
+                    ${items.reduce((sum, item) => sum + parseFloat(item.starting_price || '0'), 0).toFixed(0)}
                   </div>
-                  
-                  {items.map((item) => (
-                    <div key={item.id} className="flex items-center gap-4 py-2 border-b border-zinc-800 last:border-b-0">
-                      <div className="w-12 h-12 relative rounded overflow-hidden">
-                        <Image
-                          src={item.imagePreview}
-                          alt={item.title}
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-medium">{item.title}</div>
-                        <div className="text-sm text-zinc-400">
-                          Starting: ${item.starting_price} • Duration: {item.duration_days} days
+                  <div className="text-sm text-slate-400 mt-1">Total Starting Value</div>
+                </div>
+                <div className="bg-gradient-to-br from-emerald-500/10 to-teal-500/10 backdrop-blur-sm border border-emerald-500/30 rounded-xl p-6 text-center">
+                  <div className="text-3xl font-bold text-emerald-300">
+                    {Math.round(items.reduce((sum, item) => sum + parseInt(item.duration_days || '7'), 0) / items.length)}
+                  </div>
+                  <div className="text-sm text-slate-400 mt-1">Avg. Duration (days)</div>
+                </div>
+              </div>
+              
+              {/* Auction Listings Preview */}
+              <div className="bg-gradient-to-br from-slate-800/40 to-slate-900/60 backdrop-blur-xl rounded-2xl border border-slate-700/70 overflow-hidden">
+                <div className="bg-gradient-to-r from-violet-600/15 to-indigo-600/15 px-8 py-6 border-b border-slate-700/50">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-xl font-semibold text-white">Auction Listings</h3>
+                      <p className="text-slate-300 mt-1">Review your items one final time before publishing</p>
+                    </div>
+                    <div className="flex items-center gap-2 bg-slate-700/50 rounded-full px-4 py-2 border border-emerald-500/20">
+                      <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></div>
+                      <span className="text-sm text-emerald-200">Ready to publish</span>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="p-8">
+                  <div className="space-y-6">
+                    {items.map((item, index) => (
+                      <div key={item.id} className="group relative">
+                        <div className="flex items-center gap-6 p-6 bg-slate-800/30 hover:bg-slate-800/50 rounded-xl border border-slate-700/50 hover:border-violet-500/30 transition-all duration-200">
+                          {/* Item Number Badge */}
+                          <div className="flex-shrink-0 w-12 h-12 bg-gradient-to-br from-violet-500 to-indigo-600 rounded-xl flex items-center justify-center text-white font-bold text-lg shadow-md">
+                            {index + 1}
+                          </div>
+                          
+                          {/* Image */}
+                          <div className="w-20 h-20 relative rounded-xl overflow-hidden flex-shrink-0 ring-2 ring-slate-700 group-hover:ring-violet-500/40 transition-all duration-200">
+                            <Image
+                              src={item.imagePreview}
+                              alt={item.title}
+                              fill
+                              className="object-cover"
+                            />
+                          </div>
+                          
+                          {/* Item Details */}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-white text-lg truncate group-hover:text-violet-200 transition-colors">
+                              {item.title}
+                            </h4>
+                            <div className="text-slate-300 text-sm mt-1 truncate">
+                              {item.description}
+                            </div>
+                            <div className="flex items-center gap-4 mt-3 text-sm">
+                              <div className="flex items-center gap-1">
+                                <span className="text-slate-400">Starting:</span>
+                                <span className="font-semibold text-emerald-300">${item.starting_price}</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-slate-400">Duration:</span>
+                                <span className="text-blue-200">{item.duration_days} days</span>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <span className="text-slate-400">Condition:</span>
+                                <span className="text-slate-200 capitalize">{item.condition}</span>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          {/* Status Indicator */}
+                          <div className="flex-shrink-0 flex items-center gap-2">
+                            <svg className="w-5 h-5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                            <span className="text-sm text-emerald-300 font-medium">Ready</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="flex justify-center space-x-4">
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row justify-center items-center gap-4 pt-8">
                 <button
                   onClick={() => setCurrentStep('review_edit')}
-                  className="bg-zinc-700 hover:bg-zinc-600 px-8 py-3 rounded-lg font-semibold transition-colors"
+                  className="group w-full sm:w-auto px-8 py-4 bg-slate-700/60 hover:bg-slate-700/80 border border-slate-600 hover:border-slate-500 rounded-xl font-semibold transition-all duration-200 backdrop-blur-sm flex items-center justify-center gap-3 text-slate-200 hover:text-white"
                   disabled={publishing}
                 >
-                  ← Back to Review
+                  <svg className="w-5 h-5 transition-transform duration-200 group-hover:-translate-x-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  <span>Back to Review</span>
                 </button>
+                
                 <button
                   onClick={handlePublish}
                   disabled={publishing}
-                  className="bg-green-600 hover:bg-green-700 disabled:bg-green-800 px-8 py-3 rounded-lg font-semibold transition-colors"
+                  className="group relative w-full sm:w-auto px-10 py-4 bg-gradient-to-r from-violet-600 to-indigo-700 hover:from-violet-500 hover:to-indigo-600 disabled:from-slate-700 disabled:to-slate-700 disabled:opacity-50 rounded-xl font-semibold transition-all duration-200 flex items-center justify-center gap-3 text-lg text-white shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-105 disabled:hover:scale-100 disabled:shadow-none"
                 >
                   {publishing ? (
-                    <div className="flex items-center gap-2">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                      Publishing...
-                    </div>
+                    <>
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                      <span>Publishing your {items.length > 1 ? 'auctions' : 'auction'}...</span>
+                    </>
                   ) : (
-                    `Publish ${items.length} Auction${items.length > 1 ? 's' : ''}`
+                    <>
+                      <svg className="w-5 h-5 transition-transform duration-200 group-hover:scale-110" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3l14 9-14 9V3z" />
+                      </svg>
+                      <span>Launch {items.length} Auction{items.length > 1 ? 's' : ''}</span>
+                    </>
                   )}
                 </button>
               </div>
