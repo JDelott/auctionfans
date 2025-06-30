@@ -620,7 +620,7 @@ export default function BatchListingForm({ authVideo, onListingsCreated, onCance
         )}
 
         {/* Action Buttons */}
-        <div className="flex gap-4 justify-center pt-8">
+        <div className="flex gap-4 justify-center pt-8 pb-16">
           <button
             onClick={onCancel}
             disabled={loading}
@@ -642,21 +642,6 @@ export default function BatchListingForm({ authVideo, onListingsCreated, onCance
         </div>
       </div>
 
-      {/* Voice Command Helper */}
-      <div className="mt-8 bg-zinc-900/30 border border-zinc-800/50 rounded-lg p-6">
-        <h4 className="text-sm font-medium text-zinc-300 mb-4 flex items-center gap-2">
-          <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4a3 3 0 016 0v4a3 3 0 11-6 0V4zm4 10.93A7.001 7.001 0 0017 8a1 1 0 10-2 0A5 5 0 115 8a1 1 0 00-2 0 7.001 7.001 0 006 6.93V17H6a1 1 0 100 2h8a1 1 0 100-2h-3v-2.07z" />
-          </svg>
-          Voice Command Examples
-        </h4>
-        <div className="text-xs text-zinc-400 space-y-2">
-          <div><strong>Complete item:</strong> &quot;Nike Air Max shoes, excellent condition, sneakers category, starting at 75 dollars, reserve 100, YouTube link starts at 2 minutes 30 seconds&quot;</div>
-          <div><strong>Pricing:</strong> &quot;Starting price 50, reserve 75, buy now 150, 7 day auction&quot;</div>
-          <div><strong>Video timing:</strong> &quot;Video starts at 3 minutes 45 seconds&quot; → auto-converts to 225 seconds</div>
-          <div><strong>Condition:</strong> &quot;mint condition&quot; | &quot;used but good&quot; | &quot;vintage worn&quot;</div>
-        </div>
-      </div>
     </div>
   );
 } 
