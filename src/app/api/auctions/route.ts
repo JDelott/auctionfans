@@ -105,13 +105,54 @@ export async function POST(request: NextRequest) {
       starting_price, buy_now_price, reserve_price, condition, duration_days
     } = body;
 
-    // Validation
-    if (!title || !description || !starting_price || !condition || !video_url) {
-      return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    // Fixed validation - video_url is now optional
+    if (!title || !description || !starting_price || !condition) {
+      return NextResponse.json({ 
+        error: 'Missing required fields: title, description, starting_price, and condition are required' 
+      }, { status: 400 });
+    }
+
+    // Validate numeric fields
+    if (isNaN(parseFloat(starting_price)) || parseFloat(starting_price) <= 0) {
+      return NextResponse.json({ error: 'Starting price must be a positive number' }, { status: 400 });
+    }
+
+    if (buy_now_price && (isNaN(parseFloat(buy_now_price)) || parseFloat(buy_now_price) <= 0)) {
+      return NextResponse.json({ error: 'Buy now price must be a positive number' }, { status: 400 });
+    }
+
+    if (reserve_price && (isNaN(parseFloat(reserve_price)) || parseFloat(reserve_price) <= 0)) {
+      return NextResponse.json({ error: 'Reserve price must be a positive number' }, { status: 400 });
+    }
+
+    // Validate duration
+    const durationDays = parseInt(duration_days) || 7;
+    if (durationDays < 1 || durationDays > 14) {
+      return NextResponse.json({ error: 'Duration must be between 1 and 14 days' }, { status: 400 });
     }
 
     const startTime = new Date();
-    const endTime = new Date(startTime.getTime() + (duration_days * 24 * 60 * 60 * 1000));
+    const endTime = new Date(startTime.getTime() + (durationDays * 24 * 60 * 60 * 1000));
+
+    // Handle optional fields - set null if empty
+    const finalVideoUrl = video_url && video_url.trim() ? video_url.trim() : null;
+    const finalVideoTimestamp = video_timestamp && !isNaN(parseInt(video_timestamp)) ? parseInt(video_timestamp) : null;
+    const finalCategoryId = category_id && category_id.trim() ? category_id.trim() : null;
+    const finalBuyNowPrice = buy_now_price && !isNaN(parseFloat(buy_now_price)) ? parseFloat(buy_now_price) : null;
+    const finalReservePrice = reserve_price && !isNaN(parseFloat(reserve_price)) ? parseFloat(reserve_price) : null;
+
+    console.log('Creating auction with data:', {
+      title,
+      description: description.substring(0, 50) + '...',
+      category_id: finalCategoryId,
+      video_url: finalVideoUrl,
+      video_timestamp: finalVideoTimestamp,
+      starting_price: parseFloat(starting_price),
+      buy_now_price: finalBuyNowPrice,
+      reserve_price: finalReservePrice,
+      condition,
+      duration_days: durationDays
+    });
 
     const result = await query(
       `INSERT INTO auction_items (
@@ -121,8 +162,18 @@ export async function POST(request: NextRequest) {
       ) VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $8, $9, $10, 'active', $11, $12)
        RETURNING *`,
       [
-        user.id, category_id, title, description, video_url, video_timestamp,
-        starting_price, buy_now_price, reserve_price, condition, startTime, endTime
+        user.id, 
+        finalCategoryId, 
+        title.trim(), 
+        description.trim(), 
+        finalVideoUrl, 
+        finalVideoTimestamp,
+        parseFloat(starting_price), 
+        finalBuyNowPrice, 
+        finalReservePrice, 
+        condition, 
+        startTime, 
+        endTime
       ]
     );
 
@@ -133,7 +184,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Failed to create auction:', error);
     return NextResponse.json(
-      { error: 'Failed to create auction' },
+      { error: 'Failed to create auction', details: error instanceof Error ? error.message : 'Unknown error' },
       { status: 500 }
     );
   }

@@ -16,6 +16,8 @@ export function BatchVoiceControl({ items, categories, onBatchUpdate, onItemUpda
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
 
   const handleVoiceUpdate = (updates: Partial<BatchItem>) => {
+    console.log('Batch voice update:', updates);
+    
     if (selectedMode === 'all') {
       onBatchUpdate(updates);
     } else {
@@ -33,8 +35,8 @@ export function BatchVoiceControl({ items, categories, onBatchUpdate, onItemUpda
     );
   };
 
-  // Create a dummy form data object for voice processing
-  const dummyFormData = {
+  // Create representative form data for voice processing
+  const representativeFormData = {
     title: '',
     description: '',
     category_id: '',
@@ -49,13 +51,13 @@ export function BatchVoiceControl({ items, categories, onBatchUpdate, onItemUpda
   };
 
   return (
-    <div className="bg-zinc-900 rounded-lg p-4 space-y-4">
+    <div className="bg-zinc-900 rounded-lg p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold">Batch Voice Control</h3>
         <VoiceMicButton
           onFormUpdate={handleVoiceUpdate}
           categories={categories}
-          currentFormData={dummyFormData}
+          currentFormData={representativeFormData}
           currentStep="review_edit"
         />
       </div>
@@ -66,7 +68,7 @@ export function BatchVoiceControl({ items, categories, onBatchUpdate, onItemUpda
           <div className="flex gap-2">
             <button
               onClick={() => setSelectedMode('all')}
-              className={`px-4 py-2 rounded text-sm ${
+              className={`px-4 py-2 rounded text-sm transition-colors ${
                 selectedMode === 'all' 
                   ? 'bg-violet-600 text-white' 
                   : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
@@ -76,7 +78,7 @@ export function BatchVoiceControl({ items, categories, onBatchUpdate, onItemUpda
             </button>
             <button
               onClick={() => setSelectedMode('selected')}
-              className={`px-4 py-2 rounded text-sm ${
+              className={`px-4 py-2 rounded text-sm transition-colors ${
                 selectedMode === 'selected' 
                   ? 'bg-violet-600 text-white' 
                   : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
@@ -113,8 +115,16 @@ export function BatchVoiceControl({ items, categories, onBatchUpdate, onItemUpda
         </div>
       )}
       
-      <div className="text-sm text-zinc-400">
-        💡 Try saying: &quot;Set starting price to 25 dollars&quot; or &quot;Change condition to like new&quot; or &quot;Update duration to 5 days&quot;
+      <div className="bg-zinc-800/50 rounded-lg p-4 space-y-2">
+        <div className="text-sm font-medium text-zinc-300">💡 Enhanced Voice Commands:</div>
+        <div className="text-xs text-zinc-400 space-y-1">
+          <div><strong>Comprehensive:</strong> &quot;Nike Air Max shoes, excellent condition, sneakers category, starting at 75 dollars, reserve 100, 7 day auction&quot;</div>
+          <div><strong>Category:</strong> &quot;This is electronics category&quot; or &quot;clothing and fashion item&quot;</div>
+          <div><strong>Condition:</strong> &quot;mint condition&quot; | &quot;used but good&quot; | &quot;vintage worn&quot;</div>
+          <div><strong>Pricing:</strong> &quot;starting price 50, reserve 75, buy now 150&quot;</div>
+          <div><strong>Duration:</strong> &quot;5 day auction&quot; | &quot;one week duration&quot;</div>
+          <div><strong>Video timing:</strong> &quot;starts at 2 minutes 30 seconds&quot; → auto-converts to 150 seconds</div>
+        </div>
       </div>
     </div>
   );

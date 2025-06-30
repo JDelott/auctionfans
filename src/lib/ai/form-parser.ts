@@ -229,40 +229,57 @@ async function extractGeneralUpdatesWithAI(
   try {
     console.log('Using AI to extract general updates from:', userMessage);
 
-    const prompt = `Parse this auction update request from speech: "${userMessage}"
+    const categoryList = categories.map(c => `- ${c.name} (id: ${c.id})`).join('\n');
 
-The user wants to update their auction listing. Extract any field updates mentioned and return as JSON.
+    const prompt = `Parse this auction item description from speech: "${userMessage}"
 
-Possible fields to update:
-- title: Item title/name
-- description: Item description  
-- starting_price: Starting bid price (numbers only, no $)
-- reserve_price: Reserve price (numbers only, no $)
-- buy_now_price: Buy it now price (numbers only, no $)
-- condition: Item condition (new, like-new, good, fair, poor)
-- duration_days: Auction duration (1, 3, 5, 7, 10, 14)
+Extract and auto-populate these auction fields from the user's description:
 
-Current auction data:
-- Title: "${currentFormData.title || 'untitled'}"
-- Description: "${currentFormData.description || 'no description'}"
-- Starting price: "$${currentFormData.starting_price || '0'}"
-- Condition: "${currentFormData.condition || 'new'}"
+TITLE: Extract a clear, marketable title (max 8 words)
+DESCRIPTION: Create a detailed description for auction
+CATEGORY: Select the best matching category from the list below
+CONDITION: Determine item condition based on description
+STARTING_PRICE: Extract any price mentioned
+RESERVE_PRICE: Extract reserve/minimum price if mentioned  
+BUY_NOW_PRICE: Extract buy-it-now price if mentioned
+VIDEO_TIMESTAMP: Convert time references to seconds ("2 minutes" = 120, "1:30" = 90)
+DURATION_DAYS: Extract auction duration (1, 3, 5, 7, 10, 14 days)
 
-Natural language patterns to recognize:
-- "I need the title to be..." → update title
-- "Change the title to..." → update title  
-- "Set title as..." → update title
-- "Make the price..." → update starting_price
-- "The condition should be..." → update condition
-- "Update description to..." → update description
+Available categories:
+${categoryList}
 
-Return ONLY valid JSON with fields that need updating. If no updates needed, return {}.
+Condition options: new, like-new, good, fair, poor
 
-Example: {"title": "Sneaker.io AR Shoes Snapchat Conference 2025"}`;
+Current data context:
+- Current title: "${currentFormData.title || 'untitled'}"
+- Current category: "${currentFormData.category_id || 'none selected'}"
+- Current condition: "${currentFormData.condition || 'new'}"
+
+Voice input patterns to recognize:
+- Item type identification → category selection
+- Condition words ("new", "used", "vintage", "mint") → condition
+- Time references ("starts at 2 minutes", "begin at 1:30") → video_timestamp in seconds
+- Duration ("7 day auction", "one week") → duration_days
+- Prices ("starting at 25", "reserve 50", "buy now 100") → pricing fields
+
+Return ONLY valid JSON with fields that should be updated:
+{
+  "title": "Short marketable title",
+  "description": "Detailed description", 
+  "category_id": "matching-category-id",
+  "condition": "appropriate-condition",
+  "starting_price": "25.00",
+  "reserve_price": "50.00", 
+  "buy_now_price": "100.00",
+  "video_timestamp": "120",
+  "duration_days": "7"
+}
+
+Only include fields that can be determined from the input. If unclear, omit the field.`;
 
     const completion = await anthropic.messages.create({
       model: 'claude-3-sonnet-20240229',
-      max_tokens: 200,
+      max_tokens: 400,
       messages: [
         {
           role: 'user',
@@ -276,7 +293,77 @@ Example: {"title": "Sneaker.io AR Shoes Snapchat Conference 2025"}`;
 
     try {
       const parsed = JSON.parse(aiResponse);
-      console.log('AI extracted general updates:', parsed);
+      
+      // Validate category_id exists in the provided categories
+      if (parsed.category_id && !categories.find(c => c.id === parsed.category_id)) {
+        // Fallback: find category by name matching
+        const categoryName = parsed.category_id.toLowerCase();
+        const matchedCategory = categories.find(c => 
+          c.name.toLowerCase().includes(categoryName) || 
+          categoryName.includes(c.name.toLowerCase())
+        );
+        if (matchedCategory) {
+          parsed.category_id = matchedCategory.id;
+        } else {
+          delete parsed.category_id; // Remove invalid category
+        }
+      }
+      
+      // Validate condition
+      const validConditions = ['new', 'like-new', 'good', 'fair', 'poor'];
+      if (parsed.condition && !validConditions.includes(parsed.condition)) {
+        // Try to map common condition descriptions
+        const conditionMap: Record<string, string> = {
+          'mint': 'new',
+          'excellent': 'like-new', 
+          'very good': 'good',
+          'decent': 'good',
+          'worn': 'fair',
+          'damaged': 'poor',
+          'used': 'good'
+        };
+        
+        const mappedCondition = conditionMap[parsed.condition.toLowerCase()];
+        if (mappedCondition) {
+          parsed.condition = mappedCondition;
+        } else {
+          delete parsed.condition;
+        }
+      }
+      
+      // Validate numeric fields
+      if (parsed.starting_price) {
+        const price = parseFloat(parsed.starting_price);
+        if (isNaN(price) || price <= 0) delete parsed.starting_price;
+        else parsed.starting_price = price.toFixed(2);
+      }
+      
+      if (parsed.reserve_price) {
+        const price = parseFloat(parsed.reserve_price);
+        if (isNaN(price) || price <= 0) delete parsed.reserve_price;
+        else parsed.reserve_price = price.toFixed(2);
+      }
+      
+      if (parsed.buy_now_price) {
+        const price = parseFloat(parsed.buy_now_price);
+        if (isNaN(price) || price <= 0) delete parsed.buy_now_price;
+        else parsed.buy_now_price = price.toFixed(2);
+      }
+      
+      if (parsed.video_timestamp) {
+        const timestamp = parseInt(parsed.video_timestamp);
+        if (isNaN(timestamp) || timestamp < 0) delete parsed.video_timestamp;
+        else parsed.video_timestamp = timestamp.toString();
+      }
+      
+      if (parsed.duration_days) {
+        const validDurations = ['1', '3', '5', '7', '10', '14'];
+        if (!validDurations.includes(parsed.duration_days)) {
+          delete parsed.duration_days;
+        }
+      }
+
+      console.log('AI extracted and validated updates:', parsed);
       return parsed;
     } catch (parseError) {
       console.error('Failed to parse AI general updates response:', parseError);
