@@ -16,6 +16,11 @@ export default function CreateAuctionPage() {
   const [currentStep, setCurrentStep] = useState<FormStep>('upload');
   const [categories, setCategories] = useState<Category[]>([]);
   
+  // Upload state
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [imagePreviews, setImagePreviews] = useState<string[]>([]);
+  const [dragActive, setDragActive] = useState(false);
+  
   // Batch/Single mode toggle
   const [batchMode, setBatchMode] = useState(false);
   const [items, setItems] = useState<BatchItem[]>([]);
@@ -41,15 +46,94 @@ export default function CreateAuctionPage() {
     fetchCategories();
   }, []);
 
-  // Handle image upload and AI analysis
-  const handleImagesUpload = async (files: FileList) => {
+  // Handle file selection (without immediate processing)
+  const handleFileSelect = (files: FileList | null) => {
+    if (!files) return;
+    
+    const fileArray = Array.from(files);
+    const validFiles = fileArray.filter(file => {
+      if (!file.type.startsWith('image/')) return false;
+      if (file.size > 10 * 1024 * 1024) return false; // 10MB limit
+      return true;
+    });
+
+    if (validFiles.length !== fileArray.length) {
+      setError('Some files were skipped (only images under 10MB are allowed)');
+    } else {
+      setError('');
+    }
+
+    // Append to existing files instead of replacing
+    setSelectedFiles(prev => [...prev, ...validFiles]);
+    
+    // Update batch mode based on total files
+    const totalFiles = selectedFiles.length + validFiles.length;
+    setBatchMode(totalFiles > 1);
+    
+    // Create previews for new files and append to existing previews
+    const newPreviews: string[] = [];
+    validFiles.forEach((file, index) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          newPreviews[index] = e.target.result as string;
+          if (newPreviews.filter(p => p).length === validFiles.length) {
+            setImagePreviews(prev => [...prev, ...newPreviews]);
+          }
+        }
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  // Handle drag and drop
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileSelect(e.dataTransfer.files);
+    }
+  };
+
+  // Remove a specific file
+  const removeFile = (index: number) => {
+    const newFiles = selectedFiles.filter((_, i) => i !== index);
+    const newPreviews = imagePreviews.filter((_, i) => i !== index);
+    setSelectedFiles(newFiles);
+    setImagePreviews(newPreviews);
+    setBatchMode(newFiles.length > 1);
+    
+    if (newFiles.length === 0) {
+      setError('');
+    }
+  };
+
+  // Process images with AI (when user clicks Next)
+  const handleProcessImages = async () => {
+    if (selectedFiles.length === 0) {
+      setError('Please select at least one image');
+      return;
+    }
+
     setAnalyzing(true);
     setError('');
 
     try {
       // Create form data for API
       const formData = new FormData();
-      Array.from(files).forEach(file => {
+      selectedFiles.forEach(file => {
         formData.append('images', file);
       });
 
@@ -68,12 +152,10 @@ export default function CreateAuctionPage() {
       // Create batch items from results
       const newItems: BatchItem[] = [];
       
-      for (let i = 0; i < files.length; i++) {
-        const file = files[i];
+      for (let i = 0; i < selectedFiles.length; i++) {
+        const file = selectedFiles[i];
         const result = results[i];
-        
-        // Create image preview
-        const preview = URL.createObjectURL(file);
+        const preview = imagePreviews[i];
         
         // Find category ID
         const category = categories.find(cat => 
@@ -101,7 +183,6 @@ export default function CreateAuctionPage() {
       }
 
       setItems(newItems);
-      setBatchMode(files.length > 1);
       setCurrentStep('review_edit');
       
     } catch (error) {
@@ -225,11 +306,11 @@ export default function CreateAuctionPage() {
         )}
 
         {/* Step Content */}
-        <div className="max-w-6xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           
           {/* STEP 1: Upload Images */}
           {currentStep === 'upload' && (
-            <div className="space-y-6">
+            <div className="space-y-8">
               <div className="text-center">
                 <h2 className="text-2xl font-semibold mb-4">Upload Your Item Images</h2>
                 <p className="text-zinc-400 mb-8">
@@ -239,31 +320,137 @@ export default function CreateAuctionPage() {
               </div>
 
               {/* File Upload Area */}
-              <div className="border-2 border-dashed border-zinc-700 rounded-lg p-12 text-center hover:border-violet-500 transition-colors">
+              <div 
+                className={`border-2 border-dashed rounded-lg p-8 text-center transition-all duration-200 ${
+                  dragActive 
+                    ? 'border-violet-500 bg-violet-500/5' 
+                    : selectedFiles.length > 0 
+                    ? 'border-zinc-600 bg-zinc-900/50' 
+                    : 'border-zinc-700 hover:border-zinc-600'
+                }`}
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={handleDrop}
+              >
                 <input
                   type="file"
                   accept="image/*"
                   multiple
-                  onChange={(e) => e.target.files && handleImagesUpload(e.target.files)}
+                  onChange={(e) => handleFileSelect(e.target.files)}
                   className="hidden"
                   id="image-upload"
                   disabled={analyzing}
                 />
-                <label htmlFor="image-upload" className="cursor-pointer">
-                  <div className="text-6xl mb-4">📸</div>
-                  <h3 className="text-xl font-semibold mb-2">
-                    {analyzing ? 'Analyzing Images...' : 'Drop images here or click to upload'}
-                  </h3>
-                  <p className="text-zinc-400">
-                    Support for JPG, PNG, WebP • Max 10MB per image
-                  </p>
-                  {analyzing && (
-                    <div className="mt-4">
-                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-500 mx-auto"></div>
+                
+                {selectedFiles.length === 0 ? (
+                  <label htmlFor="image-upload" className="cursor-pointer block">
+                    <div className="w-16 h-16 mx-auto mb-4 bg-zinc-800 rounded-lg flex items-center justify-center">
+                      <svg className="w-8 h-8 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-semibold mb-2 text-white">
+                      Drop images here or click to upload
+                    </h3>
+                    <p className="text-zinc-400">
+                      JPG, PNG, WebP up to 10MB each
+                    </p>
+                  </label>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-center gap-2 text-zinc-300">
+                      <svg className="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      <span>{selectedFiles.length} image{selectedFiles.length > 1 ? 's' : ''} selected</span>
+                    </div>
+                    
+                    <label htmlFor="image-upload" className="inline-flex items-center gap-2 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 rounded-lg text-sm cursor-pointer transition-colors">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                      Add more images
+                    </label>
+                  </div>
+                )}
+              </div>
+
+              {/* Image Previews */}
+              {imagePreviews.length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold">Preview ({imagePreviews.length} image{imagePreviews.length > 1 ? 's' : ''})</h3>
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                    {imagePreviews.map((preview, index) => (
+                      <div key={index} className="relative group">
+                        <div className="aspect-square relative rounded-lg overflow-hidden bg-zinc-900">
+                          <Image
+                            src={preview}
+                            alt={`Preview ${index + 1}`}
+                            fill
+                            className="object-cover"
+                          />
+                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors" />
+                          
+                          {/* Remove button */}
+                          <button
+                            onClick={() => removeFile(index)}
+                            className="absolute top-2 right-2 w-6 h-6 bg-red-500 hover:bg-red-600 rounded-full flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Remove image"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                          </button>
+                        </div>
+                        
+                        {/* File info */}
+                        <div className="mt-2 text-xs text-zinc-400 truncate">
+                          {selectedFiles[index]?.name}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Mode indicator */}
+                  {batchMode && (
+                    <div className="bg-violet-900/20 border border-violet-700/50 rounded-lg p-4">
+                      <div className="flex items-center gap-2 text-violet-300">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                          <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <span className="font-medium">Batch Mode Enabled</span>
+                      </div>
+                      <p className="text-sm text-violet-200 mt-1">
+                        Multiple images detected. Each image will become a separate auction listing.
+                      </p>
                     </div>
                   )}
-                </label>
-              </div>
+
+                  {/* Next button */}
+                  <div className="flex justify-center pt-4">
+                    <button
+                      onClick={handleProcessImages}
+                      disabled={analyzing || selectedFiles.length === 0}
+                      className="bg-violet-600 hover:bg-violet-700 disabled:bg-zinc-700 disabled:cursor-not-allowed px-8 py-3 rounded-lg font-semibold transition-colors flex items-center gap-2"
+                    >
+                      {analyzing ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          Analyzing with AI...
+                        </>
+                      ) : (
+                        <>
+                          Continue to Review
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                          </svg>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
