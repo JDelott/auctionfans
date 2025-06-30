@@ -10,18 +10,28 @@ interface VideoSession {
   created_at: string;
 }
 
-interface VideoUploadProps {
-  onUploadComplete: (videoSession: VideoSession) => void;
+interface Screenshot {
+  id: string;
+  timestamp: number;
+  imageUrl: string;
 }
 
-export default function VideoUpload({ onUploadComplete }: VideoUploadProps) {
+interface VideoUploadProps {
+  onVideoUploadComplete: (videoSession: VideoSession) => void;
+  onScreenshotsUploadComplete: (videoSession: VideoSession, screenshots: Screenshot[]) => void;
+}
+
+export default function VideoUpload({ onVideoUploadComplete, onScreenshotsUploadComplete }: VideoUploadProps) {
+  const [uploadMethod, setUploadMethod] = useState<'video' | 'screenshots'>('video');
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState('');
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const screenshotInputRef = useRef<HTMLInputElement>(null);
 
-  const handleFileSelect = (file: File) => {
+  // Handle video file upload
+  const handleVideoSelect = (file: File) => {
     if (!file.type.startsWith('video/')) {
       setError('Please select a video file');
       return;
@@ -32,10 +42,10 @@ export default function VideoUpload({ onUploadComplete }: VideoUploadProps) {
       return;
     }
 
-    uploadFile(file);
+    uploadVideoFile(file);
   };
 
-  const uploadFile = async (file: File) => {
+  const uploadVideoFile = async (file: File) => {
     setUploading(true);
     setError('');
     setProgress(0);
@@ -61,7 +71,7 @@ export default function VideoUpload({ onUploadComplete }: VideoUploadProps) {
 
       if (response.ok) {
         setTimeout(() => {
-          onUploadComplete(data.videoSession);
+          onVideoUploadComplete(data.videoSession);
         }, 500);
       } else {
         setError(data.error || 'Upload failed');
@@ -73,13 +83,102 @@ export default function VideoUpload({ onUploadComplete }: VideoUploadProps) {
     }
   };
 
+  // Handle screenshot files upload
+  const handleScreenshotsSelect = async (files: FileList) => {
+    const imageFiles = Array.from(files).filter(file => file.type.startsWith('image/'));
+    
+    if (imageFiles.length === 0) {
+      setError('Please select image files');
+      return;
+    }
+
+    if (imageFiles.length > 20) {
+      setError('Maximum 20 screenshots allowed');
+      return;
+    }
+
+    setUploading(true);
+    setError('');
+    setProgress(0);
+
+    try {
+      // Create a proper video session for screenshots
+      const sessionResponse = await fetch('/api/video-sessions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          source: 'screenshots'
+        })
+      });
+
+      const sessionData = await sessionResponse.json();
+      if (!sessionResponse.ok) {
+        throw new Error(sessionData.error || 'Failed to create session');
+      }
+
+      const videoSession = sessionData.videoSession;
+      const uploadedScreenshots: Screenshot[] = [];
+
+      // Upload each screenshot
+      for (let i = 0; i < imageFiles.length; i++) {
+        const file = imageFiles[i];
+        
+        // Convert to base64
+        const base64Data = await new Promise<string>((resolve) => {
+          const reader = new FileReader();
+          reader.onload = (e) => resolve(e.target?.result as string);
+          reader.readAsDataURL(file);
+        });
+
+        const imageData = base64Data.split(',')[1]; // Remove data:image/...;base64,
+
+        // Save screenshot
+        const screenshotResponse = await fetch('/api/video-sessions/screenshots', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            videoSessionId: videoSession.id,
+            timestamp: i * 10, // Assign timestamps (0, 10, 20, etc.)
+            imageData
+          })
+        });
+
+        const screenshotData = await screenshotResponse.json();
+        
+        if (screenshotResponse.ok) {
+          uploadedScreenshots.push({
+            id: screenshotData.screenshot.id,
+            timestamp: i * 10,
+            imageUrl: screenshotData.screenshot.image_url
+          });
+        }
+
+        // Update progress
+        setProgress(Math.round(((i + 1) / imageFiles.length) * 100));
+      }
+
+      setTimeout(() => {
+        onScreenshotsUploadComplete(videoSession, uploadedScreenshots);
+      }, 500);
+
+    } catch (error) {
+      console.error('Screenshot upload failed:', error);
+      setError('Failed to upload screenshots. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragActive(false);
     
     const files = Array.from(e.dataTransfer.files);
-    if (files.length > 0) {
-      handleFileSelect(files[0]);
+    if (uploadMethod === 'video' && files.length > 0) {
+      handleVideoSelect(files[0]);
+    } else if (uploadMethod === 'screenshots' && files.length > 0) {
+      const fileList = e.dataTransfer.files;
+      handleScreenshotsSelect(fileList);
     }
   };
 
@@ -96,10 +195,34 @@ export default function VideoUpload({ onUploadComplete }: VideoUploadProps) {
   return (
     <div className="max-w-2xl mx-auto">
       <div className="text-center mb-8">
-        <h2 className="text-2xl font-bold text-white mb-2">Upload Your Video</h2>
+        <h2 className="text-2xl font-bold text-white mb-2">Add Your Content</h2>
         <p className="text-zinc-400">
-          Upload the video containing items you want to sell. We&apos;ll help you extract and authenticate each item.
+          Upload a video to capture screenshots from, or upload screenshots directly if you already have them.
         </p>
+      </div>
+
+      {/* Method Selection */}
+      <div className="flex rounded-lg bg-zinc-900/50 p-1 mb-8">
+        <button
+          onClick={() => setUploadMethod('video')}
+          className={`flex-1 py-3 px-4 rounded-md text-sm font-medium transition-colors ${
+            uploadMethod === 'video'
+              ? 'bg-violet-600 text-white'
+              : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          📹 Upload Video
+        </button>
+        <button
+          onClick={() => setUploadMethod('screenshots')}
+          className={`flex-1 py-3 px-4 rounded-md text-sm font-medium transition-colors ${
+            uploadMethod === 'screenshots'
+              ? 'bg-violet-600 text-white'
+              : 'text-zinc-400 hover:text-white'
+          }`}
+        >
+          📸 Upload Screenshots
+        </button>
       </div>
 
       {/* Upload Area */}
@@ -118,33 +241,68 @@ export default function VideoUpload({ onUploadComplete }: VideoUploadProps) {
           <>
             <div className="mb-6">
               <svg className="w-16 h-16 text-zinc-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                {uploadMethod === 'video' ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2z" />
+                )}
               </svg>
-              <h3 className="text-white font-medium mb-2">Drop your video here</h3>
+              <h3 className="text-white font-medium mb-2">
+                {uploadMethod === 'video' ? 'Drop your video here' : 'Drop your screenshots here'}
+              </h3>
               <p className="text-zinc-400 text-sm">or click to browse files</p>
             </div>
 
             <button
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => {
+                if (uploadMethod === 'video') {
+                  fileInputRef.current?.click();
+                } else {
+                  screenshotInputRef.current?.click();
+                }
+              }}
               className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
             >
-              Choose Video File
+              {uploadMethod === 'video' ? 'Choose Video File' : 'Choose Screenshot Files'}
             </button>
 
+            {/* Video Input */}
             <input
               ref={fileInputRef}
               type="file"
               accept="video/*"
               onChange={(e) => {
                 const file = e.target.files?.[0];
-                if (file) handleFileSelect(file);
+                if (file) handleVideoSelect(file);
+              }}
+              className="hidden"
+            />
+
+            {/* Screenshots Input */}
+            <input
+              ref={screenshotInputRef}
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(e) => {
+                const files = e.target.files;
+                if (files) handleScreenshotsSelect(files);
               }}
               className="hidden"
             />
 
             <div className="mt-6 text-xs text-zinc-500">
-              <p>Supported formats: MP4, MOV, AVI, MKV</p>
-              <p>Maximum file size: 500MB</p>
+              {uploadMethod === 'video' ? (
+                <>
+                  <p>Supported formats: MP4, MOV, AVI, MKV</p>
+                  <p>Maximum file size: 500MB</p>
+                </>
+              ) : (
+                <>
+                  <p>Supported formats: JPG, PNG, GIF, WebP</p>
+                  <p>Maximum: 20 screenshots</p>
+                </>
+              )}
             </div>
           </>
         ) : (
@@ -157,7 +315,9 @@ export default function VideoUpload({ onUploadComplete }: VideoUploadProps) {
             </div>
             
             <div>
-              <p className="text-white font-medium mb-2">Uploading video...</p>
+              <p className="text-white font-medium mb-2">
+                {uploadMethod === 'video' ? 'Uploading video...' : 'Uploading screenshots...'}
+              </p>
               <div className="w-full bg-zinc-800 rounded-full h-2">
                 <div 
                   className="bg-violet-600 h-2 rounded-full transition-all duration-300"

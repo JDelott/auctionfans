@@ -8,7 +8,6 @@ import VideoPlayer from '@/components/video-auctions/VideoPlayer';
 import ItemDetection from '@/components/video-auctions/ItemDetection';
 import ItemReview from '@/components/video-auctions/ItemReview';
 import AuctionSetup from '@/components/video-auctions/AuctionSetup';
-import CodeVerification from '@/components/verification/CodeVerification';
 
 type VideoAuctionStep = 
   | 'welcome' 
@@ -17,12 +16,15 @@ type VideoAuctionStep =
   | 'ai_detection' 
   | 'review_items' 
   | 'auction_setup'
-  | 'verification' 
-  | 'publish_success';
+  | 'publish'
+  | 'success';
 
 interface VideoSession {
   id: string;
+  creator_id: string;
   video_url: string;
+  status: string;
+  created_at: string;
 }
 
 interface Screenshot {
@@ -31,7 +33,8 @@ interface Screenshot {
   imageUrl: string;
 }
 
-interface DetectedItem {
+// Match ItemDetection component interface
+interface DetectedItemFromAI {
   id: string;
   item_name: string;
   item_description: string;
@@ -49,93 +52,24 @@ interface AuctionConfig {
   duration_days: string;
 }
 
-interface PublishedAuction {
-  id: string;
-  item_name: string;
-  certificate: {
-    certificate_hash: string;
-    video_session_id: string;
-    verification_code: string;
-    item_timestamp: number;
-    auction_id: string;
-    authenticated_at: string;
-  };
-}
-
 export default function VideoAuctionCreatorPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  
   const [currentStep, setCurrentStep] = useState<VideoAuctionStep>('welcome');
   const [videoSession, setVideoSession] = useState<VideoSession | null>(null);
   const [screenshots, setScreenshots] = useState<Screenshot[]>([]);
-  const [detectedItems, setDetectedItems] = useState<DetectedItem[]>([]);
-  const [approvedItems, setApprovedItems] = useState<DetectedItem[]>([]);
+  const [detectedItems, setDetectedItems] = useState<DetectedItemFromAI[]>([]);
+  const [finalItems, setFinalItems] = useState<DetectedItemFromAI[]>([]);
   const [auctionConfigs, setAuctionConfigs] = useState<AuctionConfig[]>([]);
-  const [publishedAuctions, setPublishedAuctions] = useState<PublishedAuction[]>([]);
+  const [publishing, setPublishing] = useState(false);
 
-  const stepConfig = {
-    welcome: { title: 'Welcome', description: 'Video-to-auctions authentication system' },
-    upload: { title: 'Upload Video', description: 'Upload your video file' },
-    screenshots: { title: 'Capture Screenshots', description: 'Capture frames where items appear' },
-    ai_detection: { title: 'AI Item Detection', description: 'AI analyzes screenshots for sellable items' },
-    review_items: { title: 'Review Items', description: 'Edit and confirm detected items' },
-    auction_setup: { title: 'Auction Setup', description: 'Configure pricing for each item' },
-    verification: { title: 'Authentication', description: 'Verify authenticity with handwritten code' },
-    publish_success: { title: 'Published!', description: 'All auctions are now live' }
-  };
-
-  const steps: VideoAuctionStep[] = ['welcome', 'upload', 'screenshots', 'ai_detection', 'review_items', 'auction_setup', 'verification', 'publish_success'];
-  const currentStepIndex = steps.indexOf(currentStep);
-  const progress = ((currentStepIndex + 1) / steps.length) * 100;
-
-  const handleVideoUpload = (session: VideoSession) => {
-    setVideoSession(session);
-    setCurrentStep('screenshots');
-  };
-
-  const handleScreenshotCaptured = (screenshot: Screenshot) => {
-    setScreenshots(prev => [...prev, screenshot]);
-  };
-
-  const handleDetectionComplete = (items: DetectedItem[]) => {
-    setDetectedItems(items);
-    setCurrentStep('review_items');
-  };
-
-  const handleItemsApproved = (items: DetectedItem[]) => {
-    setApprovedItems(items);
-    setCurrentStep('auction_setup');
-  };
-
-  const handleAuctionSetup = (configs: AuctionConfig[]) => {
-    setAuctionConfigs(configs);
-    setCurrentStep('verification');
-  };
-
-  const handleVerificationComplete = async () => {
-    // Publish auctions
-    try {
-      const response = await fetch('/api/video-sessions/publish-auctions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          videoSessionId: videoSession?.id,
-          auctionConfigs
-        })
-      });
-
-      const data = await response.json();
-      
-      if (response.ok) {
-        setPublishedAuctions(data.publishedAuctions);
-        setCurrentStep('publish_success');
-      } else {
-        console.error('Failed to publish auctions:', data.error);
-      }
-    } catch (error) {
-      console.error('Publishing error:', error);
-    }
-  };
+  // Flags to track completion of each step
+  const [uploadComplete, setUploadComplete] = useState(false);
+  const [screenshotsComplete, setScreenshotsComplete] = useState(false);
+  const [detectionComplete, setDetectionComplete] = useState(false);
+  const [reviewComplete, setReviewComplete] = useState(false);
+  const [setupComplete, setSetupComplete] = useState(false);
 
   if (loading) {
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
@@ -148,183 +82,327 @@ export default function VideoAuctionCreatorPage() {
     return null;
   }
 
+  const handleVideoUpload = (session: VideoSession) => {
+    setVideoSession(session);
+    setUploadComplete(true);
+  };
+
+  const handleScreenshotsUpload = (session: VideoSession, screenshots: Screenshot[]) => {
+    setVideoSession(session);
+    setScreenshots(screenshots);
+    setScreenshotsComplete(true);
+  };
+
+  const handleScreenshotCaptured = (screenshot: Screenshot) => {
+    setScreenshots(prev => [...prev, screenshot]);
+  };
+
+  const handleItemsDetected = (items: DetectedItemFromAI[]) => {
+    setDetectedItems(items);
+    setFinalItems(items);
+    setDetectionComplete(true);
+  };
+
+  const handleItemsApproved = (items: DetectedItemFromAI[]) => {
+    setFinalItems(items);
+    setReviewComplete(true);
+  };
+
+  const handleAuctionSetup = (configs: AuctionConfig[]) => {
+    setAuctionConfigs(configs);
+    setSetupComplete(true);
+  };
+
+  const handlePublish = async () => {
+    if (!videoSession || finalItems.length === 0 || auctionConfigs.length === 0) {
+      alert('Missing required data to publish auctions');
+      return;
+    }
+
+    setPublishing(true);
+
+    try {
+      const response = await fetch('/api/video-sessions/publish-auctions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoSessionId: videoSession.id,
+          items: finalItems,
+          auctionConfigs: auctionConfigs
+        })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setCurrentStep('success');
+      } else {
+        throw new Error(data.error || 'Failed to publish auctions');
+      }
+    } catch (error) {
+      console.error('Publication error:', error);
+      alert(`Failed to publish auctions: ${error}`);
+    } finally {
+      setPublishing(false);
+    }
+  };
+
+  const stepTitles = {
+    welcome: 'Video Auctions',
+    upload: 'Upload Video',
+    screenshots: 'Capture Screenshots',
+    ai_detection: 'AI Item Detection',
+    review_items: 'Review Items',
+    auction_setup: 'Setup Auctions',
+    publish: 'Ready to Publish',
+    success: 'Success!'
+  };
+
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
-      {/* Header */}
-      <div className="border-b border-zinc-800/50 bg-zinc-900/30 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-2xl font-bold">Video Authentication System</h1>
-              <p className="text-zinc-400 text-sm">Turn your video into multiple authenticated auctions</p>
-            </div>
+    <div className="min-h-screen bg-zinc-950">
+      <div className="max-w-4xl mx-auto px-4 py-8">
+        
+        {/* Progress Steps */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-2xl font-bold text-white">{stepTitles[currentStep]}</h1>
             <button
               onClick={() => router.push('/creator')}
-              className="text-zinc-400 hover:text-white transition-colors"
+              className="text-zinc-400 hover:text-white text-sm"
             >
-              ← Back to Dashboard
+              ← Back to Creator Dashboard
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Progress Bar */}
-      {currentStep !== 'welcome' && currentStep !== 'publish_success' && (
-        <div className="border-b border-zinc-800/50 bg-zinc-900/20">
-          <div className="max-w-6xl mx-auto px-6 py-4">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-medium text-zinc-300">
-                Step {currentStepIndex + 1} of {steps.length}: {stepConfig[currentStep].title}
-              </span>
-              <span className="text-sm text-zinc-400">{Math.round(progress)}%</span>
-            </div>
-            <div className="w-full bg-zinc-800 rounded-full h-2">
-              <div 
-                className="bg-violet-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${progress}%` }}
-              ></div>
-            </div>
+          
+          <div className="flex items-center space-x-2 overflow-x-auto pb-2">
+            {['upload', 'screenshots', 'ai_detection', 'review_items', 'auction_setup', 'publish'].map((step, index) => {
+              const completedSteps = ['upload', 'screenshots', 'ai_detection', 'review_items', 'auction_setup'].indexOf(currentStep);
+              const isCompleted = index < completedSteps;
+              const isCurrent = step === currentStep;
+              
+              return (
+                <div key={step} className="flex items-center flex-shrink-0">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
+                    isCompleted ? 'bg-green-600 text-white' :
+                    isCurrent ? 'bg-violet-600 text-white' :
+                    'bg-zinc-700 text-zinc-400'
+                  }`}>
+                    {isCompleted ? '✓' : index + 1}
+                  </div>
+                  {index < 5 && (
+                    <div className={`w-8 h-0.5 ${isCompleted ? 'bg-green-600' : 'bg-zinc-700'}`} />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
-      )}
 
-      {/* Main Content */}
-      <div className="max-w-6xl mx-auto px-6 py-12">
-        
-        {/* Welcome Step */}
-        {currentStep === 'welcome' && (
-          <div className="text-center max-w-2xl mx-auto">
-            <div className="p-4 bg-violet-600/20 rounded-2xl w-fit mx-auto mb-8">
-              <svg className="w-16 h-16 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />
-              </svg>
+        {/* Step Content */}
+        <div className="bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6">
+          
+          {/* Welcome */}
+          {currentStep === 'welcome' && (
+            <div className="text-center py-8">
+              <h2 className="text-3xl font-bold text-white mb-4">Create Multiple Auctions from One Video</h2>
+              <p className="text-zinc-300 mb-8 max-w-2xl mx-auto">
+                Upload your video, capture screenshots of items, let AI detect them, and create multiple auction listings in one process.
+              </p>
+              <button
+                onClick={() => setCurrentStep('upload')}
+                className="bg-violet-600 hover:bg-violet-700 text-white px-8 py-4 rounded-lg font-medium text-lg transition-colors"
+              >
+                Start Creating Auctions
+              </button>
             </div>
-            
-            <h2 className="text-3xl font-bold mb-4">Video Authentication System</h2>
-            <p className="text-zinc-400 mb-8 leading-relaxed">
-              Upload one video and create multiple authenticated auctions. AI detects items, you verify authenticity, and all auctions go live together.
-            </p>
+          )}
 
-            <button
-              onClick={() => setCurrentStep('upload')}
-              className="bg-violet-600 hover:bg-violet-700 text-white px-8 py-4 rounded-lg font-medium text-lg transition-colors"
-            >
-              Start Video Upload Process
-            </button>
-          </div>
-        )}
+          {/* Upload Video */}
+          {currentStep === 'upload' && (
+            <div>
+              <VideoUpload 
+                onVideoUploadComplete={handleVideoUpload}
+                onScreenshotsUploadComplete={handleScreenshotsUpload}
+              />
+              
+              {uploadComplete && (
+                <div className="mt-6 text-center">
+                  <button
+                    onClick={() => setCurrentStep('screenshots')}
+                    className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    Continue to Screenshots →
+                  </button>
+                </div>
+              )}
 
-        {/* Upload Step */}
-        {currentStep === 'upload' && (
-          <VideoUpload onUploadComplete={handleVideoUpload} />
-        )}
+              {screenshotsComplete && (
+                <div className="mt-6 text-center">
+                  <button
+                    onClick={() => setCurrentStep('ai_detection')}
+                    className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    Continue to AI Detection →
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
-        {/* Screenshots Step */}
-        {currentStep === 'screenshots' && videoSession && (
-          <div>
-            <VideoPlayer
-              videoUrl={videoSession.video_url}
-              videoSessionId={videoSession.id}
-              onScreenshotCaptured={handleScreenshotCaptured}
-              screenshots={screenshots}
-            />
-            
-            {screenshots.length > 0 && (
-              <div className="text-center mt-8">
+          {/* Screenshot Capture */}
+          {currentStep === 'screenshots' && videoSession && (
+            <div>
+              <VideoPlayer
+                videoUrl={videoSession.video_url}
+                videoSessionId={videoSession.id}
+                onScreenshotCaptured={handleScreenshotCaptured}
+                screenshots={screenshots}
+              />
+              
+              {screenshots.length > 0 && (
+                <div className="mt-6 text-center">
+                  <button
+                    onClick={() => setCurrentStep('ai_detection')}
+                    className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    Continue with {screenshots.length} Screenshot{screenshots.length !== 1 ? 's' : ''} →
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* AI Detection */}
+          {currentStep === 'ai_detection' && videoSession && screenshots.length > 0 && (
+            <div>
+              <ItemDetection
+                videoSessionId={videoSession.id}
+                screenshotCount={screenshots.length}
+                onDetectionComplete={handleItemsDetected}
+              />
+              
+              {detectionComplete && (
+                <div className="mt-6 text-center">
+                  <button
+                    onClick={() => setCurrentStep('review_items')}
+                    className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    Review {detectedItems.length} Detected Items →
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Review Items */}
+          {currentStep === 'review_items' && (
+            <div>
+              <ItemReview
+                detectedItems={detectedItems}
+                onItemsApproved={handleItemsApproved}
+              />
+              
+              {reviewComplete && (
+                <div className="mt-6 text-center">
+                  <button
+                    onClick={() => setCurrentStep('auction_setup')}
+                    className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    Setup Auctions for {finalItems.length} Items →
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Auction Setup */}
+          {currentStep === 'auction_setup' && (
+            <div>
+              <AuctionSetup
+                items={finalItems.map(item => ({
+                  id: item.id,
+                  item_name: item.item_name,
+                  item_description: item.item_description,
+                  suggested_category: item.suggested_category,
+                  condition: item.condition
+                }))}
+                onSetupComplete={handleAuctionSetup}
+              />
+              
+              {setupComplete && (
+                <div className="mt-6 text-center">
+                  <button
+                    onClick={() => setCurrentStep('publish')}
+                    className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                  >
+                    Ready to Publish {finalItems.length} Auctions →
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Publishing */}
+          {currentStep === 'publish' && (
+            <div className="text-center py-8">
+              <div className="mb-6">
+                <h3 className="text-xl font-bold text-white mb-4">Ready to Publish!</h3>
+                <div className="bg-zinc-800/50 rounded-lg p-4 mb-6">
+                  <p className="text-zinc-300 mb-2">
+                    You&apos;re about to create <span className="text-violet-400 font-bold">{finalItems.length}</span> auction listings from your video.
+                  </p>
+                  <p className="text-zinc-400 text-sm">
+                    Each item will be published as a separate auction with the pricing and details you configured.
+                  </p>
+                </div>
+              </div>
+              
+              <button
+                onClick={handlePublish}
+                disabled={publishing}
+                className="bg-violet-600 hover:bg-violet-700 disabled:bg-violet-800 text-white px-8 py-4 rounded-lg font-medium text-lg transition-colors flex items-center justify-center mx-auto"
+              >
+                {publishing ? (
+                  <>
+                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Publishing {finalItems.length} Auctions...
+                  </>
+                ) : (
+                  `🚀 Publish ${finalItems.length} Auctions`
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* Success */}
+          {currentStep === 'success' && (
+            <div className="text-center py-8">
+              <div className="text-green-400 text-6xl mb-4">🎉</div>
+              <h3 className="text-2xl font-bold text-white mb-4">Auctions Published Successfully!</h3>
+              <p className="text-zinc-300 mb-6">
+                {finalItems.length} auction listings have been created and are now live.
+              </p>
+              <div className="flex gap-4 justify-center">
                 <button
-                  onClick={() => setCurrentStep('ai_detection')}
-                  className="bg-violet-600 hover:bg-violet-700 text-white px-8 py-4 rounded-lg font-medium text-lg transition-colors"
+                  onClick={() => router.push('/creator/auctions')}
+                  className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
                 >
-                  Continue with {screenshots.length} Screenshot{screenshots.length !== 1 ? 's' : ''} →
+                  View My Auctions
+                </button>
+                <button
+                  onClick={() => window.location.reload()}
+                  className="bg-zinc-600 hover:bg-zinc-700 text-white px-6 py-3 rounded-lg font-medium transition-colors"
+                >
+                  Create More
                 </button>
               </div>
-            )}
-          </div>
-        )}
-
-        {/* AI Detection Step */}
-        {currentStep === 'ai_detection' && videoSession && (
-          <ItemDetection
-            videoSessionId={videoSession.id}
-            screenshotCount={screenshots.length}
-            onDetectionComplete={handleDetectionComplete}
-          />
-        )}
-
-        {/* Review Items Step */}
-        {currentStep === 'review_items' && (
-          <ItemReview
-            detectedItems={detectedItems}
-            onItemsApproved={handleItemsApproved}
-          />
-        )}
-
-        {/* Auction Setup Step */}
-        {currentStep === 'auction_setup' && (
-          <AuctionSetup
-            items={approvedItems}
-            onSetupComplete={handleAuctionSetup}
-          />
-        )}
-
-        {/* Verification Step */}
-        {currentStep === 'verification' && videoSession && (
-          <div className="max-w-md mx-auto">
-            <CodeVerification
-              videoSessionId={videoSession.id}
-              onVerified={handleVerificationComplete}
-              onCancel={() => setCurrentStep('auction_setup')}
-            />
-          </div>
-        )}
-
-        {/* Success Step */}
-        {currentStep === 'publish_success' && (
-          <div className="text-center max-w-2xl mx-auto">
-            <div className="text-green-400 text-6xl mb-6">🎉</div>
-            <h2 className="text-3xl font-bold mb-4">Auctions Published!</h2>
-            <p className="text-zinc-400 mb-8">
-              Successfully published {publishedAuctions.length} authenticated auctions. All items are now live with authentication certificates.
-            </p>
-            
-            <div className="bg-zinc-900/50 rounded-xl p-6 mb-8">
-              <h3 className="text-white font-medium mb-4">Published Auctions:</h3>
-              <div className="space-y-2">
-                {publishedAuctions.map((auction) => (
-                  <div key={auction.id} className="flex items-center justify-between text-sm">
-                    <span className="text-zinc-300">{auction.item_name}</span>
-                    <span className="text-violet-400">Certificate: {auction.certificate.certificate_hash}</span>
-                  </div>
-                ))}
-              </div>
             </div>
+          )}
 
-            <div className="flex gap-4 justify-center">
-              <button
-                onClick={() => router.push('/dashboard')}
-                className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-lg font-medium transition-colors"
-              >
-                View My Auctions
-              </button>
-              <button
-                onClick={() => {
-                  // Reset state for another session
-                  setCurrentStep('welcome');
-                  setVideoSession(null);
-                  setScreenshots([]);
-                  setDetectedItems([]);
-                  setApprovedItems([]);
-                  setAuctionConfigs([]);
-                  setPublishedAuctions([]);
-                }}
-                className="bg-violet-600 hover:bg-violet-700 text-white px-8 py-4 rounded-lg font-medium transition-colors"
-              >
-                Create Another Video Session
-              </button>
-            </div>
-          </div>
-        )}
-
+        </div>
       </div>
     </div>
   );

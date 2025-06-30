@@ -19,12 +19,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Only creators can create video sessions' }, { status: 403 });
     }
 
-    // Create new video session
+    const body = await request.json();
+    const { source = 'screenshots' } = body;
+
+    // Create video session for screenshots-only uploads
     const result = await query(
-      `INSERT INTO video_sessions (creator_id, status)
-       VALUES ($1, $2)
-       RETURNING id, creator_id, status, created_at`,
-      [user.id, 'verification_pending']
+      `INSERT INTO video_sessions (creator_id, video_url, video_metadata, status)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, creator_id, video_url, status, created_at`,
+      [
+        user.id,
+        'screenshots-only', // This is just a placeholder, not used as UUID
+        JSON.stringify({
+          source,
+          type: 'screenshots_upload',
+          processedAt: new Date().toISOString()
+        }),
+        'ready' // Screenshots are immediately ready for AI detection
+      ]
     );
 
     const videoSession = result.rows[0];

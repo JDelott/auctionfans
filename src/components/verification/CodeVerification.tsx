@@ -1,8 +1,10 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef } from 'react';
 import { useVideoVerification } from '@/lib/hooks/useVideoVerification';
 import Image from 'next/image';
+
+type VerificationStep = 'generate' | 'write' | 'upload' | 'verify' | 'success';
 
 interface CodeVerificationProps {
   videoSessionId: string;
@@ -19,69 +21,90 @@ interface VerificationResult {
 }
 
 export default function CodeVerification({ videoSessionId, onVerified, onCancel }: CodeVerificationProps) {
-  const { loading, error, verificationSession, generateCode, verifyCode, clearError } = useVideoVerification();
-  const [step, setStep] = useState<'generate' | 'write' | 'capture' | 'verify' | 'success'>('generate');
-  const [capturedImage, setCapturedImage] = useState<string>('');
+  const [step, setStep] = useState<VerificationStep>('generate');
+  const [uploadedImage, setUploadedImage] = useState('');
   const [verificationResult, setVerificationResult] = useState<VerificationResult | null>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const [uploadError, setUploadError] = useState('');
+  const [dragActive, setDragActive] = useState(false);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const { 
+    generateCode, 
+    verifyCode, 
+    verificationSession, 
+    loading, 
+    error, 
+    clearError 
+  } = useVideoVerification();
 
-  // Generate verification code
   const handleGenerateCode = async () => {
-    const session = await generateCode(videoSessionId);
-    if (session) {
-      setStep('write');
-    }
+    await generateCode(videoSessionId);
+    setStep('write');
   };
 
-  // Start camera for selfie
-  const startCamera = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { facingMode: 'user' },
-        audio: false 
-      });
-      
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        streamRef.current = stream;
-      }
-      setStep('capture');
-    } catch (err) {
-      console.error('Camera access denied:', err);
+  // Handle file selection
+  const handleFileSelect = (file: File) => {
+    setUploadError('');
+    
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Please select an image file');
+      return;
     }
-  };
-
-  // Capture selfie with handwritten code
-  const captureImage = useCallback(() => {
-    if (videoRef.current && canvasRef.current) {
-      const canvas = canvasRef.current;
-      const video = videoRef.current;
-      const context = canvas.getContext('2d');
-
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      
-      context?.drawImage(video, 0, 0);
-      
-      const imageData = canvas.toDataURL('image/jpeg', 0.8);
-      setCapturedImage(imageData);
-      
-      // Stop camera
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach(track => track.stop());
-      }
-      
+    
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('Image must be smaller than 5MB');
+      return;
+    }
+    
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target?.result as string;
+      setUploadedImage(result);
       setStep('verify');
+    };
+    reader.onerror = () => {
+      setUploadError('Failed to read image file');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  // Handle drag and drop
+  const handleDrag = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActive(true);
+    } else if (e.type === 'dragleave') {
+      setDragActive(false);
     }
-  }, []);
+  };
 
-  // Verify the captured image
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActive(false);
+    
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleFileSelect(e.dataTransfer.files[0]);
+    }
+  };
+
+  // Handle file input change
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      handleFileSelect(e.target.files[0]);
+    }
+  };
+
+  // Verify the uploaded image
   const handleVerifyCode = async () => {
-    if (!verificationSession || !capturedImage) return;
+    if (!verificationSession || !uploadedImage) return;
 
-    const result = await verifyCode(capturedImage.split(',')[1], verificationSession.id);
+    const result = await verifyCode(uploadedImage.split(',')[1], verificationSession.id);
     setVerificationResult(result);
 
     if (result?.verified) {
@@ -110,6 +133,18 @@ export default function CodeVerification({ videoSessionId, onVerified, onCancel 
           <button
             onClick={clearError}
             className="text-red-400 hover:text-red-300 text-xs mt-2"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
+      {uploadError && (
+        <div className="bg-orange-900/50 border border-orange-700 rounded-lg p-4 mb-6">
+          <p className="text-orange-300 text-sm">{uploadError}</p>
+          <button
+            onClick={() => setUploadError('')}
+            className="text-orange-400 hover:text-orange-300 text-xs mt-2"
           >
             Dismiss
           </button>
@@ -156,45 +191,75 @@ export default function CodeVerification({ videoSessionId, onVerified, onCancel 
           </div>
           
           <button
-            onClick={startCamera}
+            onClick={() => setStep('upload')}
             className="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium transition-colors w-full"
           >
-            Ready - Start Camera
+            Ready - Upload Selfie
           </button>
         </div>
       )}
 
-      {/* Step 3: Capture Selfie */}
-      {step === 'capture' && (
+      {/* Step 3: Upload Selfie */}
+      {step === 'upload' && (
         <div className="text-center">
-          <div className="mb-4">
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              className="w-full rounded-lg border border-zinc-700"
-            />
-            <canvas ref={canvasRef} className="hidden" />
+          <div className="mb-6">
+            <div
+              className={`border-2 border-dashed rounded-lg p-8 transition-colors ${
+                dragActive 
+                  ? 'border-violet-400 bg-violet-500/10' 
+                  : 'border-zinc-600 hover:border-zinc-500'
+              }`}
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+            >
+              <div className="text-zinc-300 mb-4">
+                <svg className="w-12 h-12 mx-auto mb-4 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+              </div>
+              
+              <p className="text-zinc-300 mb-2">
+                Drag and drop your selfie here
+              </p>
+              <p className="text-zinc-500 text-sm mb-4">
+                or click to browse files
+              </p>
+              
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                Choose File
+              </button>
+              
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                onChange={handleFileInputChange}
+                className="hidden"
+              />
+            </div>
           </div>
           
-          <p className="text-zinc-300 text-sm mb-4">
-            Hold up your handwritten code and make sure it&apos;s clearly visible
-          </p>
-          
-          <div className="flex gap-3">
-            <button
-              onClick={captureImage}
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors flex-1"
-            >
-              📸 Capture Photo
-            </button>
-            <button
-              onClick={() => setStep('write')}
-              className="bg-zinc-600 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
-            >
-              Back
-            </button>
+          <div className="text-left mb-6">
+            <h4 className="text-white font-medium mb-2">Tips for best results:</h4>
+            <ul className="text-zinc-300 text-sm space-y-1 list-disc list-inside">
+              <li>Use good lighting</li>
+              <li>Hold the paper steady and flat</li>
+              <li>Make sure the code is clearly readable</li>
+              <li>Include your face in the photo</li>
+            </ul>
           </div>
+          
+          <button
+            onClick={() => setStep('write')}
+            className="bg-zinc-600 hover:bg-zinc-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            ← Back
+          </button>
         </div>
       )}
 
@@ -203,8 +268,8 @@ export default function CodeVerification({ videoSessionId, onVerified, onCancel 
         <div className="text-center">
           <div className="mb-4 relative">
             <Image
-              src={capturedImage}
-              alt="Captured verification"
+              src={uploadedImage}
+              alt="Uploaded verification selfie"
               width={400}
               height={300}
               className="w-full rounded-lg border border-zinc-700 max-h-64 object-cover"
@@ -240,10 +305,10 @@ export default function CodeVerification({ videoSessionId, onVerified, onCancel 
               {loading ? 'Verifying...' : '✓ Verify Code'}
             </button>
             <button
-              onClick={startCamera}
+              onClick={() => setStep('upload')}
               className="bg-zinc-600 hover:bg-zinc-700 text-white px-4 py-3 rounded-lg font-medium transition-colors"
             >
-              Retake
+              Upload New
             </button>
           </div>
         </div>
