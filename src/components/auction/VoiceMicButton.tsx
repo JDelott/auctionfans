@@ -43,18 +43,10 @@ export function VoiceMicButton({
       setTimeout(async () => {
         if (transcript.trim()) {
           setIsProcessing(true);
-          
-          // Save current form state as backup
           setLastGoodFormData({ ...currentFormData });
           
           try {
-            console.log('🎤 Processing contextual voice input:', transcript);
-            console.log('🔍 Debug - contextManager exists:', !!contextManager);
-            console.log('🔍 Debug - initialDescription:', initialDescription);
-            console.log('🔍 Debug - itemId:', itemId);
-
             if (contextManager) {
-              console.log('✅ Using contextual-parse API');
               // Use contextual API parsing
               const response = await fetch('/api/ai/contextual-parse', {
                 method: 'POST',
@@ -71,12 +63,11 @@ export function VoiceMicButton({
 
               if (response.ok) {
                 const data = await response.json();
-                console.log('🔍 Full API Response:', data);
                 
                 if (data.success) {
-                  // FIXED: Merge both formUpdates and fieldUpdates
+                  // Merge both formUpdates and fieldUpdates
                   const allUpdates: Record<string, string> = {
-                    ...data.formUpdates // Get updates like description
+                    ...data.formUpdates
                   };
                   
                   // Add fieldUpdates to the same object
@@ -86,16 +77,12 @@ export function VoiceMicButton({
                     });
                   }
                   
-                  console.log('🔄 Merged updates to apply:', allUpdates);
-                  
                   // Apply the merged updates
                   if (Object.keys(allUpdates).length > 0) {
                     onFormUpdate(allUpdates);
-                  } else {
-                    console.warn('⚠️ No updates to apply from contextual-parse');
                   }
                   
-                  // Update context manager properly
+                  // Update context manager
                   if (data.updatedContext && contextManager) {
                     try {
                       const updatedManager = AIContextManager.fromSerialized(data.updatedContext);
@@ -105,15 +92,12 @@ export function VoiceMicButton({
                     }
                   }
                 } else {
-                  console.log('❌ Contextual-parse returned success: false');
                   throw new Error('Contextual parsing returned failure');
                 }
               } else {
-                console.log('❌ Contextual-parse HTTP error:', response.status);
                 throw new Error('Contextual parsing HTTP failed');
               }
             } else {
-              console.log('⚠️ No contextManager, falling back to enhance-listing API');
               // Fallback to regular API
               const response = await fetch('/api/ai/enhance-listing', {
                 method: 'POST',
@@ -131,7 +115,6 @@ export function VoiceMicButton({
                 const data = await response.json();
                 const formUpdates = data.formUpdates || {};
                 if (Object.keys(formUpdates).length > 0) {
-                  console.log('✅ Applying fallback updates:', formUpdates);
                   onFormUpdate(formUpdates);
                 }
               }
@@ -141,7 +124,6 @@ export function VoiceMicButton({
             console.error('❌ Error processing voice input:', error);
             
             // Try fallback if contextual fails
-            console.log('🔄 Trying fallback enhance-listing API after error');
             try {
               const response = await fetch('/api/ai/enhance-listing', {
                 method: 'POST',
@@ -159,7 +141,6 @@ export function VoiceMicButton({
                 const data = await response.json();
                 const formUpdates = data.formUpdates || {};
                 if (Object.keys(formUpdates).length > 0) {
-                  console.log('✅ Applying emergency fallback updates:', formUpdates);
                   onFormUpdate(formUpdates);
                 }
               }
@@ -177,11 +158,9 @@ export function VoiceMicButton({
     }
   };
 
-  // Add recovery function
   const handleRecovery = () => {
     if (lastGoodFormData) {
       onFormUpdate(lastGoodFormData);
-      console.log('🔄 Recovered to last good state');
     }
   };
 

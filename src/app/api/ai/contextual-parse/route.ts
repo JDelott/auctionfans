@@ -138,7 +138,7 @@ export async function POST(request: NextRequest) {
     try {
       const completion = await anthropic.messages.create({
         model: 'claude-3-sonnet-20240229',
-        max_tokens: 600,
+        max_tokens: 1000,
         messages: [
           {
             role: 'user',
@@ -197,7 +197,26 @@ function parseAIResponse(aiResponse: string, categories: Category[]): {
   }>;
 } {
   try {
-    const parsed = JSON.parse(aiResponse);
+    // Clean up the response - remove any trailing incomplete content
+    let cleanedResponse = aiResponse.trim();
+    
+    // If the response doesn't end with }, try to fix common truncation issues
+    if (!cleanedResponse.endsWith('}')) {
+      // Find the last complete field update
+      const lastCompleteFieldIndex = cleanedResponse.lastIndexOf('}');
+      if (lastCompleteFieldIndex > 0) {
+        // Find the fieldUpdates array start
+        const fieldUpdatesStart = cleanedResponse.indexOf('"fieldUpdates"');
+        if (fieldUpdatesStart > 0) {
+          // Close the fieldUpdates array and the main object
+          cleanedResponse = cleanedResponse.substring(0, lastCompleteFieldIndex + 1) + ']}';
+        }
+      }
+    }
+    
+    console.log('🔧 Attempting to parse cleaned response:', cleanedResponse.substring(0, 200) + '...');
+    
+    const parsed = JSON.parse(cleanedResponse);
     
     // Validate and clean the response
     const formUpdates: Record<string, string> = {};
@@ -216,6 +235,7 @@ function parseAIResponse(aiResponse: string, categories: Category[]): {
         }
       });
     }
+    
     if (parsed.fieldUpdates && Array.isArray(parsed.fieldUpdates)) {
       parsed.fieldUpdates.forEach((update: { field: string; value: string; reason?: string; confidence?: number }) => {
         const validatedValue = validateFieldValue(update.field, update.value, categories);
@@ -223,7 +243,7 @@ function parseAIResponse(aiResponse: string, categories: Category[]): {
           fieldUpdates.push({
             field: update.field,
             value: validatedValue,
-            reason: update.reason || 'AI context analysis',
+            reason: update.reason || 'AI recommendation',
             confidence: Math.min(Math.max(update.confidence || 0.7, 0), 1)
           });
         }
@@ -234,7 +254,40 @@ function parseAIResponse(aiResponse: string, categories: Category[]): {
 
   } catch (error) {
     console.error('Failed to parse AI response:', error);
-    return { formUpdates: {}, fieldUpdates: [] };
+    console.log('Raw AI response that failed:', aiResponse);
+    
+    // Fallback: try to extract at least some useful information
+    const fallbackUpdates = extractFallbackUpdates(aiResponse, categories);
+    return { formUpdates: fallbackUpdates, fieldUpdates: [] };
+  }
+}
+
+function extractFallbackUpdates(response: string, categories: Category[]): Record<string, string> {
+  const updates: Record<string, string> = {};
+  
+  try {
+    // Try to extract description if it exists
+    const descMatch = response.match(/"description":\s*"([^"]+)"/);
+    if (descMatch) {
+      updates.description = descMatch[1];
+    }
+    
+    // Try to extract field values using regex
+    const fieldMatches = response.matchAll(/"field":\s*"([^"]+)",\s*"value":\s*"([^"]+)"/g);
+    for (const match of fieldMatches) {
+      const field = match[1];
+      const value = match[2];
+      const validatedValue = validateFieldValue(field, value, categories);
+      if (validatedValue) {
+        updates[field] = validatedValue;
+      }
+    }
+    
+    console.log('🔄 Extracted fallback updates:', updates);
+    return updates;
+  } catch (error) {
+    console.error('Fallback extraction also failed:', error);
+    return {};
   }
 }
 
