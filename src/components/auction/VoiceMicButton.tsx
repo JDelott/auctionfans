@@ -221,24 +221,6 @@ export function VoiceMicButton({
           </button>
         )}
       </div>
-      
-      {/* Live transcript preview */}
-      {isListening && transcript && (
-        <div className="absolute top-10 left-0 bg-zinc-900 border border-zinc-700 rounded-lg p-2 min-w-48 max-w-64 text-xs text-zinc-300 z-50">
-          <div className="text-violet-400 mb-1">Listening...</div>
-          <div className="italic">&quot;{transcript}&quot;</div>
-        </div>
-      )}
-      
-      {/* Processing indicator */}
-      {isProcessing && (
-        <div className="absolute top-10 left-0 bg-violet-900 border border-violet-700 rounded-lg p-2 min-w-48 text-xs text-violet-200 z-50">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 border border-violet-400 border-t-transparent rounded-full animate-spin"></div>
-            <span>AI processing fields...</span>
-          </div>
-        </div>
-      )}
     </div>
   );
 } 
