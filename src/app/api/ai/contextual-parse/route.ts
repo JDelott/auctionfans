@@ -18,6 +18,84 @@ interface ContextualParseRequest {
   specificField?: string;
 }
 
+function buildContextualPrompt(
+  userInput: string,
+  currentFormData: AuctionFormData,
+  categories: Category[],
+  contextText: string,
+  fieldContext: string,
+  specificField?: string
+): string {
+  const categoryList = categories.map(c => `${c.id}: ${c.name}`).join('\n');
+  
+  const basePrompt = `You are an AI assistant that helps create auction listings. You can handle both specific field updates and conversational requests.
+
+CONTEXT INFORMATION:
+${contextText}
+
+${fieldContext ? `FIELD-SPECIFIC CONTEXT:\n${fieldContext}\n` : ''}
+
+CURRENT FORM DATA:
+${JSON.stringify(currentFormData, null, 2)}
+
+AVAILABLE CATEGORIES:
+${categoryList}
+
+USER INPUT: "${userInput}"
+
+CONVERSATIONAL COMMANDS:
+Handle requests like:
+- "fill out the pricing fields" → Analyze the item and suggest realistic pricing
+- "set recommended pricing" → Same as above
+- "complete the missing fields" → Fill empty fields with appropriate values
+- "make it a 7 day auction" → Set duration_days to 7
+- "set condition to excellent" → Update condition field
+- "use AI recommendations" → Fill multiple fields with smart suggestions
+
+PRICING GUIDELINES:
+When suggesting prices, consider:
+- The item's apparent value from image analysis and context
+- Current market conditions for similar items
+- The condition and rarity mentioned
+- Typical auction pricing strategies (starting low, reasonable reserve, fair buy-now)
+
+TASK: ${specificField ? 
+  `Update the specific field "${specificField}" based on the user's input and context.` :
+  `Parse the user's input and determine which fields should be updated. For conversational requests, intelligently fill the appropriate fields.`
+}
+
+RESPONSE FORMAT:
+Return a JSON object with this structure:
+{
+  "formUpdates": {
+    "field_name": "new_value"
+  },
+  "fieldUpdates": [
+    {
+      "field": "field_name",
+      "value": "new_value", 
+      "reason": "AI recommendation based on analysis",
+      "confidence": 0.85
+    }
+  ],
+  "reasoning": "Explanation of recommendations"
+}
+
+FIELD VALIDATION:
+- title: max 8 words, clear and marketable
+- description: detailed, 20-100 words
+- category_id: must be valid ID from available categories
+- condition: new, like-new, good, fair, poor
+- starting_price: numeric, format as decimal (25.00)
+- reserve_price: numeric, format as decimal (50.00)  
+- buy_now_price: numeric, format as decimal (150.00)
+- duration_days: 1, 3, 5, 7, 10, or 14
+
+Use your AI intelligence to make smart recommendations based on the full context!`;
+
+  return basePrompt;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const token = request.cookies.get('auth-token')?.value;
@@ -40,7 +118,6 @@ export async function POST(request: NextRequest) {
     if (contextData) {
       contextManager = AIContextManager.fromSerialized(contextData);
     } else {
-      // Use the initial description when creating a new context manager
       contextManager = new AIContextManager(initialDescription || '');
     }
 
@@ -108,77 +185,6 @@ export async function POST(request: NextRequest) {
     console.error('❌ Contextual Parse API Error:', error);
     return NextResponse.json({ error: 'Server error' }, { status: 500 });
   }
-}
-
-function buildContextualPrompt(
-  userInput: string,
-  currentFormData: AuctionFormData,
-  categories: Category[],
-  contextText: string,
-  fieldContext: string,
-  specificField?: string
-): string {
-  const categoryList = categories.map(c => `${c.id}: ${c.name}`).join('\n');
-  
-  const basePrompt = `You are an AI assistant that helps create auction listings. You have access to rich context about the user's session and items.
-
-CONTEXT INFORMATION:
-${contextText}
-
-${fieldContext ? `FIELD-SPECIFIC CONTEXT:\n${fieldContext}\n` : ''}
-
-CURRENT FORM DATA:
-${JSON.stringify(currentFormData, null, 2)}
-
-AVAILABLE CATEGORIES:
-${categoryList}
-
-USER INPUT: "${userInput}"
-
-TASK: ${specificField ? 
-  `Update the specific field "${specificField}" based on the user's input and context.` :
-  `Parse the user's input and determine which fields should be updated based on the full context.`
-}
-
-PARSING RULES:
-1. Use the session context to understand the item better
-2. Consider previous interactions and user patterns
-3. Maintain consistency with inferred attributes
-4. Only update fields that are clearly indicated by the user input
-5. Provide confidence scores based on context strength
-
-RESPONSE FORMAT:
-Return a JSON object with this structure:
-{
-  "formUpdates": {
-    "field_name": "new_value"
-  },
-  "fieldUpdates": [
-    {
-      "field": "field_name",
-      "value": "new_value", 
-      "reason": "Context-aware explanation",
-      "confidence": 0.85
-    }
-  ],
-  "reasoning": "Explanation of how context influenced the decision"
-}
-
-FIELD VALIDATION:
-- title: max 8 words, clear and marketable
-- description: detailed, 20-100 words  
-- category_id: must be valid ID from available categories
-- condition: new, like-new, good, fair, poor
-- starting_price: numeric, format as decimal (25.00)
-- reserve_price: numeric, format as decimal (50.00)
-- buy_now_price: numeric, format as decimal (150.00)
-- duration_days: 1, 3, 5, 7, 10, or 14
-- video_timestamp: seconds as integer
-- video_url: valid URL with https://
-
-Use the context to make informed decisions!`;
-
-  return basePrompt;
 }
 
 function parseAIResponse(aiResponse: string, categories: Category[]): {
