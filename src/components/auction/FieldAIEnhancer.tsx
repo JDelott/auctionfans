@@ -23,11 +23,10 @@ export function FieldAIEnhancer({
   const buttonRef = useRef<HTMLButtonElement>(null);
 
   const menuItems = useMemo(() => [
-    { label: 'More exciting', prompt: 'Make this more exciting and engaging' },
-    { label: 'Add details', prompt: 'Add more specific details' },
-    { label: 'Make shorter', prompt: 'Make this more concise' },
-    { label: 'Fix grammar', prompt: 'Fix grammar and improve writing' },
-    { label: 'More professional', prompt: 'Make this more professional' }
+    { label: 'Make it catchy', prompt: 'Make this more exciting, engaging and catchy for buyers' },
+    { label: 'Fix & improve', prompt: 'Fix grammar, spelling and improve the writing quality' },
+    { label: 'More professional', prompt: 'Make this more professional and polished' },
+    { label: 'Optimize for search', prompt: 'Optimize this text to be more discoverable and appealing to buyers' }
   ], []);
 
   const updateDropdownPosition = useCallback(() => {
@@ -36,42 +35,28 @@ export function FieldAIEnhancer({
     const button = buttonRef.current;
     const rect = button.getBoundingClientRect();
     
-    // Get the actual viewport dimensions
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     
-    // Dropdown dimensions
-    const dropdownWidth = 192; // w-48 = 12rem = 192px
-    const dropdownHeight = 240; // approximate height
-    const gap = 8; // gap between button and dropdown
+    const dropdownWidth = 200;
+    const dropdownHeight = 180;
+    const gap = 8;
     
     let left = 0;
     let top = 0;
     
-    // Try to position to the right of the button first
-    const rightEdge = rect.right + gap + dropdownWidth;
-    const leftEdge = rect.left - gap - dropdownWidth;
-    
-    if (rightEdge <= viewportWidth) {
-      // Position to the right
+    // Position to the right if there's space, otherwise to the left
+    if (rect.right + gap + dropdownWidth <= viewportWidth) {
       left = rect.right + gap;
-    } else if (leftEdge >= 0) {
-      // Position to the left
-      left = rect.left - gap - dropdownWidth;
     } else {
-      // Center on button if neither side has space
-      left = Math.max(gap, Math.min(rect.left - dropdownWidth / 2, viewportWidth - dropdownWidth - gap));
+      left = Math.max(8, rect.left - gap - dropdownWidth);
     }
     
-    // Vertical positioning - try to align with button top
-    const bottomEdge = rect.top + dropdownHeight;
-    
-    if (bottomEdge <= viewportHeight) {
-      // Position aligned with button top
-      top = rect.top;
+    // Position below the button if there's space, otherwise above
+    if (rect.bottom + gap + dropdownHeight <= viewportHeight) {
+      top = rect.bottom + gap;
     } else {
-      // Position above button if no space below
-      top = Math.max(gap, rect.bottom - dropdownHeight);
+      top = Math.max(8, rect.top - gap - dropdownHeight);
     }
     
     setDropdownPosition({ top, left });
@@ -150,34 +135,17 @@ export function FieldAIEnhancer({
       }
     };
 
-    const handleScroll = () => {
-      if (isOpen) {
-        // Update position on scroll
-        requestAnimationFrame(updateDropdownPosition);
-      }
-    };
-
-    const handleResize = () => {
-      if (isOpen) {
-        requestAnimationFrame(updateDropdownPosition);
-      }
-    };
-
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('keydown', handleKeyDown);
-      window.addEventListener('scroll', handleScroll, true);
-      window.addEventListener('resize', handleResize);
       
-      // Update position immediately
-      requestAnimationFrame(updateDropdownPosition);
+      // Single position update when opening
+      updateDropdownPosition();
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('scroll', handleScroll, true);
-      window.removeEventListener('resize', handleResize);
     };
   }, [isOpen, focusedIndex, menuItems, enhanceField, updateDropdownPosition]);
 
@@ -185,17 +153,9 @@ export function FieldAIEnhancer({
     e.preventDefault();
     e.stopPropagation();
     
-    const newIsOpen = !isOpen;
-    setIsOpen(newIsOpen);
+    setIsOpen(!isOpen);
     setFocusedIndex(-1);
-    
-    if (newIsOpen) {
-      // Force position update after state change
-      setTimeout(() => {
-        updateDropdownPosition();
-      }, 0);
-    }
-  }, [isOpen, updateDropdownPosition]);
+  }, [isOpen]);
 
   const fieldDisplayName = fieldName.replace('_', ' ');
 
@@ -203,7 +163,7 @@ export function FieldAIEnhancer({
     <>
       {/* Backdrop */}
       <div 
-        className="fixed inset-0 z-[9998] bg-black/5" 
+        className="fixed inset-0 z-[9998]" 
         onClick={() => {
           setIsOpen(false);
           setFocusedIndex(-1);
@@ -214,31 +174,29 @@ export function FieldAIEnhancer({
       {/* Dropdown */}
       <div
         ref={menuRef}
-        className="fixed z-[9999] w-48 bg-zinc-900/95 backdrop-blur-sm border border-zinc-700/50 rounded-xl shadow-2xl shadow-black/25"
+        className="fixed z-[9999] w-50 bg-zinc-900/98 backdrop-blur-sm border border-zinc-700/80 rounded-xl shadow-2xl"
         role="menu"
         aria-label={`AI enhancement options for ${fieldDisplayName}`}
         style={{
           top: `${dropdownPosition.top}px`,
           left: `${dropdownPosition.left}px`,
-          transform: 'translateZ(0)', // Force hardware acceleration
-          willChange: 'transform' // Optimize for position changes
         }}
       >
         {/* Header */}
-        <div className="px-4 py-3 border-b border-zinc-700/50 bg-gradient-to-r from-violet-600/10 to-purple-600/10 rounded-t-xl">
+        <div className="px-4 py-3 border-b border-zinc-700/50 bg-gradient-to-r from-violet-600/15 to-purple-600/15">
           <div className="flex items-center gap-2">
             <svg className="w-4 h-4 text-violet-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
             <div>
-              <div className="text-xs text-violet-300 uppercase tracking-wider font-medium">AI ENHANCE</div>
-              <div className="text-sm text-white font-medium capitalize">{fieldDisplayName}</div>
+              <div className="text-xs text-violet-300 font-medium">AI ENHANCE</div>
+              <div className="text-sm text-white capitalize">{fieldDisplayName}</div>
             </div>
           </div>
         </div>
         
         {/* Menu Items */}
-        <div className="py-2 max-h-48 overflow-y-auto">
+        <div className="py-1">
           {menuItems.map((item, index) => (
             <button
               key={index}
@@ -247,21 +205,19 @@ export function FieldAIEnhancer({
                 e.stopPropagation();
                 enhanceField(item.prompt);
               }}
-              onMouseEnter={() => setFocusedIndex(index)}
-              onMouseLeave={() => setFocusedIndex(-1)}
-              className={`w-full text-left px-4 py-2.5 text-sm transition-all duration-200 flex items-center gap-3 focus:outline-none ${
+              className={`w-full text-left px-4 py-3 text-sm transition-colors flex items-center gap-3 focus:outline-none ${
                 focusedIndex === index 
-                  ? 'bg-violet-500/20 text-violet-200 border-l-2 border-violet-400' 
-                  : 'text-zinc-200 hover:bg-zinc-800/50 hover:text-white'
+                  ? 'bg-violet-500/20 text-violet-200' 
+                  : 'text-zinc-200 hover:bg-zinc-800/60 hover:text-white'
               }`}
               role="menuitem"
-              tabIndex={focusedIndex === index ? 0 : -1}
+              tabIndex={-1}
               title={item.prompt}
             >
               <svg className="w-4 h-4 text-violet-400 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
               </svg>
-              <span className="flex-1">{item.label}</span>
+              <span className="flex-1 font-medium">{item.label}</span>
             </button>
           ))}
         </div>

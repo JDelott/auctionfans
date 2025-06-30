@@ -34,13 +34,20 @@ export function SmartFormField({
 
   const baseClassName = `w-full bg-zinc-800/50 border border-zinc-700 rounded-lg px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors ${className}`;
 
-  // Only show AI enhancer for text inputs and textareas, NOT for selects, numbers, or pricing fields
-  const showAIEnhancer = type !== 'select' && type !== 'number' && !isPricingField(name);
+  // Only show AI enhancer for text inputs and textareas, NOT for selects, numbers, pricing, or video fields
+  const showAIEnhancer = type !== 'select' && type !== 'number' && !isExcludedField(name);
 
-  // Helper function to identify pricing-related fields
-  function isPricingField(fieldName: string): boolean {
-    const pricingFields = ['starting_price', 'reserve_price', 'buy_now_price', 'duration_days'];
-    return pricingFields.includes(fieldName);
+  // Helper function to identify fields that should not have AI enhancement
+  function isExcludedField(fieldName: string): boolean {
+    const excludedFields = [
+      'starting_price', 
+      'reserve_price', 
+      'buy_now_price', 
+      'duration_days',
+      'video_url',
+      'video_timestamp'
+    ];
+    return excludedFields.includes(fieldName);
   }
 
   const renderField = () => {
