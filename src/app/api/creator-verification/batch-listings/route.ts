@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyToken, getUserById } from '@/lib/auth';
 import { query } from '@/lib/db';
+import { writeFile, mkdir } from 'fs/promises';
+import path from 'path';
 
 export async function POST(request: NextRequest) {
   try {
@@ -16,166 +18,150 @@ export async function POST(request: NextRequest) {
 
     const user = await getUserById(decoded.userId);
     if (!user || !user.is_creator) {
-      return NextResponse.json({ error: 'Only creators can create authenticated listings' }, { status: 403 });
+      return NextResponse.json({ error: 'Only creators can create batch listings' }, { status: 403 });
     }
 
-    // Check if creator can create authenticated listings
-    const canCreateResult = await query(
-      'SELECT can_create_authenticated_listing($1) as can_create',
-      [user.id]
-    );
+    const formData = await request.formData();
+    const authVideoId = formData.get('auth_video_id') as string;
 
-    if (!canCreateResult.rows[0].can_create) {
-      return NextResponse.json({ 
-        error: 'ID verification and valid auth video required to create authenticated listings' 
-      }, { status: 400 });
+    if (!authVideoId) {
+      return NextResponse.json({ error: 'Auth video ID is required' }, { status: 400 });
     }
 
-    const body = await request.json();
-    const { listings, auth_video_id } = body;
-
-    if (!listings || !Array.isArray(listings) || listings.length === 0) {
-      return NextResponse.json({ error: 'No listings provided' }, { status: 400 });
-    }
-
-    if (!auth_video_id) {
-      return NextResponse.json({ error: 'Auth video ID required' }, { status: 400 });
-    }
-
-    // Verify the auth video belongs to the creator and is verified
+    // Verify the auth video belongs to this creator and is verified
     const authVideoResult = await query(
-      `SELECT av.*, civ.status as id_verification_status
-       FROM auth_videos av
-       JOIN creator_id_verification civ ON av.id_verification_id = civ.id
-       WHERE av.id = $1 AND av.creator_id = $2 AND av.status = 'verified'`,
-      [auth_video_id, user.id]
+      'SELECT * FROM auth_videos WHERE id = $1 AND creator_id = $2 AND status = $3',
+      [authVideoId, user.id, 'verified']
     );
 
     if (authVideoResult.rows.length === 0) {
-      return NextResponse.json({ error: 'Valid auth video not found' }, { status: 404 });
+      return NextResponse.json({ error: 'Invalid or unverified auth video' }, { status: 400 });
     }
 
-    const authVideo = authVideoResult.rows[0];
-
-    // Check if we're within the item limit
-    const existingListingsResult = await query(
-      'SELECT COUNT(*) as count FROM authenticated_listings WHERE auth_video_id = $1',
-      [auth_video_id]
-    );
-
-    const existingCount = parseInt(existingListingsResult.rows[0].count);
-    const totalItems = existingCount + listings.length;
-
-    if (totalItems > authVideo.max_items_allowed) {
-      return NextResponse.json({ 
-        error: `Too many items. Maximum ${authVideo.max_items_allowed} items allowed per auth video. You have ${existingCount} existing items.` 
-      }, { status: 400 });
+    // Parse listings from form data
+    const listings = [];
+    let index = 0;
+    while (formData.has(`listings[${index}][title]`)) {
+      const listing = {
+        title: formData.get(`listings[${index}][title]`) as string,
+        description: formData.get(`listings[${index}][description]`) as string,
+        category_id: formData.get(`listings[${index}][category_id]`) as string,
+        starting_price: formData.get(`listings[${index}][starting_price]`) as string,
+        buy_now_price: formData.get(`listings[${index}][buy_now_price]`) as string,
+        reserve_price: formData.get(`listings[${index}][reserve_price]`) as string,
+        condition: formData.get(`listings[${index}][condition]`) as string,
+        duration_days: parseInt(formData.get(`listings[${index}][duration_days]`) as string),
+        item_position_in_video: parseInt(formData.get(`listings[${index}][item_position_in_video]`) as string),
+        video_timestamp_start: formData.get(`listings[${index}][video_timestamp_start]`) as string,
+        video_timestamp_end: formData.get(`listings[${index}][video_timestamp_end]`) as string,
+        image_file: formData.get(`images[${index}]`) as File,
+      };
+      listings.push(listing);
+      index++;
     }
+
+    if (listings.length === 0) {
+      return NextResponse.json({ error: 'No listings provided' }, { status: 400 });
+    }
+
+    // Create upload directory for auction images
+    const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'auctions');
+    await mkdir(uploadDir, { recursive: true });
 
     const createdListings = [];
 
-    // Create each listing in a transaction
-    await query('BEGIN');
+    for (let i = 0; i < listings.length; i++) {
+      const listing = listings[i];
 
-    try {
-      for (let i = 0; i < listings.length; i++) {
-        const listing = listings[i];
-        const {
-          title, description, category_id, starting_price, buy_now_price, 
-          reserve_price, condition, duration_days, item_position_in_video,
-          video_timestamp_start, video_timestamp_end
-        } = listing;
-
-        // Validate required fields
-        if (!title || !description || !starting_price || !condition || !item_position_in_video) {
-          throw new Error(`Listing ${i + 1}: Missing required fields`);
-        }
-
-        // Validate numeric fields
-        if (isNaN(parseFloat(starting_price)) || parseFloat(starting_price) <= 0) {
-          throw new Error(`Listing ${i + 1}: Invalid starting price`);
-        }
-
-        // Create the auction item first
-        const durationDays = parseInt(duration_days) || 7;
-        const startTime = new Date();
-        const endTime = new Date(startTime.getTime() + (durationDays * 24 * 60 * 60 * 1000));
-
-        const finalCategoryId = category_id && category_id.trim() ? category_id.trim() : null;
-        const finalBuyNowPrice = buy_now_price && !isNaN(parseFloat(buy_now_price)) ? parseFloat(buy_now_price) : null;
-        const finalReservePrice = reserve_price && !isNaN(parseFloat(reserve_price)) ? parseFloat(reserve_price) : null;
-
-        const auctionResult = await query(
-          `INSERT INTO auction_items (
-            creator_id, category_id, title, description, video_url, video_timestamp,
-            starting_price, current_price, buy_now_price, reserve_price, condition,
-            status, start_time, end_time
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $7, $8, $9, $10, 'active', $11, $12)
-           RETURNING *`,
-          [
-            user.id,
-            finalCategoryId,
-            title.trim(),
-            description.trim(),
-            authVideo.video_url, // Link to auth video
-            video_timestamp_start || null,
-            parseFloat(starting_price),
-            finalBuyNowPrice,
-            finalReservePrice,
-            condition,
-            startTime,
-            endTime
-          ]
-        );
-
-        const auctionItem = auctionResult.rows[0];
-
-        // Create the authenticated listing link
-        const authenticatedListingResult = await query(
-          `INSERT INTO authenticated_listings (
-            creator_id, auth_video_id, auction_item_id, item_position_in_video,
-            video_timestamp_start, video_timestamp_end, status
-          ) VALUES ($1, $2, $3, $4, $5, $6, 'verified')
-           RETURNING *`,
-          [
-            user.id,
-            auth_video_id,
-            auctionItem.id,
-            item_position_in_video,
-            video_timestamp_start || null,
-            video_timestamp_end || null
-          ]
-        );
-
-        createdListings.push({
-          auction_item: auctionItem,
-          authenticated_listing: authenticatedListingResult.rows[0]
-        });
+      // Upload product image
+      let imagePath = null;
+      if (listing.image_file && listing.image_file.size > 0) {
+        const timestamp = Date.now();
+        const fileExtension = listing.image_file.name.split('.').pop();
+        const fileName = `${user.id}-${timestamp}-${i}.${fileExtension}`;
+        const filePath = path.join(uploadDir, fileName);
+        
+        const bytes = await listing.image_file.arrayBuffer();
+        await writeFile(filePath, Buffer.from(bytes));
+        
+        imagePath = `/uploads/auctions/${fileName}`;
       }
 
-      // Update the declared items count in auth video
-      await query(
-        'UPDATE auth_videos SET declared_items_count = declared_items_count + $1 WHERE id = $2',
-        [listings.length, auth_video_id]
-      );
+      // Calculate auction start and end times
+      const startTime = new Date(); // Start immediately
+      const endTime = new Date(startTime.getTime() + (listing.duration_days * 24 * 60 * 60 * 1000)); // Add duration in milliseconds
 
-      await query('COMMIT');
+      // Create auction item first
+      const auctionResult = await query(`
+        INSERT INTO auction_items (
+          creator_id, title, description, category_id, starting_price, buy_now_price, 
+          reserve_price, condition, start_time, end_time, video_url, status, current_price
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        RETURNING id
+      `, [
+        user.id,
+        listing.title,
+        listing.description,
+        listing.category_id || null,
+        parseFloat(listing.starting_price),
+        listing.buy_now_price ? parseFloat(listing.buy_now_price) : null,
+        listing.reserve_price ? parseFloat(listing.reserve_price) : null,
+        listing.condition,
+        startTime,
+        endTime,
+        imagePath, // Using image path as video_url temporarily
+        'active',
+        parseFloat(listing.starting_price) // Set current_price to starting_price
+      ]);
 
-      return NextResponse.json({
-        success: true,
-        created_listings: createdListings,
-        message: `Successfully created ${listings.length} authenticated listings`
+      const auctionItemId = auctionResult.rows[0].id;
+
+      // Create authenticated listing linking to the auction
+      const authListingResult = await query(`
+        INSERT INTO authenticated_listings (
+          creator_id, auth_video_id, auction_item_id, item_position_in_video,
+          video_timestamp_start, video_timestamp_end, status
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id
+      `, [
+        user.id,
+        authVideoId,
+        auctionItemId,
+        listing.item_position_in_video,
+        listing.video_timestamp_start ? parseInt(listing.video_timestamp_start) : null,
+        listing.video_timestamp_end ? parseInt(listing.video_timestamp_end) : null,
+        'verified'
+      ]);
+
+      // Create authentication badge
+      await query(`
+        INSERT INTO listing_authentication_badges (
+          listing_id, id_verified, video_authenticated, verification_date
+        ) VALUES ($1, $2, $3, $4)
+      `, [
+        authListingResult.rows[0].id,
+        true,
+        true,
+        new Date()
+      ]);
+
+      createdListings.push({
+        auction_item_id: auctionItemId,
+        authenticated_listing_id: authListingResult.rows[0].id,
+        title: listing.title
       });
-
-    } catch (error) {
-      await query('ROLLBACK');
-      throw error;
     }
 
+    return NextResponse.json({
+      success: true,
+      listings: createdListings,
+      message: `${createdListings.length} authenticated listings created successfully!`
+    });
+
   } catch (error) {
-    console.error('Batch listings creation error:', error);
+    console.error('Batch listings error:', error);
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to create batch listings' },
+      { error: 'Failed to create batch listings' },
       { status: 500 }
     );
   }

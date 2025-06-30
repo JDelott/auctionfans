@@ -72,13 +72,13 @@ export async function POST(request: NextRequest) {
 
     const videoUrl = `/uploads/auth-videos/${fileName}`;
 
-    // Create auth video record in database
+    // Create auth video record - AUTO-VERIFY instantly like ID verification
     const result = await query(
       `INSERT INTO auth_videos (
         creator_id, id_verification_id, video_file_path, video_url, 
-        declaration_text, declared_items_count, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-       RETURNING id, creator_id, video_url, declaration_text, declared_items_count, status, created_at`,
+        declaration_text, declared_items_count, status, verified_at, expires_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+       RETURNING id, creator_id, video_url, declaration_text, declared_items_count, status, created_at, verified_at`,
       [
         user.id,
         idVerificationId,
@@ -86,7 +86,9 @@ export async function POST(request: NextRequest) {
         videoUrl,
         declarationText,
         declaredItemsCount,
-        'pending'
+        'verified', // Auto-verify instantly
+        new Date(), // verified_at
+        new Date(Date.now() + 6 * 30 * 24 * 60 * 60 * 1000) // expires in 6 months
       ]
     );
 
@@ -95,7 +97,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       authVideo,
-      message: 'Auth video uploaded successfully. Awaiting admin verification.'
+      message: 'Auth video uploaded and verified successfully!'
     });
 
   } catch (error) {
