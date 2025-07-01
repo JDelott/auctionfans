@@ -125,32 +125,57 @@ export default function CreatorsPage() {
 
   const getPlatformColor = (platform: string) => {
     const colors: { [key: string]: string } = {
-      'youtube': 'bg-red-500',
-      'twitch': 'bg-violet-500',
-      'tiktok': 'bg-zinc-700',
-      'instagram': 'bg-red-400',
-      'twitter': 'bg-zinc-600',
+      'youtube': 'bg-red-500/20 text-red-300 border-red-500/30',
+      'twitch': 'bg-violet-500/20 text-violet-300 border-violet-500/30',
+      'tiktok': 'bg-zinc-500/20 text-zinc-300 border-zinc-500/30',
+      'instagram': 'bg-pink-500/20 text-pink-300 border-pink-500/30',
+      'twitter': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
     };
-    return colors[platform?.toLowerCase()] || 'bg-zinc-500';
+    return colors[platform?.toLowerCase()] || 'bg-zinc-500/20 text-zinc-300 border-zinc-500/30';
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
-      <div className="max-w-7xl mx-auto px-8 py-16">
-        {/* Header */}
-        <div className="mb-16">
-          <div className="w-16 h-1 bg-gradient-to-r from-violet-500 to-red-500 mb-6"></div>
-          <h1 className="text-6xl font-black text-white mb-6">DISCOVER CREATORS</h1>
-          <p className="text-xl text-zinc-200 max-w-3xl font-light leading-relaxed">
-            Explore verified content creators selling authentic items from their content. Own pieces of your favorite creator&apos;s journey.
-          </p>
-        </div>
+    <div className="min-h-screen bg-zinc-950 text-white relative overflow-hidden">
+      {/* Electric Grid Background */}
+      <div className="absolute inset-0 opacity-[0.02]">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `
+            linear-gradient(rgba(139, 92, 246, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px)
+          `,
+          backgroundSize: '40px 40px'
+        }}></div>
+      </div>
 
-        {/* Filters */}
-        <div className="bg-zinc-900 border border-zinc-800 p-8 mb-12">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* Electric Accent Lines */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-20 left-0 w-1/3 h-px bg-gradient-to-r from-transparent via-violet-400/20 to-transparent"></div>
+        <div className="absolute top-40 right-0 w-1/4 h-px bg-gradient-to-l from-transparent via-red-400/20 to-transparent"></div>
+        <div className="absolute bottom-1/3 left-1/4 w-px h-32 bg-gradient-to-b from-transparent via-emerald-400/20 to-transparent"></div>
+      </div>
+
+      <div className="relative max-w-7xl mx-auto px-8 py-16">
+        {/* Electric Header */}
+        <header className="mb-16">
+          <div className="flex items-center space-x-6 mb-8">
+            <div className="w-1 h-20 bg-gradient-to-b from-violet-400 via-red-400 to-pink-500"></div>
+            <div>
+              <h1 className="text-6xl font-black text-white tracking-tight mb-4">
+                DISCOVER CREATORS
+              </h1>
+              <p className="text-zinc-400 font-mono text-sm tracking-[0.2em] uppercase max-w-3xl">
+                VERIFIED CONTENT CREATORS SELLING AUTHENTIC ITEMS
+              </p>
+            </div>
+          </div>
+        </header>
+
+        {/* Electric Filters */}
+        <div className="relative overflow-hidden rounded-2xl border border-zinc-700/30 bg-zinc-900/30 backdrop-blur-xl p-8 mb-12">
+          <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-red-500/5"></div>
+          <div className="relative grid grid-cols-1 lg:grid-cols-3 gap-8">
             <form onSubmit={handleSearch} className="lg:col-span-2">
-              <label htmlFor="search" className="block text-sm font-mono text-violet-400 mb-3 uppercase tracking-wider">
+              <label htmlFor="search" className="block text-xs font-mono text-zinc-400 mb-3 uppercase tracking-[0.2em]">
                 SEARCH CREATORS
               </label>
               <div className="flex space-x-4">
@@ -159,32 +184,36 @@ export default function CreatorsPage() {
                   type="text"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="flex-1 bg-zinc-800 border border-zinc-700 text-white px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
-                  placeholder="Search by name or username..."
+                  className="flex-1 px-6 py-4 bg-zinc-800/50 border border-zinc-700/50 rounded-xl text-white placeholder-zinc-500 font-mono text-sm backdrop-blur-sm focus:outline-none focus:border-violet-400/50 focus:bg-zinc-800/70 transition-all duration-300"
+                  placeholder="SEARCH BY NAME OR USERNAME..."
                 />
-                <button type="submit" className="bg-violet-500 text-white font-bold px-8 py-3 hover:bg-violet-600 transition-colors">
-                  SEARCH
+                <button 
+                  type="submit" 
+                  className="group relative overflow-hidden px-8 py-4 rounded-xl border border-violet-400/30 bg-gradient-to-r from-violet-500/10 to-purple-500/10 backdrop-blur-sm text-white font-mono text-sm tracking-[0.15em] hover:from-violet-500/20 hover:to-purple-500/20 hover:border-violet-400/50 transition-all duration-300"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <span className="relative">SEARCH</span>
                 </button>
               </div>
             </form>
 
             <div>
-              <label htmlFor="platform" className="block text-sm font-mono text-violet-400 mb-3 uppercase tracking-wider">
+              <label htmlFor="platform" className="block text-xs font-mono text-zinc-400 mb-3 uppercase tracking-[0.2em]">
                 PLATFORM
               </label>
               <select
                 id="platform"
                 value={selectedPlatform}
                 onChange={(e) => handlePlatformChange(e.target.value)}
-                className="w-full bg-zinc-800 border border-zinc-700 text-white px-4 py-3 focus:outline-none focus:border-violet-500 transition-colors"
+                className="w-full px-6 py-4 bg-zinc-800/50 border border-zinc-700/50 rounded-xl text-white font-mono text-sm backdrop-blur-sm focus:outline-none focus:border-violet-400/50 focus:bg-zinc-800/70 transition-all duration-300"
               >
-                <option value="">All Platforms</option>
-                <option value="youtube">YouTube</option>
-                <option value="twitch">Twitch</option>
-                <option value="tiktok">TikTok</option>
-                <option value="instagram">Instagram</option>
-                <option value="twitter">Twitter/X</option>
-                <option value="other">Other</option>
+                <option value="">ALL PLATFORMS</option>
+                <option value="youtube">YOUTUBE</option>
+                <option value="twitch">TWITCH</option>
+                <option value="tiktok">TIKTOK</option>
+                <option value="instagram">INSTAGRAM</option>
+                <option value="twitter">TWITTER/X</option>
+                <option value="other">OTHER</option>
               </select>
             </div>
           </div>
@@ -192,112 +221,121 @@ export default function CreatorsPage() {
 
         {/* Creators Grid */}
         {loading ? (
-          <div className="flex justify-center py-20">
-            <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
+          <div className="flex justify-center py-24">
+            <div className="relative">
+              <div className="w-12 h-12 border border-violet-400/30 border-t-violet-400 rounded-full animate-spin"></div>
+              <div className="absolute inset-0 w-12 h-12 border border-violet-400/10 rounded-full animate-ping"></div>
+            </div>
           </div>
         ) : creators.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 mb-12">
-            {creators.map((creator) => (
-              <Link
-                key={creator.id}
-                href={`/creators/${creator.username}`}
-                className="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-all duration-300 hover:-translate-y-1 group"
-              >
-                <div className="p-6">
-                  {/* Profile Section */}
-                  <div className="text-center mb-6">
-                    {creator.profile_image_url ? (
-                      <Image
-                        src={creator.profile_image_url}
-                        alt={creator.display_name || creator.username}
-                        width={80}
-                        height={80}
-                        className="w-20 h-20 rounded-full mx-auto mb-4"
-                      />
-                    ) : (
-                      <div className="w-20 h-20 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full mx-auto mb-4 flex items-center justify-center">
-                        <span className="text-white text-xl font-bold">
-                          {(creator.display_name || creator.username).charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                    )}
-                    
-                    <h3 className="text-lg font-bold text-white mb-1">
-                      {creator.display_name || creator.username}
-                    </h3>
-                    <p className="text-sm font-mono text-zinc-400 mb-3">@{creator.username}</p>
-                    
-                    <div className="flex items-center justify-center space-x-2 mb-4">
-                      {creator.is_verified && (
-                        <span className="bg-violet-500 text-white text-xs px-2 py-1 font-mono font-bold uppercase tracking-wider">
-                          VERIFIED
-                        </span>
+            {creators.map((creator) => {
+              return (
+                <Link
+                  key={creator.id}
+                  href={`/creators/${creator.username}`}
+                  className="group relative overflow-hidden rounded-2xl border border-zinc-700/30 bg-zinc-900/30 backdrop-blur-xl hover:border-zinc-600/50 transition-all duration-300 hover:scale-[1.02]"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  
+                  <div className="relative p-8">
+                    {/* Profile Section */}
+                    <div className="text-center mb-8">
+                      {creator.profile_image_url ? (
+                        <div className="relative w-20 h-20 mx-auto mb-6">
+                          <Image
+                            src={creator.profile_image_url}
+                            alt={creator.display_name || creator.username}
+                            fill
+                            className="rounded-full object-cover border-2 border-zinc-700/30"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-20 h-20 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full mx-auto mb-6 flex items-center justify-center border-2 border-zinc-700/30">
+                          <span className="text-white text-2xl font-bold">
+                            {(creator.display_name || creator.username).charAt(0).toUpperCase()}
+                          </span>
+                        </div>
                       )}
-                      {creator.platform && (
-                        <span className={`${getPlatformColor(creator.platform)} text-white text-xs px-2 py-1 font-mono font-bold`}>
-                          {getPlatformIcon(creator.platform)}
-                        </span>
+                      
+                      <h3 className="text-lg font-bold text-white mb-2 group-hover:text-violet-300 transition-colors">
+                        {creator.display_name || creator.username}
+                      </h3>
+                      <p className="text-sm font-mono text-zinc-500 mb-4 tracking-[0.1em]">@{creator.username}</p>
+                      
+                      <div className="flex items-center justify-center space-x-3 mb-6">
+                        {creator.is_verified && (
+                          <div className="px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 rounded-xl text-xs font-mono text-emerald-300 tracking-[0.1em] backdrop-blur-sm">
+                            VERIFIED
+                          </div>
+                        )}
+                        {creator.platform && (
+                          <div className={`px-3 py-1 rounded-xl text-xs font-mono tracking-[0.1em] border backdrop-blur-sm ${getPlatformColor(creator.platform)}`}>
+                            {getPlatformIcon(creator.platform)}
+                          </div>
+                        )}
+                      </div>
+
+                      {creator.bio && (
+                        <p className="text-sm text-zinc-400 line-clamp-2 leading-relaxed">{creator.bio}</p>
                       )}
                     </div>
 
-                    {creator.bio && (
-                      <p className="text-sm text-zinc-300 line-clamp-2 mb-4">{creator.bio}</p>
-                    )}
-                  </div>
+                    {/* Electric Stats */}
+                    <div className="border-t border-zinc-700/30 pt-6">
+                      <div className="grid grid-cols-2 gap-6 text-center mb-6">
+                        <div className="bg-zinc-800/30 rounded-xl p-4 backdrop-blur-sm border border-zinc-700/30">
+                          <p className="text-2xl font-black text-violet-400 mb-1">{creator.auction_count}</p>
+                          <p className="text-xs font-mono text-zinc-500 uppercase tracking-[0.1em]">AUCTIONS</p>
+                        </div>
+                        <div className="bg-zinc-800/30 rounded-xl p-4 backdrop-blur-sm border border-zinc-700/30">
+                          <p className="text-2xl font-black text-white mb-1">{creator.total_sales}</p>
+                          <p className="text-xs font-mono text-zinc-500 uppercase tracking-[0.1em]">SALES</p>
+                        </div>
+                      </div>
+                      
+                      {creator.subscriber_count > 0 && (
+                        <div className="text-center mb-4">
+                          <p className="text-sm text-zinc-400 font-mono tracking-[0.1em]">
+                            {formatSubscriberCount(creator.subscriber_count)} SUBSCRIBERS
+                          </p>
+                        </div>
+                      )}
 
-                  {/* Stats */}
-                  <div className="border-t border-zinc-800 pt-4">
-                    <div className="grid grid-cols-2 gap-4 text-center mb-4">
-                      <div>
-                        <p className="text-lg font-bold text-violet-400">{creator.auction_count}</p>
-                        <p className="text-xs font-mono text-zinc-500 uppercase tracking-wider">Auctions</p>
-                      </div>
-                      <div>
-                        <p className="text-lg font-bold text-white">{creator.total_sales}</p>
-                        <p className="text-xs font-mono text-zinc-500 uppercase tracking-wider">Sales</p>
-                      </div>
+                      {creator.active_auction_count > 0 && (
+                        <div className="text-center">
+                          <div className="inline-flex items-center px-4 py-2 bg-violet-500/20 border border-violet-500/30 rounded-xl text-xs font-mono text-violet-300 tracking-[0.1em] backdrop-blur-sm animate-pulse">
+                            {creator.active_auction_count} ACTIVE
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    
-                    {creator.subscriber_count > 0 && (
-                      <div className="text-center mb-3">
-                        <p className="text-sm text-zinc-400 font-mono">
-                          {formatSubscriberCount(creator.subscriber_count)} subscribers
-                        </p>
-                      </div>
-                    )}
-
-                    {creator.active_auction_count > 0 && (
-                      <div className="text-center">
-                        <span className="bg-red-500 text-white text-xs px-3 py-1 font-mono font-bold uppercase tracking-wider">
-                          {creator.active_auction_count} ACTIVE
-                        </span>
-                      </div>
-                    )}
                   </div>
-                </div>
-              </Link>
-            ))}
+                </Link>
+              );
+            })}
           </div>
         ) : (
-          <div className="text-center py-20">
-            <div className="w-24 h-24 bg-zinc-800 rounded-full mx-auto mb-6 flex items-center justify-center">
-              <div className="w-8 h-8 bg-zinc-600 rounded"></div>
+          <div className="text-center py-24">
+            <div className="w-24 h-24 bg-zinc-800/50 rounded-full mx-auto mb-8 flex items-center justify-center backdrop-blur-sm">
+              <div className="w-12 h-12 bg-zinc-700/50 rounded-2xl"></div>
             </div>
-            <h3 className="text-2xl font-bold text-white mb-4">NO CREATORS FOUND</h3>
-            <p className="text-zinc-400 font-mono uppercase tracking-wider">Try adjusting your search criteria</p>
+            <h3 className="text-3xl font-black text-white mb-6">NO CREATORS FOUND</h3>
+            <p className="text-zinc-400 font-mono text-sm tracking-[0.15em]">TRY ADJUSTING YOUR SEARCH CRITERIA</p>
           </div>
         )}
 
-        {/* Pagination */}
+        {/* Electric Pagination */}
         {totalPages > 1 && (
-          <div className="flex justify-center">
-            <div className="flex space-x-2">
+          <div className="flex justify-center mt-16">
+            <div className="flex items-center space-x-3">
               {currentPage > 1 && (
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}
-                  className="px-6 py-3 text-zinc-300 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:text-white transition-colors font-mono uppercase tracking-wider"
+                  className="group relative overflow-hidden px-6 py-3 rounded-xl border border-zinc-700/30 bg-zinc-900/30 backdrop-blur-sm text-zinc-300 font-mono text-sm tracking-[0.15em] hover:bg-zinc-800/50 hover:text-white hover:border-zinc-600/50 transition-all duration-300"
                 >
-                  Previous
+                  <div className="absolute inset-0 bg-gradient-to-r from-zinc-700/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <span className="relative">PREVIOUS</span>
                 </button>
               )}
               
@@ -305,22 +343,26 @@ export default function CreatorsPage() {
                 <button
                   key={page}
                   onClick={() => handlePageChange(page)}
-                  className={`px-4 py-3 font-mono uppercase tracking-wider transition-colors ${
+                  className={`group relative overflow-hidden px-4 py-3 rounded-xl font-mono text-sm tracking-[0.15em] transition-all duration-300 ${
                     page === currentPage
-                      ? 'bg-violet-500 text-white'
-                      : 'text-zinc-300 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:text-white'
+                      ? 'border border-violet-400/30 bg-gradient-to-r from-violet-500/20 to-purple-500/20 backdrop-blur-sm text-white'
+                      : 'border border-zinc-700/30 bg-zinc-900/30 backdrop-blur-sm text-zinc-300 hover:bg-zinc-800/50 hover:text-white hover:border-zinc-600/50'
                   }`}
                 >
-                  {page}
+                  {page === currentPage && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-purple-500/10"></div>
+                  )}
+                  <span className="relative">{page}</span>
                 </button>
               ))}
               
               {currentPage < totalPages && (
                 <button
                   onClick={() => handlePageChange(currentPage + 1)}
-                  className="px-6 py-3 text-zinc-300 bg-zinc-900 border border-zinc-800 hover:border-zinc-700 hover:text-white transition-colors font-mono uppercase tracking-wider"
+                  className="group relative overflow-hidden px-6 py-3 rounded-xl border border-zinc-700/30 bg-zinc-900/30 backdrop-blur-sm text-zinc-300 font-mono text-sm tracking-[0.15em] hover:bg-zinc-800/50 hover:text-white hover:border-zinc-600/50 transition-all duration-300"
                 >
-                  Next
+                  <div className="absolute inset-0 bg-gradient-to-r from-zinc-700/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <span className="relative">NEXT</span>
                 </button>
               )}
             </div>

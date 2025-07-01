@@ -24,9 +24,9 @@ interface Auction {
   id: string;
   title: string;
   description: string;
-  current_price: number;
-  starting_price: number;
-  buy_now_price?: number;
+  current_price: number | string;
+  starting_price: number | string;
+  buy_now_price?: number | string;
   condition: string;
   status: string;
   end_time: string;
@@ -40,8 +40,8 @@ interface CreatorStats {
   total_auctions: number;
   active_auctions: number;
   completed_sales: number;
-  avg_sale_price: number;
-  total_revenue: number;
+  avg_sale_price: number | string;
+  total_revenue: number | string;
 }
 
 interface Activity {
@@ -115,21 +115,24 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ usern
     return count.toString();
   };
 
-  const getPlatformInfo = (platform: string) => {
-    const platforms: { [key: string]: { name: string; color: string } } = {
-      'youtube': { name: 'YOUTUBE', color: 'bg-red-500' },
-      'twitch': { name: 'TWITCH', color: 'bg-violet-500' },
-      'tiktok': { name: 'TIKTOK', color: 'bg-zinc-700' },
-      'instagram': { name: 'INSTAGRAM', color: 'bg-red-400' },
-      'twitter': { name: 'TWITTER', color: 'bg-zinc-600' },
+  const getPlatformColor = (platform: string) => {
+    const colors: { [key: string]: string } = {
+      'youtube': 'bg-red-500/20 text-red-300 border-red-500/30',
+      'twitch': 'bg-violet-500/20 text-violet-300 border-violet-500/30',
+      'tiktok': 'bg-zinc-500/20 text-zinc-300 border-zinc-500/30',
+      'instagram': 'bg-pink-500/20 text-pink-300 border-pink-500/30',
+      'twitter': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
     };
-    return platforms[platform?.toLowerCase()] || { name: 'OTHER', color: 'bg-zinc-500' };
+    return colors[platform?.toLowerCase()] || 'bg-zinc-500/20 text-zinc-300 border-zinc-500/30';
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="w-8 h-8 border-2 border-violet-500 border-t-transparent rounded-full animate-spin"></div>
+        <div className="relative">
+          <div className="w-12 h-12 border border-violet-400/30 border-t-violet-400 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 w-12 h-12 border border-violet-400/10 rounded-full animate-ping"></div>
+        </div>
       </div>
     );
   }
@@ -139,8 +142,12 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ usern
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-4xl font-black text-white mb-6">CREATOR NOT FOUND</h1>
-          <Link href="/creators" className="bg-violet-500 text-white font-bold px-8 py-4 hover:bg-violet-600 transition-colors">
-            BROWSE CREATORS
+          <Link 
+            href="/creators" 
+            className="group relative overflow-hidden px-8 py-4 rounded-xl border border-violet-400/30 bg-gradient-to-r from-violet-500/10 to-purple-500/10 backdrop-blur-sm text-white font-mono text-sm tracking-[0.15em] hover:from-violet-500/20 hover:to-purple-500/20 hover:border-violet-400/50 transition-all duration-300"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+            <span className="relative">BROWSE CREATORS</span>
           </Link>
         </div>
       </div>
@@ -148,181 +155,254 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ usern
   }
 
   const { creator, auctions, stats, recentActivity } = creatorData;
-  const platformInfo = getPlatformInfo(creator.platform || '');
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white">
-      <div className="max-w-6xl mx-auto px-8 py-16">
-        {/* Header */}
-        <div className="mb-12">
-          <Link href="/creators" className="text-sm font-mono text-violet-400 hover:text-violet-300 uppercase tracking-wider">
-            ← BACK TO CREATORS
+    <div className="min-h-screen bg-zinc-950 text-white relative overflow-hidden">
+      {/* Electric Grid Background */}
+      <div className="absolute inset-0 opacity-[0.02]">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `
+            linear-gradient(rgba(139, 92, 246, 0.1) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px)
+          `,
+          backgroundSize: '40px 40px'
+        }}></div>
+      </div>
+
+      {/* Electric Accent Lines */}
+      <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute top-20 left-0 w-1/3 h-px bg-gradient-to-r from-transparent via-violet-400/20 to-transparent"></div>
+        <div className="absolute top-40 right-0 w-1/4 h-px bg-gradient-to-l from-transparent via-emerald-400/20 to-transparent"></div>
+        <div className="absolute bottom-1/3 left-1/4 w-px h-32 bg-gradient-to-b from-transparent via-blue-400/20 to-transparent"></div>
+      </div>
+
+      <div className="relative max-w-7xl mx-auto px-8 py-16">
+        {/* Electric Header */}
+        <header className="mb-16">
+          <Link 
+            href="/creators" 
+            className="inline-flex items-center text-zinc-400 hover:text-white font-mono text-sm tracking-[0.15em] mb-8 transition-colors group"
+          >
+            <span className="group-hover:-translate-x-1 transition-transform duration-200">←</span>
+            <span className="ml-2">BACK TO CREATORS</span>
           </Link>
-        </div>
+        </header>
 
-        {/* Creator Profile Header */}
-        <div className="bg-zinc-900 border border-zinc-800 p-8 mb-8">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center space-y-8 lg:space-y-0 lg:space-x-12">
-            {/* Profile Image */}
-            <div className="flex-shrink-0">
-              {creator.profile_image_url ? (
-                <Image
-                  src={creator.profile_image_url}
-                  alt={creator.display_name || creator.username}
-                  width={120}
-                  height={120}
-                  className="w-30 h-30 rounded-full"
-                />
-              ) : (
-                <div className="w-30 h-30 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-4xl font-bold">
-                    {(creator.display_name || creator.username).charAt(0).toUpperCase()}
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Profile Info */}
-            <div className="flex-1">
-              <div className="space-y-6">
-                <div>
-                  <h1 className="text-4xl font-black text-white mb-2">
-                    {creator.display_name || creator.username}
-                  </h1>
-                  <p className="text-lg font-mono text-zinc-400 mb-4">@{creator.username}</p>
-                  
-                  <div className="flex flex-wrap gap-3 mb-6">
-                    {creator.is_verified && (
-                      <span className="bg-violet-500 text-white text-xs px-3 py-1 font-mono font-bold uppercase tracking-wider">
-                        VERIFIED
-                      </span>
-                    )}
-                    {creator.platform && (
-                      <span className={`${platformInfo.color} text-white text-xs px-3 py-1 font-mono font-bold uppercase tracking-wider`}>
-                        {platformInfo.name}
-                      </span>
-                    )}
+        {/* Electric Profile Card */}
+        <div className="relative overflow-hidden rounded-2xl border border-zinc-700/30 bg-zinc-900/30 backdrop-blur-xl mb-12">
+          <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-transparent"></div>
+          <div className="relative p-12">
+            <div className="flex flex-col lg:flex-row items-start lg:items-center space-y-8 lg:space-y-0 lg:space-x-12">
+              {/* Profile Image */}
+              <div className="flex-shrink-0">
+                {creator.profile_image_url ? (
+                  <div className="relative w-32 h-32">
+                    <Image
+                      src={creator.profile_image_url}
+                      alt={creator.display_name || creator.username}
+                      fill
+                      className="rounded-2xl object-cover border-2 border-zinc-700/30"
+                    />
                   </div>
-
-                  {creator.bio && (
-                    <p className="text-zinc-200 mb-6 leading-relaxed max-w-2xl">{creator.bio}</p>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap gap-6 text-sm font-mono text-zinc-400">
-                  {creator.subscriber_count > 0 && (
-                    <div>
-                      <span className="text-white font-bold">{formatSubscriberCount(creator.subscriber_count)}</span> SUBSCRIBERS
-                    </div>
-                  )}
-                  <div>
-                    MEMBER SINCE <span className="text-white font-bold">{new Date(creator.created_at).getFullYear()}</span>
+                ) : (
+                  <div className="w-32 h-32 bg-gradient-to-br from-violet-500 to-purple-600 rounded-2xl flex items-center justify-center border-2 border-zinc-700/30">
+                    <span className="text-white text-4xl font-bold">
+                      {(creator.display_name || creator.username).charAt(0).toUpperCase()}
+                    </span>
                   </div>
-                </div>
-
-                {creator.channel_url && (
-                  <a
-                    href={creator.channel_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-block border-2 border-zinc-600 text-white font-bold px-6 py-3 hover:border-violet-400 hover:text-violet-300 transition-all duration-300 text-sm tracking-wider uppercase"
-                  >
-                    VISIT CHANNEL
-                  </a>
                 )}
+              </div>
+
+              {/* Profile Info */}
+              <div className="flex-1">
+                <div className="space-y-6">
+                  <div>
+                    <h1 className="text-5xl font-black text-white mb-3 tracking-tight">
+                      {creator.display_name || creator.username}
+                    </h1>
+                    <p className="text-xl font-mono text-zinc-400 mb-6 tracking-[0.1em]">@{creator.username}</p>
+                    
+                    <div className="flex flex-wrap gap-4 mb-8">
+                      {creator.is_verified && (
+                        <div className="px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-xl text-xs font-mono text-emerald-300 tracking-[0.1em] backdrop-blur-sm">
+                          VERIFIED
+                        </div>
+                      )}
+                      {creator.platform && (
+                        <div className={`px-4 py-2 rounded-xl text-xs font-mono tracking-[0.1em] border backdrop-blur-sm ${getPlatformColor(creator.platform)}`}>
+                          {creator.platform.toUpperCase()}
+                        </div>
+                      )}
+                    </div>
+
+                    {creator.bio && (
+                      <p className="text-zinc-300 mb-8 leading-relaxed text-lg max-w-3xl">{creator.bio}</p>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-8 text-sm font-mono text-zinc-400 tracking-[0.1em]">
+                    {creator.subscriber_count > 0 && (
+                      <div>
+                        <span className="text-white font-bold text-lg">{formatSubscriberCount(creator.subscriber_count)}</span>
+                        <span className="ml-2 uppercase">SUBSCRIBERS</span>
+                      </div>
+                    )}
+                    <div>
+                      <span className="text-white font-bold text-lg">{new Date(creator.created_at).getFullYear()}</span>
+                      <span className="ml-2 uppercase">MEMBER SINCE</span>
+                    </div>
+                    <div>
+                      <span className="text-violet-400 font-bold text-lg">{stats.total_auctions}</span>
+                      <span className="ml-2 uppercase">AUCTIONS</span>
+                    </div>
+                    {stats.active_auctions > 0 && (
+                      <div>
+                        <span className="text-emerald-400 font-bold text-lg">{stats.active_auctions}</span>
+                        <span className="ml-2 uppercase">ACTIVE</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {creator.channel_url && (
+                    <a
+                      href={creator.channel_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="group relative overflow-hidden inline-block px-8 py-4 rounded-xl border border-zinc-700/30 bg-zinc-900/30 backdrop-blur-sm text-zinc-300 font-mono text-sm tracking-[0.15em] hover:bg-zinc-800/50 hover:text-white hover:border-zinc-600/50 transition-all duration-300"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-r from-zinc-700/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      <span className="relative">VISIT CHANNEL</span>
+                    </a>
+                  )}
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="bg-zinc-900 border border-zinc-800 p-6 text-center">
-            <p className="text-3xl font-black text-violet-400 mb-2">{stats.total_auctions}</p>
-            <p className="text-xs font-mono text-zinc-400 uppercase tracking-wider">Total Auctions</p>
+        {/* Electric Tab Navigation */}
+        <div className="relative overflow-hidden rounded-2xl border border-zinc-700/30 bg-zinc-900/30 backdrop-blur-xl p-8 mb-12">
+          <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-transparent"></div>
+          <div className="relative">
+            <div className="flex items-center space-x-6 mb-8">
+              <div className="w-12 h-px bg-gradient-to-r from-transparent via-violet-400 to-transparent"></div>
+              <h2 className="text-2xl font-black text-white tracking-tight">CREATOR CONTENT</h2>
+            </div>
+            <div className="flex space-x-4">
+              {[
+                { key: 'auctions', label: 'AUCTIONS', count: auctions.length },
+                { key: 'about', label: 'ABOUT', count: null },
+                { key: 'activity', label: 'ACTIVITY', count: null }
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  onClick={() => setActiveTab(tab.key as 'auctions' | 'about' | 'activity')}
+                  className={`group relative overflow-hidden px-6 py-3 rounded-xl font-mono text-sm tracking-[0.15em] transition-all duration-300 ${
+                    activeTab === tab.key
+                      ? 'border border-violet-400/30 bg-gradient-to-r from-violet-500/20 to-purple-500/20 backdrop-blur-sm text-white'
+                      : 'border border-zinc-700/30 bg-zinc-900/30 backdrop-blur-sm text-zinc-300 hover:bg-zinc-800/50 hover:text-white hover:border-zinc-600/50'
+                  }`}
+                >
+                  {activeTab === tab.key && (
+                    <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-purple-500/10"></div>
+                  )}
+                  <span className="relative">
+                    {tab.label} {tab.count !== null && `(${tab.count})`}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="bg-zinc-900 border border-zinc-800 p-6 text-center">
-            <p className="text-3xl font-black text-red-400 mb-2">{stats.active_auctions}</p>
-            <p className="text-xs font-mono text-zinc-400 uppercase tracking-wider">Active Now</p>
-          </div>
-          <div className="bg-zinc-900 border border-zinc-800 p-6 text-center">
-            <p className="text-3xl font-black text-white mb-2">{stats.completed_sales}</p>
-            <p className="text-xs font-mono text-zinc-400 uppercase tracking-wider">Sales</p>
-          </div>
-          <div className="bg-zinc-900 border border-zinc-800 p-6 text-center">
-            <p className="text-3xl font-black text-violet-400 mb-2">${formatPrice(stats.avg_sale_price)}</p>
-            <p className="text-xs font-mono text-zinc-400 uppercase tracking-wider">Avg Price</p>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="border-b border-zinc-800 mb-8">
-          <nav className="flex space-x-12">
-            {['auctions', 'about', 'activity'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab as 'auctions' | 'about' | 'activity')}
-                className={`py-4 font-mono text-sm uppercase tracking-wider transition-colors ${
-                  activeTab === tab
-                    ? 'text-violet-400 border-b-2 border-violet-400'
-                    : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                {tab} {tab === 'auctions' ? `(${auctions.length})` : ''}
-              </button>
-            ))}
-          </nav>
         </div>
 
         {/* Tab Content */}
         {activeTab === 'auctions' && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {auctions.map((auction) => (
               <Link
                 key={auction.id}
                 href={`/auctions/${auction.id}`}
-                className="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 transition-all duration-300 hover:-translate-y-1 group"
+                className="group relative overflow-hidden rounded-2xl border border-zinc-700/30 bg-zinc-900/30 backdrop-blur-xl hover:border-zinc-600/50 transition-all duration-300"
               >
-                <div className="aspect-square bg-zinc-800 relative overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                
+                {/* Image Container */}
+                <div className="relative aspect-square bg-zinc-800/30 overflow-hidden">
                   {auction.primary_image ? (
                     <Image
                       src={auction.primary_image}
                       alt={auction.title}
                       fill
-                      className="object-cover group-hover:scale-105 transition-transform duration-300"
-                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
+                      className="object-contain p-4 group-hover:scale-105 transition-transform duration-300"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, (max-width: 1280px) 33vw, 25vw"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-violet-500/20 to-purple-600/20 flex items-center justify-center">
-                      <div className="w-16 h-16 bg-zinc-700 rounded-lg flex items-center justify-center">
-                        <div className="w-6 h-6 bg-zinc-500 rounded"></div>
+                    <div className="w-full h-full flex items-center justify-center">
+                      <div className="w-16 h-16 bg-zinc-700/50 rounded-2xl flex items-center justify-center backdrop-blur-sm">
+                        <div className="w-6 h-6 bg-zinc-600/50 rounded-lg"></div>
                       </div>
                     </div>
                   )}
-                  <div className="absolute top-3 right-3">
-                    <span className={`px-2 py-1 text-xs font-mono font-bold uppercase tracking-wider ${
-                      auction.status === 'active' ? 'bg-red-500 text-white' :
-                      auction.status === 'ended' ? 'bg-zinc-700 text-zinc-300' :
-                      'bg-zinc-600 text-white'
-                    }`}>
-                      {auction.status === 'active' ? formatTimeRemaining(auction.end_time) : auction.status}
-                    </span>
-                  </div>
                 </div>
 
-                <div className="p-6">
-                  <h3 className="text-lg font-bold text-white mb-3 line-clamp-2">{auction.title}</h3>
-                  <div className="flex justify-between items-center mb-4 text-sm font-mono text-zinc-400 uppercase tracking-wider">
-                    <span>{auction.category_name}</span>
-                    <span>{auction.condition}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <p className="text-xs font-mono text-zinc-400 uppercase tracking-wider mb-1">Current Price</p>
-                      <p className="text-xl font-black text-violet-400">${formatPrice(auction.current_price)}</p>
+                {/* Content */}
+                <div className="relative p-6">
+                  {/* Fixed Height Category & Status Row */}
+                  <div className="h-8 flex items-start justify-between mb-4">
+                    <span className="text-xs text-zinc-500 uppercase font-mono tracking-[0.15em] leading-tight">
+                      {auction.category_name || 'UNCATEGORIZED'}
+                    </span>
+                    <div className={`px-2 py-1 rounded-lg text-xs font-mono tracking-[0.1em] border backdrop-blur-sm flex-shrink-0 ${
+                      auction.status === 'active' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                      auction.status === 'ended' ? 'bg-red-500/20 text-red-300 border-red-500/30' :
+                      'bg-zinc-500/20 text-zinc-300 border-zinc-500/30'
+                    }`}>
+                      {auction.status.toUpperCase()}
                     </div>
-                    <div className="text-right">
-                      <p className="text-xs font-mono text-zinc-400 uppercase tracking-wider">{auction.bid_count} BIDS</p>
+                  </div>
+
+                  {/* Clean One-Line Title */}
+                  <h3 className="text-white font-bold text-lg mb-6 truncate transition-colors">
+                    {auction.title}
+                  </h3>
+
+                  {/* Price & Stats */}
+                  <div className="space-y-4 mb-6">
+                    <div>
+                      <p className="text-xs text-zinc-500 mb-2 font-mono tracking-[0.1em]">CURRENT PRICE</p>
+                      <p className="text-2xl font-black text-white">${formatPrice(auction.current_price)}</p>
+                    </div>
+                    
+                    <div className="flex items-center justify-between text-xs font-mono tracking-[0.1em]">
+                      <span className="text-zinc-400">
+                        {auction.bid_count} BID{auction.bid_count !== 1 ? 'S' : ''}
+                      </span>
+                      <span className={`font-bold ${
+                        auction.status === 'active' && formatTimeRemaining(auction.end_time) !== 'ENDED'
+                          ? 'text-emerald-400'
+                          : 'text-red-400'
+                      }`}>
+                        ENDS {formatTimeRemaining(auction.end_time)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Creator - Clean with Icon Badge */}
+                  <div className="pt-6 border-t border-zinc-700/30">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-3">
+                        <span className="text-sm text-zinc-300 font-mono tracking-[0.1em]">
+                          {creator.display_name || creator.username}
+                        </span>
+                        {/* Small verified icon badge */}
+                        {creator.is_verified && (
+                          <div className="w-5 h-5 bg-emerald-500/20 border border-emerald-500/30 rounded-full flex items-center justify-center">
+                            <svg className="w-3 h-3 text-emerald-400" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -332,60 +412,59 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ usern
         )}
 
         {activeTab === 'about' && (
-          <div className="bg-zinc-900 border border-zinc-800 p-8">
-            <div className="max-w-4xl">
-              <h3 className="text-2xl font-bold text-white mb-6">ABOUT {(creator.display_name || creator.username).toUpperCase()}</h3>
+          <div className="relative overflow-hidden rounded-2xl border border-zinc-700/30 bg-zinc-900/30 backdrop-blur-xl p-12">
+            <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-transparent"></div>
+            <div className="relative max-w-5xl">
+              <div className="flex items-center space-x-6 mb-12">
+                <div className="w-1 h-8 bg-gradient-to-b from-violet-400 to-purple-500"></div>
+                <h3 className="text-3xl font-black text-white tracking-tight">
+                  ABOUT {(creator.display_name || creator.username).toUpperCase()}
+                </h3>
+              </div>
+              
               {creator.bio ? (
-                <p className="text-zinc-200 leading-relaxed mb-8 text-lg">{creator.bio}</p>
+                <p className="text-zinc-300 leading-relaxed mb-12 text-xl">{creator.bio}</p>
               ) : (
-                <p className="text-zinc-400 mb-8 font-mono uppercase tracking-wider">No bio provided.</p>
+                <p className="text-zinc-500 mb-12 font-mono text-sm tracking-[0.15em] uppercase">NO BIO PROVIDED</p>
               )}
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
                 <div>
-                  <h4 className="font-bold text-violet-400 mb-6 font-mono uppercase tracking-wider">Creator Details</h4>
-                  <div className="space-y-4">
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400 font-mono uppercase tracking-wider">Username:</span>
-                      <span className="text-white font-mono">@{creator.username}</span>
+                  <h4 className="font-bold text-violet-400 mb-8 font-mono text-lg tracking-[0.1em] uppercase">Creator Details</h4>
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center py-3 border-b border-zinc-700/30">
+                      <span className="text-zinc-400 font-mono text-sm tracking-[0.1em] uppercase">Username</span>
+                      <span className="text-white font-mono text-sm">@{creator.username}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400 font-mono uppercase tracking-wider">Member since:</span>
-                      <span className="text-white font-mono">{new Date(creator.created_at).toLocaleDateString()}</span>
+                    <div className="flex justify-between items-center py-3 border-b border-zinc-700/30">
+                      <span className="text-zinc-400 font-mono text-sm tracking-[0.1em] uppercase">Member Since</span>
+                      <span className="text-white font-mono text-sm">{new Date(creator.created_at).toLocaleDateString()}</span>
                     </div>
                     {creator.platform && (
-                      <div className="flex justify-between">
-                        <span className="text-zinc-400 font-mono uppercase tracking-wider">Platform:</span>
-                        <span className="text-white font-mono uppercase">{creator.platform}</span>
+                      <div className="flex justify-between items-center py-3 border-b border-zinc-700/30">
+                        <span className="text-zinc-400 font-mono text-sm tracking-[0.1em] uppercase">Platform</span>
+                        <span className="text-white font-mono text-sm uppercase">{creator.platform}</span>
                       </div>
                     )}
                     {creator.subscriber_count > 0 && (
-                      <div className="flex justify-between">
-                        <span className="text-zinc-400 font-mono uppercase tracking-wider">Subscribers:</span>
-                        <span className="text-white font-mono">{formatSubscriberCount(creator.subscriber_count)}</span>
+                      <div className="flex justify-between items-center py-3 border-b border-zinc-700/30">
+                        <span className="text-zinc-400 font-mono text-sm tracking-[0.1em] uppercase">Subscribers</span>
+                        <span className="text-white font-mono text-sm">{formatSubscriberCount(creator.subscriber_count)}</span>
                       </div>
                     )}
                   </div>
                 </div>
                 
                 <div>
-                  <h4 className="font-bold text-violet-400 mb-6 font-mono uppercase tracking-wider">Auction Stats</h4>
-                  <div className="space-y-4">
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400 font-mono uppercase tracking-wider">Total Auctions:</span>
-                      <span className="text-white font-mono">{stats.total_auctions}</span>
+                  <h4 className="font-bold text-emerald-400 mb-8 font-mono text-lg tracking-[0.1em] uppercase">Auction Activity</h4>
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center py-3 border-b border-zinc-700/30">
+                      <span className="text-zinc-400 font-mono text-sm tracking-[0.1em] uppercase">Total Auctions</span>
+                      <span className="text-white font-mono text-sm">{stats.total_auctions}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400 font-mono uppercase tracking-wider">Completed Sales:</span>
-                      <span className="text-white font-mono">{stats.completed_sales}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400 font-mono uppercase tracking-wider">Total Revenue:</span>
-                      <span className="text-white font-mono">${formatPrice(stats.total_revenue)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-zinc-400 font-mono uppercase tracking-wider">Average Sale:</span>
-                      <span className="text-white font-mono">${formatPrice(stats.avg_sale_price)}</span>
+                    <div className="flex justify-between items-center py-3 border-b border-zinc-700/30">
+                      <span className="text-zinc-400 font-mono text-sm tracking-[0.1em] uppercase">Active Auctions</span>
+                      <span className="text-emerald-400 font-mono text-sm">{stats.active_auctions}</span>
                     </div>
                   </div>
                 </div>
@@ -395,33 +474,49 @@ export default function CreatorProfilePage({ params }: { params: Promise<{ usern
         )}
 
         {activeTab === 'activity' && (
-          <div className="bg-zinc-900 border border-zinc-800 p-8">
-            <h3 className="text-2xl font-bold text-white mb-8 font-mono uppercase tracking-wider">Recent Activity</h3>
-            {recentActivity.length > 0 ? (
-              <div className="space-y-6">
-                {recentActivity.map((activity, index) => (
-                  <div key={index} className="flex items-start space-x-4 p-6 bg-zinc-800 border border-zinc-700">
-                    <div className="w-2 h-2 bg-violet-500 rounded-full mt-2 flex-shrink-0"></div>
-                    <div className="flex-1">
-                      <p className="text-white font-mono">
-                        {activity.activity_type === 'auction_created' ? 'CREATED AUCTION:' : 'AUCTION ENDED:'}
-                        <Link 
-                          href={`/auctions/${activity.auction_id}`}
-                          className="text-violet-400 hover:text-violet-300 ml-2"
-                        >
-                          {activity.auction_title}
-                        </Link>
-                      </p>
-                      <p className="text-sm text-zinc-400 font-mono mt-1">
-                        {new Date(activity.activity_date).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                ))}
+          <div className="relative overflow-hidden rounded-2xl border border-zinc-700/30 bg-zinc-900/30 backdrop-blur-xl p-12">
+            <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-transparent"></div>
+            <div className="relative">
+              <div className="flex items-center space-x-6 mb-12">
+                <div className="w-1 h-8 bg-gradient-to-b from-violet-400 to-purple-500"></div>
+                <h3 className="text-3xl font-black text-white tracking-tight">RECENT ACTIVITY</h3>
               </div>
-            ) : (
-              <p className="text-zinc-400 font-mono uppercase tracking-wider">No recent activity.</p>
-            )}
+              
+              {recentActivity.length > 0 ? (
+                <div className="space-y-6">
+                  {recentActivity.map((activity, index) => (
+                    <div key={index} className="bg-zinc-800/30 rounded-xl p-6 border border-zinc-700/30 backdrop-blur-sm">
+                      <div className="flex items-start space-x-4">
+                        <div className="w-3 h-3 bg-violet-400 rounded-full mt-2 flex-shrink-0"></div>
+                        <div className="flex-1">
+                          <p className="text-white font-mono text-sm tracking-[0.1em] mb-2">
+                            <span className="text-zinc-400">
+                              {activity.activity_type === 'auction_created' ? 'CREATED AUCTION:' : 'AUCTION ENDED:'}
+                            </span>
+                            <Link 
+                              href={`/auctions/${activity.auction_id}`}
+                              className="text-violet-400 hover:text-violet-300 ml-2 transition-colors"
+                            >
+                              {activity.auction_title}
+                            </Link>
+                          </p>
+                          <p className="text-xs text-zinc-500 font-mono tracking-[0.1em]">
+                            {new Date(activity.activity_date).toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-16">
+                  <div className="w-16 h-16 bg-zinc-800/50 rounded-full mx-auto mb-6 flex items-center justify-center">
+                    <div className="w-8 h-8 bg-zinc-700/50 rounded-lg"></div>
+                  </div>
+                  <p className="text-zinc-500 font-mono text-sm tracking-[0.15em] uppercase">NO RECENT ACTIVITY</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
