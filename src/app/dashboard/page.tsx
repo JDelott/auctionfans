@@ -177,17 +177,17 @@ export default function DashboardPage() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active':
-        return 'bg-green-600 text-white border-green-500';
+        return 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30';
       case 'ended':
-        return 'bg-zinc-700 text-zinc-100 border-zinc-600';
+        return 'bg-zinc-500/20 text-zinc-300 border-zinc-500/30';
       case 'shipped':
-        return 'bg-violet-600 text-white border-violet-500';
+        return 'bg-violet-500/20 text-violet-300 border-violet-500/30';
       case 'delivered':
-        return 'bg-emerald-600 text-white border-emerald-500';
+        return 'bg-blue-500/20 text-blue-300 border-blue-500/30';
       case 'pending':
-        return 'bg-amber-600 text-white border-amber-500';
+        return 'bg-amber-500/20 text-amber-300 border-amber-500/30';
       default:
-        return 'bg-zinc-600 text-white border-zinc-500';
+        return 'bg-zinc-500/20 text-zinc-300 border-zinc-500/30';
     }
   };
 
@@ -277,11 +277,11 @@ export default function DashboardPage() {
 
     if (!imageUrl || imageError) {
       return (
-        <div className={`bg-zinc-800 border border-zinc-700 flex items-center justify-center ${className}`}>
-          <div className="flex flex-col items-center justify-center p-2">
-            <div className="w-4 h-4 border border-zinc-600 rounded mb-1"></div>
-            <div className="text-[10px] text-zinc-500 font-mono text-center">
-              {!imageUrl ? 'NO IMG' : 'FAILED'}
+        <div className={`bg-zinc-900/50 border border-zinc-700/30 backdrop-blur-sm flex items-center justify-center ${className}`}>
+          <div className="text-center">
+            <div className="w-3 h-3 border border-zinc-600/50 rounded mb-1 mx-auto"></div>
+            <div className="text-[8px] text-zinc-500 font-mono tracking-[0.1em]">
+              NO IMAGE
             </div>
           </div>
         </div>
@@ -289,10 +289,10 @@ export default function DashboardPage() {
     }
 
     return (
-      <div className={`relative overflow-hidden bg-zinc-900 ${className}`}>
+      <div className={`relative overflow-hidden bg-zinc-900/50 backdrop-blur-sm ${className}`}>
         {imageLoading && (
-          <div className="absolute inset-0 bg-zinc-800 flex items-center justify-center z-10">
-            <div className="w-3 h-3 border border-zinc-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="absolute inset-0 bg-zinc-900/50 flex items-center justify-center z-10">
+            <div className="w-2 h-2 border border-zinc-600/50 border-t-transparent rounded-full animate-spin"></div>
           </div>
         )}
         <Image
@@ -303,7 +303,7 @@ export default function DashboardPage() {
           onError={handleError}
           onLoad={handleLoad}
           sizes={`${size}px`}
-          unoptimized={false} // Allow Next.js optimization
+          unoptimized={false}
         />
       </div>
     );
@@ -320,8 +320,8 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
         <div className="relative">
-          <div className="w-12 h-12 border-2 border-violet-400 border-t-transparent rounded-full animate-spin"></div>
-          <div className="absolute inset-0 w-12 h-12 border-2 border-red-400/20 rounded-full animate-ping"></div>
+          <div className="w-12 h-12 border border-violet-400/30 border-t-violet-400 rounded-full animate-spin"></div>
+          <div className="absolute inset-0 w-12 h-12 border border-violet-400/10 rounded-full animate-ping"></div>
         </div>
       </div>
     );
@@ -329,155 +329,155 @@ export default function DashboardPage() {
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white relative overflow-hidden">
-      {/* Background Grid Pattern */}
+      {/* Electric Grid Background */}
       <div className="absolute inset-0 opacity-[0.02]">
         <div className="absolute inset-0" style={{
           backgroundImage: `
             linear-gradient(rgba(139, 92, 246, 0.1) 1px, transparent 1px),
             linear-gradient(90deg, rgba(139, 92, 246, 0.1) 1px, transparent 1px)
           `,
-          backgroundSize: '50px 50px'
+          backgroundSize: '40px 40px'
         }}></div>
       </div>
 
-      {/* Geometric Accent Lines */}
+      {/* Electric Accent Lines */}
       <div className="absolute inset-0 pointer-events-none">
-        <div className="absolute top-32 left-0 w-64 h-px bg-gradient-to-r from-transparent via-violet-500/30 to-transparent"></div>
-        <div className="absolute top-48 right-0 w-48 h-px bg-gradient-to-l from-transparent via-red-400/20 to-transparent"></div>
-        <div className="absolute bottom-1/3 left-1/4 w-px h-32 bg-gradient-to-b from-transparent via-violet-500/20 to-transparent"></div>
+        <div className="absolute top-20 left-0 w-1/3 h-px bg-gradient-to-r from-transparent via-violet-400/20 to-transparent"></div>
+        <div className="absolute top-40 right-0 w-1/4 h-px bg-gradient-to-l from-transparent via-emerald-400/20 to-transparent"></div>
+        <div className="absolute bottom-1/3 left-1/3 w-px h-24 bg-gradient-to-b from-transparent via-blue-400/20 to-transparent"></div>
       </div>
 
-      <div className="relative max-w-7xl mx-auto px-6 py-12">
-        {/* Header */}
-        <header className="mb-16">
-          <div className="flex items-start justify-between">
-            <div>
-              <div className="flex items-center space-x-4 mb-6">
-                <div className="w-1 h-16 bg-violet-400"></div>
-                <div>
-                  <h1 className="text-5xl font-black text-white tracking-tight">
-                    {user?.display_name || user?.username}
-                  </h1>
-                  <p className="text-sm text-zinc-400 font-mono uppercase tracking-[0.2em] mt-2">
-                    {user?.is_creator ? 'CREATOR INTERFACE' : 'COLLECTOR INTERFACE'}
-                  </p>
-                </div>
+      <div className="relative max-w-7xl mx-auto px-8 py-16">
+        {/* Electric Header */}
+        <header className="mb-20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-6">
+              <div className="w-1 h-20 bg-gradient-to-b from-violet-400 to-purple-500"></div>
+              <div>
+                <h1 className="text-6xl font-black text-white tracking-tight mb-2">
+                  {user?.display_name || user?.username}
+                </h1>
+                <p className="text-sm text-zinc-400 font-mono uppercase tracking-[0.3em]">
+                  {user?.is_creator ? 'CREATOR INTERFACE' : 'COLLECTOR INTERFACE'}
+                </p>
               </div>
             </div>
             <div className="text-right">
-              <div className="text-xs text-zinc-500 font-mono mb-1">SYSTEM STATUS</div>
-              <div className="flex items-center space-x-2">
-                <div className="w-2 h-2 bg-green-400 rounded-full"></div>
-                <span className="text-xs text-zinc-300 font-mono">ONLINE</span>
+              <div className="text-xs text-zinc-500 font-mono tracking-[0.2em] mb-2">SYSTEM STATUS</div>
+              <div className="flex items-center space-x-3">
+                <div className="w-3 h-3 bg-emerald-400 rounded-full animate-pulse"></div>
+                <span className="text-xs text-zinc-300 font-mono tracking-[0.15em]">ONLINE</span>
               </div>
             </div>
           </div>
         </header>
 
         {user?.is_creator ? (
-          // CREATOR DASHBOARD
-          <div className="space-y-16">
-            {/* Performance Grid */}
+          // CREATOR INTERFACE
+          <div className="space-y-20">
+            {/* Performance Metrics */}
             <section>
-              <div className="flex items-center space-x-4 mb-8">
-                <div className="w-8 h-px bg-violet-400"></div>
-                <h2 className="text-2xl font-bold text-white">PERFORMANCE METRICS</h2>
+              <div className="flex items-center space-x-6 mb-12">
+                <div className="w-12 h-px bg-gradient-to-r from-transparent via-violet-400 to-transparent"></div>
+                <h2 className="text-3xl font-black text-white tracking-tight">PERFORMANCE METRICS</h2>
               </div>
               
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="relative group">
-                  <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-transparent rounded-lg"></div>
-                  <div className="relative bg-zinc-900/80 border border-zinc-800 rounded-lg p-6 backdrop-blur-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-3 h-3 bg-violet-400 rounded-full"></div>
-                      <div className="text-xs text-zinc-500 font-mono">SALES</div>
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <div className="group relative overflow-hidden rounded-2xl border border-violet-400/20 bg-gradient-to-br from-violet-500/5 to-purple-500/5 backdrop-blur-xl">
+                  <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="relative p-8">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="w-4 h-4 bg-violet-400 rounded-full"></div>
+                      <div className="text-xs text-zinc-400 font-mono tracking-[0.2em]">SALES</div>
                     </div>
-                    <div className="text-3xl font-black text-white mb-1">{salesStats.total_sales}</div>
-                    <div className="text-xs text-zinc-400 font-mono">TOTAL TRANSACTIONS</div>
+                    <div className="text-4xl font-black text-white mb-2">{salesStats.total_sales}</div>
+                    <div className="text-xs text-zinc-500 font-mono tracking-[0.15em]">TOTAL TRANSACTIONS</div>
                   </div>
                 </div>
 
-                <div className="relative group">
-                  <div className="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent rounded-lg"></div>
-                  <div className="relative bg-zinc-900/80 border border-zinc-800 rounded-lg p-6 backdrop-blur-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-3 h-3 bg-green-400 rounded-full"></div>
-                      <div className="text-xs text-zinc-500 font-mono">REVENUE</div>
+                <div className="group relative overflow-hidden rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-500/5 to-green-500/5 backdrop-blur-xl">
+                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="relative p-8">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="w-4 h-4 bg-emerald-400 rounded-full"></div>
+                      <div className="text-xs text-zinc-400 font-mono tracking-[0.2em]">REVENUE</div>
                     </div>
-                    <div className="text-3xl font-black text-white mb-1">${formatPrice(salesStats.total_revenue)}</div>
-                    <div className="text-xs text-zinc-400 font-mono">GROSS EARNINGS</div>
+                    <div className="text-4xl font-black text-white mb-2">${formatPrice(salesStats.total_revenue)}</div>
+                    <div className="text-xs text-zinc-500 font-mono tracking-[0.15em]">GROSS EARNINGS</div>
                   </div>
                 </div>
 
-                <div className="relative group">
-                  <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-transparent rounded-lg"></div>
-                  <div className="relative bg-zinc-900/80 border border-zinc-800 rounded-lg p-6 backdrop-blur-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-3 h-3 bg-red-400 rounded-full"></div>
-                      <div className="text-xs text-zinc-500 font-mono">FEES</div>
+                <div className="group relative overflow-hidden rounded-2xl border border-red-400/20 bg-gradient-to-br from-red-500/5 to-pink-500/5 backdrop-blur-xl">
+                  <div className="absolute inset-0 bg-gradient-to-br from-red-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="relative p-8">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="w-4 h-4 bg-red-400 rounded-full"></div>
+                      <div className="text-xs text-zinc-400 font-mono tracking-[0.2em]">FEES</div>
                     </div>
-                    <div className="text-3xl font-black text-red-400 mb-1">${formatPrice(salesStats.total_fees)}</div>
-                    <div className="text-xs text-zinc-400 font-mono">PLATFORM DEDUCTION</div>
+                    <div className="text-4xl font-black text-red-400 mb-2">${formatPrice(salesStats.total_fees)}</div>
+                    <div className="text-xs text-zinc-500 font-mono tracking-[0.15em]">PLATFORM DEDUCTION</div>
                   </div>
                 </div>
 
-                <div className="relative group">
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-lg"></div>
-                  <div className="relative bg-zinc-900/80 border border-zinc-800 rounded-lg p-6 backdrop-blur-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="w-3 h-3 bg-emerald-400 rounded-full"></div>
-                      <div className="text-xs text-zinc-500 font-mono">NET</div>
+                <div className="group relative overflow-hidden rounded-2xl border border-blue-400/20 bg-gradient-to-br from-blue-500/5 to-cyan-500/5 backdrop-blur-xl">
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  <div className="relative p-8">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="w-4 h-4 bg-blue-400 rounded-full"></div>
+                      <div className="text-xs text-zinc-400 font-mono tracking-[0.2em]">NET</div>
                     </div>
-                    <div className="text-3xl font-black text-emerald-400 mb-1">${formatPrice(salesStats.net_revenue)}</div>
-                    <div className="text-xs text-zinc-400 font-mono">NET PROFIT</div>
+                    <div className="text-4xl font-black text-blue-400 mb-2">${formatPrice(salesStats.net_revenue)}</div>
+                    <div className="text-xs text-zinc-500 font-mono tracking-[0.15em]">NET PROFIT</div>
                   </div>
                 </div>
               </div>
             </section>
 
-            {/* Active Auctions - IMPROVED LAYOUT */}
+            {/* Active Auctions */}
             <section>
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center space-x-4">
-                  <div className="w-8 h-px bg-violet-400"></div>
-                  <h2 className="text-2xl font-bold text-white">MY AUCTIONS</h2>
-                  <div className="px-3 py-1 bg-violet-500/20 border border-violet-500/30 rounded text-xs font-mono text-violet-300">
-                    {userAuctions.length} TOTAL
-                  </div>
-                  {activeAuctionsCount > 0 && (
-                    <div className="px-3 py-1 bg-green-500/20 border border-green-500/30 rounded text-xs font-mono text-green-300">
-                      {activeAuctionsCount} ACTIVE
+              <div className="flex items-center justify-between mb-12">
+                <div className="flex items-center space-x-6">
+                  <div className="w-12 h-px bg-gradient-to-r from-transparent via-violet-400 to-transparent"></div>
+                  <h2 className="text-3xl font-black text-white tracking-tight">MY AUCTIONS</h2>
+                  <div className="flex items-center space-x-4">
+                    <div className="px-4 py-2 bg-violet-500/20 border border-violet-500/30 rounded-xl backdrop-blur-sm">
+                      <span className="text-xs font-mono text-violet-300 tracking-[0.15em]">{userAuctions.length} TOTAL</span>
                     </div>
-                  )}
+                    {activeAuctionsCount > 0 && (
+                      <div className="px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-xl backdrop-blur-sm">
+                        <span className="text-xs font-mono text-emerald-300 tracking-[0.15em]">{activeAuctionsCount} ACTIVE</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
                 <Link 
                   href="/creator/"
-                  className="group relative overflow-hidden bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105"
+                  className="group relative overflow-hidden px-8 py-4 rounded-xl border border-violet-400/30 bg-gradient-to-r from-violet-500/10 to-purple-500/10 backdrop-blur-sm text-white font-mono text-sm tracking-[0.15em] hover:from-violet-500/20 hover:to-purple-500/20 hover:border-violet-400/50 transition-all duration-300"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-violet-700 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                  <div className="absolute inset-0 bg-gradient-to-r from-violet-500/20 to-purple-500/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
                   <span className="relative">CREATE NEW</span>
                 </Link>
               </div>
 
               {loadingData ? (
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-12 text-center">
-                  <div className="relative w-8 h-8 mx-auto mb-4">
-                    <div className="w-8 h-8 border-2 border-violet-400 border-t-transparent rounded-full animate-spin"></div>
+                <div className="bg-zinc-900/30 border border-zinc-700/30 rounded-2xl p-16 text-center backdrop-blur-xl">
+                  <div className="relative w-8 h-8 mx-auto mb-6">
+                    <div className="w-8 h-8 border border-violet-400/30 border-t-violet-400 rounded-full animate-spin"></div>
                   </div>
-                  <p className="text-zinc-400 font-mono text-sm">Loading data...</p>
+                  <p className="text-zinc-400 font-mono text-sm tracking-[0.15em]">LOADING DATA...</p>
                 </div>
               ) : userAuctions.length === 0 ? (
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-12 text-center">
-                  <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <div className="w-8 h-8 border-2 border-zinc-600 rounded-full"></div>
+                <div className="bg-zinc-900/30 border border-zinc-700/30 rounded-2xl p-16 text-center backdrop-blur-xl">
+                  <div className="w-20 h-20 bg-zinc-800/50 rounded-full flex items-center justify-center mx-auto mb-8">
+                    <div className="w-10 h-10 border border-zinc-600/50 rounded-full"></div>
                   </div>
-                  <p className="text-zinc-300 text-lg mb-4 font-medium">No auctions found</p>
-                  <p className="text-zinc-500 text-sm mb-6 font-mono">Create your first auction</p>
+                  <p className="text-zinc-300 text-xl mb-4 font-medium">NO AUCTIONS FOUND</p>
+                  <p className="text-zinc-500 text-sm mb-8 font-mono tracking-[0.15em]">CREATE YOUR FIRST AUCTION</p>
                   <Link 
                     href="/creator/create-auction"
-                    className="inline-flex items-center text-violet-400 hover:text-violet-300 font-mono text-sm"
+                    className="inline-flex items-center text-violet-400 hover:text-violet-300 font-mono text-sm tracking-[0.15em] transition-colors"
                   >
-                    Create Auction →
+                    CREATE AUCTION →
                   </Link>
                 </div>
               ) : (
@@ -487,17 +487,14 @@ export default function DashboardPage() {
                     const endTime = new Date(auction.end_time);
                     const isActive = auction.status === 'active' && endTime > now;
                     const isExpired = auction.status === 'active' && endTime <= now;
-                    const isPending = auction.status === 'pending';
                     
                     return (
-                      <div key={auction.id} className="relative group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                        <div className="relative bg-zinc-900/80 border border-zinc-800 rounded-lg p-6 backdrop-blur-sm">
-                          {/* IMPROVED GRID LAYOUT */}
-                          <div className="grid grid-cols-12 gap-4 items-center">
-                            {/* Index + Image */}
+                      <div key={auction.id} className="group relative overflow-hidden rounded-2xl border border-zinc-700/30 bg-zinc-900/30 backdrop-blur-xl hover:border-zinc-600/50 transition-all duration-300">
+                        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                        <div className="relative p-6">
+                          <div className="grid grid-cols-12 gap-6 items-center">
                             <div className="col-span-1 flex items-center justify-center">
-                              <div className="text-xs text-zinc-500 font-mono">
+                              <div className="text-xs text-zinc-500 font-mono tracking-[0.1em]">
                                 {String(index + 1).padStart(2, '0')}
                               </div>
                             </div>
@@ -505,31 +502,35 @@ export default function DashboardPage() {
                             <div className="col-span-1">
                               <ItemImage 
                                 item={auction}
-                                size={64}
-                                className="w-16 h-16 rounded-lg"
+                                size={56}
+                                className="w-14 h-14 rounded-xl border border-zinc-700/30"
                               />
                             </div>
                             
-                            {/* Title - Fixed width to prevent shifting */}
                             <div className="col-span-4">
-                              <h3 className="text-lg font-bold text-white leading-tight line-clamp-2">
+                              <h3 className="text-lg font-bold text-white leading-tight line-clamp-1 mb-1">
                                 {auction.title}
                               </h3>
+                              <div className="text-xs text-zinc-500 font-mono tracking-[0.1em]">
+                                CREATED {new Date(auction.created_at).toLocaleDateString('en-US', { 
+                                  month: 'short', 
+                                  day: 'numeric' 
+                                })}
+                              </div>
                             </div>
                             
-                            {/* Stats - Fixed width columns */}
                             <div className="col-span-1 text-center">
-                              <div className="text-xs text-zinc-500 font-mono mb-1">BID</div>
+                              <div className="text-xs text-zinc-500 font-mono mb-1 tracking-[0.1em]">BID</div>
                               <div className="text-white font-mono text-sm">${formatPrice(auction.current_price)}</div>
                             </div>
                             
                             <div className="col-span-1 text-center">
-                              <div className="text-xs text-zinc-500 font-mono mb-1">BIDS</div>
+                              <div className="text-xs text-zinc-500 font-mono mb-1 tracking-[0.1em]">BIDS</div>
                               <div className="text-white font-mono text-sm">{auction.bid_count || 0}</div>
                             </div>
                             
                             <div className="col-span-1 text-center">
-                              <div className="text-xs text-zinc-500 font-mono mb-1">ENDS</div>
+                              <div className="text-xs text-zinc-500 font-mono mb-1 tracking-[0.1em]">ENDS</div>
                               <div className="text-white font-mono text-xs">
                                 {new Date(auction.end_time).toLocaleDateString('en-US', { 
                                   month: 'short', 
@@ -539,35 +540,34 @@ export default function DashboardPage() {
                             </div>
                             
                             <div className="col-span-1 flex justify-center">
-                              <div className={`inline-flex items-center px-2 py-1 rounded text-xs font-mono ${
-                                isActive ? 'bg-green-600 text-white' :
-                                isExpired ? 'bg-amber-600 text-white' :
+                              <div className={`inline-flex items-center px-3 py-1 rounded-xl text-xs font-mono tracking-[0.1em] border backdrop-blur-sm ${
+                                isActive ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                                isExpired ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
                                 getStatusColor(auction.status)
                               }`}>
                                 {isActive ? 'ACTIVE' : isExpired ? 'EXPIRED' : auction.status.toUpperCase()}
                               </div>
                             </div>
                             
-                            {/* Actions - Fixed width */}
-                            <div className="col-span-2 flex items-center justify-end space-x-3">
+                            <div className="col-span-2 flex items-center justify-end space-x-4">
                               <Link 
                                 href={`/auctions/${auction.id}`}
-                                className="text-xs text-zinc-400 hover:text-white font-mono transition-colors"
+                                className="text-xs text-zinc-400 hover:text-white font-mono transition-colors tracking-[0.1em]"
                               >
                                 VIEW
                               </Link>
-                              {(isActive || isPending) && (
+                              {(isActive || auction.status === 'pending') && (
                                 <>
-                                  <div className="w-px h-4 bg-zinc-700"></div>
+                                  <div className="w-px h-4 bg-zinc-700/50"></div>
                                   <Link 
                                     href={`/creator/auctions/${auction.id}/edit`}
-                                    className="text-xs text-zinc-400 hover:text-white font-mono transition-colors"
+                                    className="text-xs text-zinc-400 hover:text-white font-mono transition-colors tracking-[0.1em]"
                                   >
                                     EDIT
                                   </Link>
                                   <button
                                     onClick={() => setShowDeleteConfirm(auction.id)}
-                                    className="text-xs text-red-400 hover:text-red-300 font-mono transition-colors"
+                                    className="text-xs text-red-400 hover:text-red-300 font-mono transition-colors tracking-[0.1em]"
                                     disabled={deletingId === auction.id}
                                   >
                                     {deletingId === auction.id ? 'DEL...' : 'DELETE'}
@@ -578,19 +578,19 @@ export default function DashboardPage() {
                           </div>
                           
                           {showDeleteConfirm === auction.id && (
-                            <div className="mt-6 p-4 bg-red-950/50 border border-red-800/50 rounded-lg">
-                              <p className="text-red-200 mb-4 font-mono text-sm">Confirm deletion - This action is irreversible</p>
-                              <div className="flex space-x-3">
+                            <div className="mt-6 p-6 bg-red-950/30 border border-red-800/30 rounded-xl backdrop-blur-sm">
+                              <p className="text-red-200 mb-4 font-mono text-sm tracking-[0.1em]">CONFIRM DELETION - THIS ACTION IS IRREVERSIBLE</p>
+                              <div className="flex space-x-4">
                                 <button
                                   onClick={() => handleDeleteAuction(auction.id)}
-                                  className="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded font-mono text-xs transition-colors"
+                                  className="bg-red-600/20 hover:bg-red-600/30 border border-red-500/30 text-red-300 px-6 py-2 rounded-xl font-mono text-xs tracking-[0.1em] transition-colors"
                                   disabled={deletingId === auction.id}
                                 >
                                   {deletingId === auction.id ? 'DELETING...' : 'CONFIRM'}
                                 </button>
                                 <button
                                   onClick={() => setShowDeleteConfirm(null)}
-                                  className="bg-zinc-700 hover:bg-zinc-600 text-white px-4 py-2 rounded font-mono text-xs transition-colors"
+                                  className="bg-zinc-700/20 hover:bg-zinc-700/30 border border-zinc-600/30 text-zinc-300 px-6 py-2 rounded-xl font-mono text-xs tracking-[0.1em] transition-colors"
                                 >
                                   CANCEL
                                 </button>
@@ -605,31 +605,30 @@ export default function DashboardPage() {
               )}
             </section>
 
-            {/* Sales History - IMPROVED LAYOUT */}
+            {/* Sales History */}
             <section>
-              <div className="flex items-center space-x-4 mb-8">
-                <div className="w-8 h-px bg-violet-400"></div>
-                <h2 className="text-2xl font-bold text-white">SALES HISTORY</h2>
-                <div className="px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 rounded text-xs font-mono text-emerald-300">
-                  {sales.length}
+              <div className="flex items-center space-x-6 mb-12">
+                <div className="w-12 h-px bg-gradient-to-r from-transparent via-emerald-400 to-transparent"></div>
+                <h2 className="text-3xl font-black text-white tracking-tight">SALES HISTORY</h2>
+                <div className="px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-xl backdrop-blur-sm">
+                  <span className="text-xs font-mono text-emerald-300 tracking-[0.15em]">{sales.length}</span>
                 </div>
               </div>
               
               {sales.length === 0 ? (
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-12 text-center">
-                  <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <div className="w-8 h-8 border-2 border-zinc-600 rounded-full"></div>
+                <div className="bg-zinc-900/30 border border-zinc-700/30 rounded-2xl p-16 text-center backdrop-blur-xl">
+                  <div className="w-20 h-20 bg-zinc-800/50 rounded-full flex items-center justify-center mx-auto mb-8">
+                    <div className="w-10 h-10 border border-zinc-600/50 rounded-full"></div>
                   </div>
-                  <p className="text-zinc-400 font-mono text-sm">No sales recorded</p>
+                  <p className="text-zinc-400 font-mono text-sm tracking-[0.15em]">NO SALES RECORDED</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {sales.slice(0, 5).map((sale, index) => (
-                    <div key={sale.id} className="bg-zinc-900/80 border border-zinc-800 rounded-lg p-4 backdrop-blur-sm">
-                      {/* IMPROVED SALES GRID */}
+                    <div key={sale.id} className="bg-zinc-900/30 border border-zinc-700/30 rounded-2xl p-4 backdrop-blur-xl">
                       <div className="grid grid-cols-12 gap-4 items-center">
                         <div className="col-span-1 flex items-center justify-center">
-                          <div className="text-xs text-zinc-500 font-mono">
+                          <div className="text-xs text-zinc-500 font-mono tracking-[0.1em]">
                             {String(index + 1).padStart(2, '0')}
                           </div>
                         </div>
@@ -637,26 +636,26 @@ export default function DashboardPage() {
                         <div className="col-span-1">
                           <ItemImage 
                             item={sale}
-                            size={48}
-                            className="w-12 h-12 rounded"
+                            size={40}
+                            className="w-10 h-10 rounded-lg border border-zinc-700/30"
                           />
                         </div>
                         
-                        <div className="col-span-5">
+                        <div className="col-span-6">
                           <h4 className="text-white font-medium leading-tight line-clamp-1">{sale.auction_title}</h4>
-                          <p className="text-xs text-zinc-400 font-mono">
+                          <p className="text-xs text-zinc-400 font-mono tracking-[0.1em] mt-1">
                             BUYER: {sale.buyer_display_name || sale.buyer_username}
                           </p>
                         </div>
                         
                         <div className="col-span-2 text-center">
-                          <div className="text-xs text-zinc-500 font-mono mb-1">FINAL PRICE</div>
-                          <div className="text-emerald-400 font-mono text-lg">${formatPrice(sale.final_price)}</div>
+                          <div className="text-xs text-zinc-500 font-mono mb-1 tracking-[0.1em]">FINAL PRICE</div>
+                          <div className="text-emerald-400 font-mono text-sm">${formatPrice(sale.final_price)}</div>
                         </div>
                         
-                        <div className="col-span-2 text-center">
-                          <div className="text-xs text-zinc-500 font-mono mb-1">DATE</div>
-                          <div className="text-zinc-300 font-mono text-sm">
+                        <div className="col-span-1 text-center">
+                          <div className="text-xs text-zinc-500 font-mono mb-1 tracking-[0.1em]">DATE</div>
+                          <div className="text-zinc-300 font-mono text-xs">
                             {new Date(sale.created_at).toLocaleDateString('en-US', { 
                               month: 'short', 
                               day: 'numeric' 
@@ -665,7 +664,7 @@ export default function DashboardPage() {
                         </div>
                         
                         <div className="col-span-1 flex justify-center">
-                          <div className={`px-2 py-1 rounded text-xs font-mono ${getStatusColor(sale.shipping_status)}`}>
+                          <div className={`px-2 py-1 rounded-lg text-xs font-mono tracking-[0.1em] border backdrop-blur-sm ${getStatusColor(sale.shipping_status)}`}>
                             {sale.shipping_status.toUpperCase()}
                           </div>
                         </div>
@@ -677,74 +676,74 @@ export default function DashboardPage() {
             </section>
           </div>
         ) : (
-          // COLLECTOR DASHBOARD
-          <div className="space-y-16">
+          // COLLECTOR INTERFACE
+          <div className="space-y-20">
             {/* Watchlist */}
             <section>
-              <div className="flex items-center space-x-4 mb-8">
-                <div className="w-8 h-px bg-violet-400"></div>
-                <h2 className="text-2xl font-bold text-white">WATCHLIST</h2>
-                <div className="px-3 py-1 bg-violet-500/20 border border-violet-500/30 rounded text-xs font-mono text-violet-300">
-                  {watchlist.length}
+              <div className="flex items-center space-x-6 mb-12">
+                <div className="w-12 h-px bg-gradient-to-r from-transparent via-violet-400 to-transparent"></div>
+                <h2 className="text-3xl font-black text-white tracking-tight">WATCHLIST</h2>
+                <div className="px-4 py-2 bg-violet-500/20 border border-violet-500/30 rounded-xl backdrop-blur-sm">
+                  <span className="text-xs font-mono text-violet-300 tracking-[0.15em]">{watchlist.length}</span>
                 </div>
               </div>
               
               {loadingData ? (
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-12 text-center">
-                  <div className="relative w-8 h-8 mx-auto mb-4">
-                    <div className="w-8 h-8 border-2 border-violet-400 border-t-transparent rounded-full animate-spin"></div>
+                <div className="bg-zinc-900/30 border border-zinc-700/30 rounded-2xl p-16 text-center backdrop-blur-xl">
+                  <div className="relative w-8 h-8 mx-auto mb-6">
+                    <div className="w-8 h-8 border border-violet-400/30 border-t-violet-400 rounded-full animate-spin"></div>
                   </div>
-                  <p className="text-zinc-400 font-mono text-sm">Loading watchlist...</p>
+                  <p className="text-zinc-400 font-mono text-sm tracking-[0.15em]">LOADING WATCHLIST...</p>
                 </div>
               ) : watchlist.length === 0 ? (
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-12 text-center">
-                  <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <div className="w-8 h-8 border-2 border-zinc-600 rounded-full"></div>
+                <div className="bg-zinc-900/30 border border-zinc-700/30 rounded-2xl p-16 text-center backdrop-blur-xl">
+                  <div className="w-20 h-20 bg-zinc-800/50 rounded-full flex items-center justify-center mx-auto mb-8">
+                    <div className="w-10 h-10 border border-zinc-600/50 rounded-full"></div>
                   </div>
-                  <p className="text-zinc-300 text-lg mb-4 font-medium">Watchlist empty</p>
-                  <p className="text-zinc-500 text-sm mb-6 font-mono">Discover auctions</p>
+                  <p className="text-zinc-300 text-xl mb-4 font-medium">WATCHLIST EMPTY</p>
+                  <p className="text-zinc-500 text-sm mb-8 font-mono tracking-[0.15em]">DISCOVER AUCTIONS</p>
                   <Link 
                     href="/auctions"
-                    className="inline-flex items-center text-violet-400 hover:text-violet-300 font-mono text-sm"
+                    className="inline-flex items-center text-violet-400 hover:text-violet-300 font-mono text-sm tracking-[0.15em] transition-colors"
                   >
-                    Browse Auctions →
+                    BROWSE AUCTIONS →
                   </Link>
                 </div>
               ) : (
-                <div className="grid gap-4">
+                <div className="space-y-4">
                   {watchlist.map((auction, index) => (
-                    <div key={auction.id} className="relative group">
-                      <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      <div className="relative bg-zinc-900/80 border border-zinc-800 rounded-lg p-6 backdrop-blur-sm">
+                    <div key={auction.id} className="group relative overflow-hidden rounded-2xl border border-zinc-700/30 bg-zinc-900/30 backdrop-blur-xl hover:border-zinc-600/50 transition-all duration-300">
+                      <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                      <div className="relative p-6">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-6">
                             <div className="flex items-center space-x-4">
-                              <div className="text-xs text-zinc-500 font-mono w-8">
+                              <div className="text-xs text-zinc-500 font-mono tracking-[0.1em] w-8">
                                 {String(index + 1).padStart(2, '0')}
                               </div>
                               <ItemImage 
                                 item={auction}
                                 size={64}
-                                className="w-16 h-16 rounded-lg flex-shrink-0"
+                                className="w-16 h-16 rounded-xl border border-zinc-700/30"
                               />
                             </div>
                             
                             <div className="flex-1">
-                              <h3 className="text-lg font-bold text-white mb-2">{auction.title}</h3>
+                              <h3 className="text-lg font-bold text-white mb-3">{auction.title}</h3>
                               <div className="grid grid-cols-3 gap-8 text-sm">
                                 <div>
-                                  <div className="text-xs text-zinc-500 font-mono mb-1">CURRENT BID</div>
+                                  <div className="text-xs text-zinc-500 font-mono mb-1 tracking-[0.1em]">CURRENT BID</div>
                                   <div className="text-white font-mono">${formatPrice(auction.current_price)}</div>
                                 </div>
                                 <div>
-                                  <div className="text-xs text-zinc-500 font-mono mb-1">ENDS</div>
+                                  <div className="text-xs text-zinc-500 font-mono mb-1 tracking-[0.1em]">ENDS</div>
                                   <div className="text-white font-mono text-sm">
                                     {new Date(auction.end_time).toLocaleDateString()}
                                   </div>
                                 </div>
                                 <div>
-                                  <div className="text-xs text-zinc-500 font-mono mb-1">STATUS</div>
-                                  <div className={`inline-flex items-center px-2 py-1 rounded text-xs font-mono ${getStatusColor(auction.status)}`}>
+                                  <div className="text-xs text-zinc-500 font-mono mb-1 tracking-[0.1em]">STATUS</div>
+                                  <div className={`inline-flex items-center px-3 py-1 rounded-xl text-xs font-mono tracking-[0.1em] border backdrop-blur-sm ${getStatusColor(auction.status)}`}>
                                     {auction.status.toUpperCase()}
                                   </div>
                                 </div>
@@ -754,7 +753,7 @@ export default function DashboardPage() {
                           
                           <Link 
                             href={`/auctions/${auction.id}`}
-                            className="bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-lg font-mono text-xs transition-colors transform hover:scale-105"
+                            className="px-8 py-4 rounded-xl border border-violet-400/30 bg-gradient-to-r from-violet-500/10 to-purple-500/10 backdrop-blur-sm text-white font-mono text-xs tracking-[0.15em] hover:from-violet-500/20 hover:to-purple-500/20 hover:border-violet-400/50 transition-all duration-300"
                           >
                             VIEW AUCTION
                           </Link>
@@ -768,38 +767,38 @@ export default function DashboardPage() {
 
             {/* Purchase History */}
             <section>
-              <div className="flex items-center space-x-4 mb-8">
-                <div className="w-8 h-px bg-violet-400"></div>
-                <h2 className="text-2xl font-bold text-white">PURCHASE HISTORY</h2>
-                <div className="px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 rounded text-xs font-mono text-emerald-300">
-                  {purchases.length}
+              <div className="flex items-center space-x-6 mb-12">
+                <div className="w-12 h-px bg-gradient-to-r from-transparent via-emerald-400 to-transparent"></div>
+                <h2 className="text-3xl font-black text-white tracking-tight">PURCHASE HISTORY</h2>
+                <div className="px-4 py-2 bg-emerald-500/20 border border-emerald-500/30 rounded-xl backdrop-blur-sm">
+                  <span className="text-xs font-mono text-emerald-300 tracking-[0.15em]">{purchases.length}</span>
                 </div>
               </div>
               
               {purchases.length === 0 ? (
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg p-12 text-center">
-                  <div className="w-16 h-16 bg-zinc-800 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <div className="w-8 h-8 border-2 border-zinc-600 rounded-full"></div>
+                <div className="bg-zinc-900/30 border border-zinc-700/30 rounded-2xl p-16 text-center backdrop-blur-xl">
+                  <div className="w-20 h-20 bg-zinc-800/50 rounded-full flex items-center justify-center mx-auto mb-8">
+                    <div className="w-10 h-10 border border-zinc-600/50 rounded-full"></div>
                   </div>
-                  <p className="text-zinc-400 font-mono text-sm">No purchases recorded</p>
+                  <p className="text-zinc-400 font-mono text-sm tracking-[0.15em]">NO PURCHASES RECORDED</p>
                 </div>
               ) : (
                 <div className="space-y-3">
                   {purchases.map((purchase, index) => (
-                    <div key={purchase.id} className="bg-zinc-900/80 border border-zinc-800 rounded-lg p-4 backdrop-blur-sm">
+                    <div key={purchase.id} className="bg-zinc-900/30 border border-zinc-700/30 rounded-2xl p-4 backdrop-blur-xl">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-4">
-                          <div className="text-xs text-zinc-500 font-mono w-8">
+                          <div className="text-xs text-zinc-500 font-mono tracking-[0.1em] w-8">
                             {String(index + 1).padStart(2, '0')}
                           </div>
                           <ItemImage 
                             item={purchase}
                             size={48}
-                            className="w-12 h-12 rounded"
+                            className="w-12 h-12 rounded-lg border border-zinc-700/30"
                           />
                           <div>
                             <h4 className="text-white font-medium">{purchase.auction_title}</h4>
-                            <p className="text-xs text-zinc-400 font-mono">
+                            <p className="text-xs text-zinc-400 font-mono tracking-[0.1em] mt-1">
                               FROM: {purchase.seller_display_name || purchase.seller_username}
                             </p>
                           </div>
@@ -807,16 +806,16 @@ export default function DashboardPage() {
                         
                         <div className="flex items-center space-x-8">
                           <div className="text-right">
-                            <div className="text-xs text-zinc-500 font-mono">PAID</div>
+                            <div className="text-xs text-zinc-500 font-mono tracking-[0.1em]">PAID</div>
                             <div className="text-white font-mono text-lg">${formatPrice(purchase.final_price)}</div>
                           </div>
                           <div className="text-right">
-                            <div className="text-xs text-zinc-500 font-mono">DATE</div>
+                            <div className="text-xs text-zinc-500 font-mono tracking-[0.1em]">DATE</div>
                             <div className="text-zinc-300 font-mono text-sm">
                               {new Date(purchase.created_at).toLocaleDateString()}
                             </div>
                           </div>
-                          <div className={`px-2 py-1 rounded text-xs font-mono ${getStatusColor(purchase.shipping_status)}`}>
+                          <div className={`px-3 py-1 rounded-xl text-xs font-mono tracking-[0.1em] border backdrop-blur-sm ${getStatusColor(purchase.shipping_status)}`}>
                             {purchase.shipping_status.toUpperCase()}
                           </div>
                         </div>
