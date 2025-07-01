@@ -207,11 +207,13 @@ export async function GET(request: NextRequest) {
         ai.start_time, ai.end_time, ai.condition,
         av.video_url, av.declaration_text, av.status as video_status,
         c.name as category_name,
+        aii.image_url,
         (SELECT COUNT(*) FROM bids WHERE auction_item_id = ai.id) as bid_count
        FROM authenticated_listings al
        JOIN auction_items ai ON al.auction_item_id = ai.id
        JOIN auth_videos av ON al.auth_video_id = av.id
        LEFT JOIN categories c ON ai.category_id = c.id
+       LEFT JOIN auction_item_images aii ON ai.id = aii.auction_item_id AND aii.is_primary = true
        WHERE al.creator_id = $1
        ORDER BY al.created_at DESC`,
       [user.id]
