@@ -226,13 +226,13 @@ export default function NewVideoAuthPage() {
             <div className="flex items-center justify-between">
               <div>
                 <h1 className="text-3xl font-bold mb-2 bg-gradient-to-r from-white via-violet-200 to-emerald-200 bg-clip-text text-transparent">
-                  Verified Creator System
-                </h1>
+              Verified Creator System
+            </h1>
                 <p className="text-zinc-400">
                   Transform your content into authenticated auctions
-                </p>
-              </div>
-              
+            </p>
+          </div>
+
               {/* Compact Progress Indicators */}
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2">
@@ -254,12 +254,12 @@ export default function NewVideoAuthPage() {
                   <span className="text-sm text-zinc-400">Auctions</span>
                 </div>
               </div>
+              </div>
             </div>
           </div>
-        </div>
 
         <div className="max-w-7xl mx-auto px-6 pb-12">
-          
+            
           {/* Identity Status Bar */}
           <div className="mb-8">
             <div className={`relative overflow-hidden rounded-xl ${hasVerifiedID ? 'bg-gradient-to-r from-emerald-500/10 to-emerald-500/5' : 'bg-gradient-to-r from-zinc-800/50 to-zinc-800/20'} backdrop-blur-sm border ${hasVerifiedID ? 'border-emerald-500/20' : 'border-zinc-700/30'} p-4`}>
@@ -286,7 +286,7 @@ export default function NewVideoAuthPage() {
                     className="px-3 py-1.5 bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 rounded-lg transition-all duration-200 border border-violet-500/30 text-sm"
                   >
                     {hasVerifiedID ? 'View' : 'Start'}
-                  </button>
+                </button>
                 </div>
               </div>
             </div>
@@ -297,16 +297,16 @@ export default function NewVideoAuthPage() {
             
             {/* Videos Section - Horizontal */}
             <div>
-              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center justify-between mb-4">
                 <h2 className="text-xl font-bold text-white">Authentication Videos</h2>
-                <button
-                  onClick={() => setStep('auth-video')}
-                  disabled={!hasVerifiedID}
+                  <button
+                    onClick={() => setStep('auth-video')}
+                    disabled={!hasVerifiedID}
                   className={`px-4 py-2 rounded-lg transition-all duration-200 text-sm ${hasVerifiedID ? 'bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 border border-violet-500/30' : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/30'}`}
                 >
                   + Add Video
-                </button>
-              </div>
+                  </button>
+                </div>
 
               {authVideos.length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -319,14 +319,14 @@ export default function NewVideoAuthPage() {
                         {/* Header with Status */}
                         <div className="relative bg-gradient-to-r from-zinc-800/50 to-zinc-800/20 p-4 border-b border-zinc-700/30">
                           <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3">
                               <div className={`w-3 h-3 rounded-full ${video.status === 'verified' ? 'bg-emerald-400' : 'bg-amber-400'} animate-pulse`}></div>
-                              <div>
+                            <div>
                                 <h4 className="font-semibold text-white">Authentication Video {index + 1}</h4>
                                 <p className="text-xs text-zinc-400">{video.declared_items_count} items declared</p>
-                              </div>
                             </div>
-                            <div className="flex items-center gap-2">
+                          </div>
+                          <div className="flex items-center gap-2">
                               <span className={`px-2 py-1 rounded-md text-xs font-medium ${video.status === 'verified' ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/20' : 'bg-amber-500/20 text-amber-300 border border-amber-500/20'}`}>
                                 {video.status}
                               </span>
@@ -335,20 +335,20 @@ export default function NewVideoAuthPage() {
                                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                     <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
                                   </svg>
-                                </a>
-                                <button
-                                  onClick={() => setShowDeleteConfirm({type: 'video', id: video.id})}
+                            </a>
+                            <button
+                              onClick={() => setShowDeleteConfirm({type: 'video', id: video.id})}
                                   className="text-red-400 hover:text-red-300 transition-colors p-1"
-                                >
+                            >
                                   <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                                   </svg>
-                                </button>
+                            </button>
                               </div>
                             </div>
                           </div>
                         </div>
-
+                        
                         {/* Video Declaration */}
                         <div className="p-5">
                           <div className="mb-4">
@@ -387,8 +387,8 @@ export default function NewVideoAuthPage() {
                                   width: `${video.declared_items_count > 0 ? (videoListings.length / video.declared_items_count) * 100 : 0}%` 
                                 }}
                               ></div>
-                            </div>
-                          </div>
+                        </div>
+                      </div>
 
                           {/* Action Button */}
                           {video.status === 'verified' && (
@@ -403,13 +403,13 @@ export default function NewVideoAuthPage() {
                           {video.status !== 'verified' && (
                             <div className="w-full px-4 py-2.5 rounded-lg bg-zinc-800/50 border border-zinc-700/50 text-center">
                               <span className="text-zinc-500 text-sm">Awaiting verification</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
+                  </div>
+                )}
+              </div>
+            </div>
                     );
                   })}
-                </div>
+                  </div>
               ) : (
                 <div className="text-center py-12 border-2 border-dashed border-zinc-700/50 rounded-xl">
                   <div className="w-16 h-16 bg-zinc-800/50 rounded-xl flex items-center justify-center mx-auto mb-4">
@@ -419,14 +419,14 @@ export default function NewVideoAuthPage() {
                   </div>
                   <h3 className="text-lg font-medium text-white mb-2">No Authentication Videos</h3>
                   <p className="text-zinc-400 mb-4">Record your first video to start creating verified listings</p>
-                  <button
+                <button
                     onClick={() => setStep('auth-video')}
                     disabled={!hasVerifiedID}
                     className={`px-6 py-3 rounded-lg transition-all duration-200 font-medium ${hasVerifiedID ? 'bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 border border-violet-500/30' : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/30'}`}
                   >
                     {hasVerifiedID ? 'Record Your First Video' : 'Complete ID Verification First'}
-                  </button>
-                </div>
+                </button>
+              </div>
               )}
             </div>
 
@@ -436,9 +436,9 @@ export default function NewVideoAuthPage() {
                 <h2 className="text-xl font-bold text-white">Active Auctions</h2>
                 <div className="text-sm text-zinc-400">
                   {authenticatedListings.length} total listings
-                </div>
-              </div>
-
+                    </div>
+                  </div>
+                  
               {authenticatedListings.length > 0 ? (
                 <div className="space-y-8">
                   {verifiedVideos.map((video, videoIndex) => {
@@ -454,12 +454,12 @@ export default function NewVideoAuthPage() {
                             <h3 className="font-semibold text-white">Authentication Video {videoIndex + 1}</h3>
                             <span className="text-xs text-zinc-500 bg-zinc-800/50 px-2 py-1 rounded">
                               {videoListings.length} items
-                            </span>
+                                </span>
                           </div>
-                          <a 
+                            <a 
                             href={video.video_url} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
+                              target="_blank"
+                              rel="noopener noreferrer"
                             className="text-violet-400 hover:text-violet-300 transition-colors text-xs flex items-center gap-1"
                           >
                             <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
@@ -503,18 +503,18 @@ export default function NewVideoAuthPage() {
                                       <path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z" />
                                       <path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-1a1 1 0 10-2 0v1H5V7h1a1 1 0 000-2H5z" />
                                     </svg>
-                                  </a>
-                                  <button
-                                    onClick={() => setShowDeleteConfirm({type: 'listing', id: listing.id})}
+                            </a>
+                            <button
+                              onClick={() => setShowDeleteConfirm({type: 'listing', id: listing.id})}
                                     className="bg-black/60 text-red-300 hover:text-red-200 p-1 rounded transition-colors"
-                                  >
+                            >
                                     <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                       <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
                                     </svg>
-                                  </button>
-                                </div>
-                              </div>
-
+                            </button>
+                          </div>
+                        </div>
+                        
                               {/* Compact Info */}
                               <div className="p-2.5">
                                 <h4 className="font-medium text-white text-xs leading-tight mb-1.5 group-hover:text-violet-200 transition-colors">
@@ -528,7 +528,7 @@ export default function NewVideoAuthPage() {
                                 
                                 <div className="flex items-center justify-between text-xs">
                                   <span className="bg-zinc-700/50 text-zinc-300 px-1.5 py-0.5 rounded">#{listing.item_position_in_video}</span>
-                                  {listing.video_timestamp_start && (
+                          {listing.video_timestamp_start && (
                                     <span className="text-zinc-500 text-xs">
                                       {listing.video_timestamp_start}s
                                     </span>
@@ -554,46 +554,46 @@ export default function NewVideoAuthPage() {
                   <p className="text-sm text-zinc-500">Your authenticated items will appear here</p>
                 </div>
               )}
-            </div>
+              </div>
           </div>
-        </div>
+          </div>
 
-        {/* Delete Confirmation Modal */}
-        {showDeleteConfirm && (
+          {/* Delete Confirmation Modal */}
+          {showDeleteConfirm && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50">
             <div className="bg-zinc-900/90 backdrop-blur-sm border border-zinc-700/50 rounded-2xl p-8 max-w-md mx-4">
               <h3 className="text-xl font-bold text-white mb-4">
-                Confirm Delete {showDeleteConfirm.type === 'video' ? 'Video' : 'Listing'}
-              </h3>
+                  Confirm Delete {showDeleteConfirm.type === 'video' ? 'Video' : 'Listing'}
+                </h3>
               <p className="text-zinc-300 mb-8 leading-relaxed">
-                {showDeleteConfirm.type === 'video' 
-                  ? 'This will permanently delete your authentication video. Any associated listings must be deleted first.'
-                  : 'This will permanently delete your authenticated listing and remove it from auction. This action cannot be undone.'
-                }
-              </p>
+                  {showDeleteConfirm.type === 'video' 
+                    ? 'This will permanently delete your authentication video. Any associated listings must be deleted first.'
+                    : 'This will permanently delete your authenticated listing and remove it from auction. This action cannot be undone.'
+                  }
+                </p>
               <div className="flex gap-4">
-                <button
-                  onClick={() => setShowDeleteConfirm(null)}
+                  <button
+                    onClick={() => setShowDeleteConfirm(null)}
                   className="flex-1 bg-zinc-700/50 hover:bg-zinc-700 text-white py-3 px-4 rounded-lg transition-all duration-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    if (showDeleteConfirm.type === 'video') {
-                      handleDeleteVideo(showDeleteConfirm.id);
-                    } else {
-                      handleDeleteListing(showDeleteConfirm.id);
-                    }
-                  }}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (showDeleteConfirm.type === 'video') {
+                        handleDeleteVideo(showDeleteConfirm.id);
+                      } else {
+                        handleDeleteListing(showDeleteConfirm.id);
+                      }
+                    }}
                   className="flex-1 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 py-3 px-4 rounded-lg transition-all duration-200"
-                >
-                  Delete
-                </button>
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )}
       </div>
     );
   }

@@ -188,8 +188,8 @@ export default function CreatorDashboard() {
                     Checking status...
                   </div>
                 ) : (
-                  <Link 
-                    href="/creator/new-video-auth"
+                <Link 
+                  href="/creator/new-video-auth"
                     className={`group relative overflow-hidden px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] border backdrop-blur-sm text-white hover:text-white shadow-lg ${
                       isVerified 
                         ? 'border-emerald-400/30 hover:border-emerald-300/50 bg-emerald-500/10 hover:bg-emerald-400/15 shadow-emerald-500/10 hover:shadow-emerald-400/20'
@@ -227,7 +227,7 @@ export default function CreatorDashboard() {
                         ? 'bg-emerald-200/60 group-hover:bg-emerald-100/80 group-hover:w-6'
                         : 'bg-violet-200/60 group-hover:bg-violet-100/80 group-hover:w-6'
                     }`}></div>
-                  </Link>
+                </Link>
                 )}
               </div>
             </div>
@@ -295,7 +295,7 @@ export default function CreatorDashboard() {
                   <div className="relative flex items-center gap-2">
                     <div className="w-2 h-2 bg-emerald-300 group-hover:bg-emerald-100 rounded-full group-hover:shadow-md group-hover:shadow-emerald-200/60 transition-all duration-300"></div>
                     <span className="tracking-wide font-mono text-xs uppercase font-bold">
-                      Start Selling
+                  Start Selling
                     </span>
                     <div className="w-1 h-1 bg-emerald-200 group-hover:bg-emerald-100 rounded-full transition-all duration-300"></div>
                   </div>

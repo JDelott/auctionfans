@@ -451,7 +451,7 @@ export default function DashboardPage() {
                   )}
                 </div>
                 <Link 
-                  href="/creator/create-auction"
+                  href="/creator/"
                   className="group relative overflow-hidden bg-violet-600 hover:bg-violet-700 text-white px-6 py-3 rounded-lg font-medium transition-all duration-300 transform hover:scale-105"
                 >
                   <div className="absolute inset-0 bg-gradient-to-r from-violet-600 to-violet-700 opacity-0 group-hover:opacity-100 transition-opacity"></div>
