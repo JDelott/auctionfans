@@ -59,9 +59,8 @@ export default function NewVideoAuthPage() {
   const [idVerificationStatus, setIdVerificationStatus] = useState<IDVerificationStatus | null>(null);
   const [authVideos, setAuthVideos] = useState<AuthVideo[]>([]);
   const [loadingStatus, setLoadingStatus] = useState(true);
-  const [step, setStep] = useState<Step>('overview'); // Always start with overview
-  const [deletingVideoId, setDeletingVideoId] = useState<string | null>(null);
-  const [deletingListingId, setDeletingListingId] = useState<string | null>(null);
+  const [step, setStep] = useState<Step>('overview');
+  const [selectedVideoForListings, setSelectedVideoForListings] = useState<AuthVideo | null>(null);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<{type: 'video' | 'listing', id: string} | null>(null);
   const [authenticatedListings, setAuthenticatedListings] = useState<AuthenticatedListing[]>([]);
 
@@ -140,21 +139,27 @@ export default function NewVideoAuthPage() {
 
   const handleIDVerificationSubmitted = () => {
     checkVerificationStatus();
-    setStep('overview'); // Return to overview to see updated status
+    setStep('overview');
   };
 
   const handleVideoUploaded = () => {
     fetchAuthVideos();
-    setStep('overview'); // Return to overview to see new video
+    setStep('overview');
+  };
+
+  const handleCreateListingsFromVideo = (video: AuthVideo) => {
+    setSelectedVideoForListings(video);
+    setStep('batch-listings');
   };
 
   const handleListingsCreated = () => {
     fetchAuthVideos();
-    setStep('overview'); // Return to overview
+    fetchAuthenticatedListings();
+    setSelectedVideoForListings(null);
+    setStep('overview');
   };
 
   const handleDeleteVideo = async (videoId: string) => {
-    setDeletingVideoId(videoId);
     try {
       const response = await fetch(`/api/creator-verification/auth-video?id=${videoId}`, {
         method: 'DELETE',
@@ -162,7 +167,7 @@ export default function NewVideoAuthPage() {
 
       if (response.ok) {
         await fetchAuthVideos();
-        await fetchAuthenticatedListings(); // Refresh listings too
+        await fetchAuthenticatedListings();
         setShowDeleteConfirm(null);
       } else {
         const data = await response.json();
@@ -171,13 +176,10 @@ export default function NewVideoAuthPage() {
     } catch (error) {
       console.error('Error deleting video:', error);
       alert('Failed to delete video');
-    } finally {
-      setDeletingVideoId(null);
     }
   };
 
   const handleDeleteListing = async (listingId: string) => {
-    setDeletingListingId(listingId);
     try {
       const response = await fetch(`/api/creator-verification/batch-listings?id=${listingId}`, {
         method: 'DELETE',
@@ -193,15 +195,13 @@ export default function NewVideoAuthPage() {
     } catch (error) {
       console.error('Error deleting listing:', error);
       alert('Failed to delete listing');
-    } finally {
-      setDeletingListingId(null);
     }
   };
 
   if (loading || loadingStatus) {
     return (
-      <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
-        <div className="text-white">Loading...</div>
+      <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-violet-950/20 flex items-center justify-center">
+        <div className="text-white animate-pulse">Loading verification system...</div>
       </div>
     );
   }
@@ -217,378 +217,353 @@ export default function NewVideoAuthPage() {
 
   if (step === 'overview') {
     return (
-      <div className="min-h-screen bg-zinc-950 py-8">
-        <div className="max-w-4xl mx-auto px-6">
-          {/* Header */}
-          <div className="text-center mb-12 relative">
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-48 h-[1px] bg-gradient-to-r from-transparent via-violet-500/40 to-transparent"></div>
-            <h1 className="text-4xl font-black text-white mb-4 tracking-tight">
-              Verified Creator System
-            </h1>
-            <p className="text-xl text-zinc-300 max-w-2xl mx-auto font-light">
-              Manage your verification status and authenticated videos
-            </p>
-          </div>
-
-          {/* Progress Overview */}
-          <div className="mb-12 relative">
-            <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 via-transparent to-emerald-500/5 rounded-2xl blur-xl"></div>
-            <div className="relative bg-zinc-900/50 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-8">
-              <div className="flex items-center justify-between max-w-3xl mx-auto">
-                <StepIndicator
-                  number={1}
-                  title="Identity"
-                  description="Verify with ID + selfie"
-                  completed={hasVerifiedID}
-                  active={false}
-                />
-                <div className="flex-1 h-[2px] bg-zinc-800 mx-6 relative overflow-hidden">
-                  <div 
-                    className={`absolute inset-0 transition-all duration-700 ${hasVerifiedID ? 'bg-gradient-to-r from-violet-500 to-violet-400 w-full' : 'bg-transparent w-0'}`}
-                  />
-                </div>
-                <StepIndicator
-                  number={2}
-                  title="Videos"
-                  description={`${verifiedVideos.length} verified videos`}
-                  completed={verifiedVideos.length > 0}
-                  active={false}
-                />
-                <div className="flex-1 h-[2px] bg-zinc-800 mx-6 relative overflow-hidden">
-                  <div 
-                    className={`absolute inset-0 transition-all duration-700 ${canCreateListings ? 'bg-gradient-to-r from-violet-500 to-emerald-500 w-full' : 'bg-transparent w-0'}`}
-                  />
-                </div>
-                <StepIndicator
-                  number={3}
-                  title="Listings"
-                  description="Create verified auctions"
-                  completed={false}
-                  active={canCreateListings}
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Action Cards */}
-          <div className="grid gap-6">
-            
-            {/* ID Verification Card */}
-            <div className="relative bg-zinc-950/80 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-violet-500/10 to-transparent rounded-full blur-2xl"></div>
-              <div className="relative flex items-center justify-between">
-                <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className={`w-3 h-3 rounded-full ${hasVerifiedID ? 'bg-emerald-400' : 'bg-zinc-600'}`}></div>
-                    <h3 className="text-xl font-bold text-white tracking-tight">Identity Verification</h3>
-                  </div>
-                  <p className="text-zinc-300 mb-4">
-                    {hasVerifiedID 
-                      ? "✓ Your identity is verified and active" 
-                      : "Upload government ID and selfie photos for verification"}
-                  </p>
-                  <div className="text-sm text-zinc-400">
-                    Status: <span className={hasVerifiedID ? 'text-emerald-400' : 'text-zinc-300'}>{idVerificationStatus?.status || 'Not started'}</span>
-                  </div>
-                </div>
-                <button
-                  onClick={() => setStep('id-verification')}
-                  className={`group relative overflow-hidden border px-6 py-3 rounded-lg transition-all duration-300 ${
-                    hasVerifiedID 
-                      ? 'border-emerald-500/40 hover:border-emerald-400/80 bg-zinc-950/90'
-                      : 'border-violet-500/40 hover:border-violet-400/80 bg-zinc-950/90'
-                  }`}
-                >
-                  <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
-                    hasVerifiedID 
-                      ? 'bg-gradient-to-r from-emerald-500/10 to-transparent'
-                      : 'bg-gradient-to-r from-violet-500/10 to-transparent'
-                  }`}></div>
-                  <span className={`relative font-medium tracking-wider ${
-                    hasVerifiedID 
-                      ? 'text-emerald-300 group-hover:text-white'
-                      : 'text-violet-300 group-hover:text-white'
-                  }`}>
-                    {hasVerifiedID ? 'VIEW STATUS' : 'START VERIFICATION'}
-                  </span>
-                </button>
-              </div>
+      <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-violet-950/20">
+        {/* Floating Header */}
+        <div className="relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-transparent to-emerald-500/10 blur-3xl"></div>
+          <div className="relative max-w-7xl mx-auto px-6 pt-12 pb-8">
+            <div className="text-center mb-4">
+              <h1 className="text-4xl font-bold mb-3 bg-gradient-to-r from-white via-violet-200 to-emerald-200 bg-clip-text text-transparent">
+                Verified Creator System
+              </h1>
+              <p className="text-lg text-zinc-400 max-w-2xl mx-auto">
+                Transform your content into authenticated auctions with our verification pipeline
+              </p>
             </div>
 
-            {/* Auth Videos Card */}
-            <div className="relative bg-zinc-950/80 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-full blur-2xl"></div>
-              <div className="relative">
-                <div className="flex items-center justify-between mb-4">
+            {/* Progress Flow */}
+            <div className="flex items-center justify-center space-x-8 mt-12 mb-16 max-w-4xl mx-auto">
+              <ProgressNode 
+                icon="👤" 
+                title="Identity" 
+                subtitle="Verify with ID + selfie"
+                completed={hasVerifiedID}
+                onClick={() => setStep('id-verification')}
+              />
+              <FlowArrow completed={hasVerifiedID} />
+              <ProgressNode 
+                icon="📹" 
+                title="Videos" 
+                subtitle={`${verifiedVideos.length} verified videos`}
+                completed={verifiedVideos.length > 0}
+                onClick={() => setStep('auth-video')}
+                disabled={!hasVerifiedID}
+              />
+              <FlowArrow completed={canCreateListings} />
+              <ProgressNode 
+                icon="🚀" 
+                title="Listings" 
+                subtitle={`${authenticatedListings.length} active auctions`}
+                completed={authenticatedListings.length > 0}
+                onClick={() => setStep('batch-listings')}
+                disabled={!canCreateListings}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="max-w-7xl mx-auto px-6 pb-20">
+          
+          {/* Identity Status Strip */}
+          <div className="mb-12">
+            <div className={`relative overflow-hidden rounded-2xl ${hasVerifiedID ? 'bg-gradient-to-r from-emerald-500/10 to-emerald-500/5' : 'bg-gradient-to-r from-zinc-800/50 to-zinc-800/20'} backdrop-blur-sm border ${hasVerifiedID ? 'border-emerald-500/20' : 'border-zinc-700/30'}`}>
+              {hasVerifiedID && (
+                <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 via-transparent to-transparent"></div>
+              )}
+              <div className="relative p-6 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center text-lg ${hasVerifiedID ? 'bg-emerald-500/20 text-emerald-400' : 'bg-zinc-700/50 text-zinc-400'}`}>
+                    {hasVerifiedID ? '✓' : '👤'}
+                  </div>
                   <div>
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className={`w-3 h-3 rounded-full ${verifiedVideos.length > 0 ? 'bg-emerald-400' : 'bg-zinc-600'}`}></div>
-                      <h3 className="text-xl font-bold text-white tracking-tight">Authentication Videos</h3>
-                    </div>
-                    <p className="text-zinc-300">
-                      {hasVerifiedID 
-                        ? `Record videos declaring items for authentication. You have ${verifiedVideos.length} verified videos.`
-                        : "Complete ID verification first to upload videos"}
+                    <h3 className="text-xl font-semibold text-white">Identity Verification</h3>
+                    <p className="text-zinc-400">
+                      {hasVerifiedID ? "Your identity is verified and active" : "Upload government ID and selfie to get started"}
                     </p>
                   </div>
+                </div>
+                <div className="flex items-center gap-4">
+                  <div className={`px-3 py-1.5 rounded-lg text-sm font-medium ${hasVerifiedID ? 'bg-emerald-500/20 text-emerald-300' : 'bg-zinc-700/50 text-zinc-400'}`}>
+                    {idVerificationStatus?.status || 'Not started'}
+                  </div>
+                  <button
+                    onClick={() => setStep('id-verification')}
+                    className="px-4 py-2 bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 rounded-lg transition-all duration-200 border border-violet-500/30"
+                  >
+                    {hasVerifiedID ? 'View Status' : 'Start Verification'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Content Grid */}
+          <div className="grid lg:grid-cols-2 gap-12">
+            
+            {/* Videos Section */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold text-white mb-2">Authentication Videos</h2>
+                  <p className="text-zinc-400">
+                    {hasVerifiedID 
+                      ? "Record videos declaring items for authentication"
+                      : "Complete ID verification first"}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setStep('auth-video')}
+                  disabled={!hasVerifiedID}
+                  className={`px-4 py-2 rounded-lg transition-all duration-200 ${hasVerifiedID ? 'bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 border border-violet-500/30' : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/30'}`}
+                >
+                  + Add Video
+                </button>
+              </div>
+
+              {authVideos.length > 0 ? (
+                <div className="space-y-4">
+                  {authVideos.map((video, index) => {
+                    const videoListings = authenticatedListings.filter(listing => listing.auth_video_id === video.id);
+                    const availableSlots = video.declared_items_count - videoListings.length;
+                    
+                    return (
+                      <div key={video.id} className="group relative">
+                        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
+                        <div className="relative bg-zinc-900/30 backdrop-blur-sm border border-zinc-700/30 rounded-xl p-5 hover:border-zinc-600/50 transition-all duration-300">
+                          <div className="flex items-start justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-3 h-3 rounded-full ${video.status === 'verified' ? 'bg-emerald-400' : 'bg-amber-400'} animate-pulse`}></div>
+                              <div>
+                                <h4 className="font-semibold text-white">Authentication Video {index + 1}</h4>
+                                <p className="text-sm text-zinc-400">{video.declared_items_count} items declared</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className={`px-2 py-1 rounded-md text-xs ${video.status === 'verified' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-amber-500/20 text-amber-300'}`}>
+                                {video.status}
+                              </span>
+                              <a href={video.video_url} target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:text-violet-300 transition-colors">
+                                <span className="text-sm">▶</span>
+                              </a>
+                              <button
+                                onClick={() => setShowDeleteConfirm({type: 'video', id: video.id})}
+                                className="text-red-400 hover:text-red-300 transition-colors text-sm"
+                              >
+                                ×
+                              </button>
+                            </div>
+                          </div>
+                          <div className="bg-zinc-800/50 rounded-lg p-3 mt-3 mb-3">
+                            <p className="text-sm text-zinc-300 leading-relaxed">
+                              {video.declaration_text.length > 120 
+                                ? `${video.declaration_text.substring(0, 120)}...` 
+                                : video.declaration_text}
+                            </p>
+                          </div>
+                          
+                          {/* Video Actions */}
+                          <div className="flex items-center justify-between pt-3 border-t border-zinc-700/50">
+                            <div className="flex items-center gap-4 text-xs text-zinc-500">
+                              <span>{videoListings.length} active listings</span>
+                              {video.status === 'verified' && (
+                                <>
+                                  <span>•</span>
+                                  <span className={availableSlots > 0 ? 'text-emerald-400' : 'text-amber-400'}>
+                                    {availableSlots} slots available
+                                  </span>
+                                </>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {video.status === 'verified' && (
+                                <button
+                                  onClick={() => handleCreateListingsFromVideo(video)}
+                                  disabled={availableSlots <= 0}
+                                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+                                    availableSlots > 0
+                                      ? 'bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30'
+                                      : 'bg-zinc-700/50 text-zinc-500 border border-zinc-700/30 cursor-not-allowed'
+                                  }`}
+                                >
+                                  {availableSlots > 0 ? 'Create Listings' : 'All Listed'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-12 border-2 border-dashed border-zinc-700/50 rounded-xl">
+                  <div className="w-16 h-16 bg-zinc-800/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="text-2xl">📹</span>
+                  </div>
+                  <p className="text-zinc-400 mb-4">No authentication videos yet</p>
                   <button
                     onClick={() => setStep('auth-video')}
                     disabled={!hasVerifiedID}
-                    className={`group relative overflow-hidden border px-6 py-3 rounded-lg transition-all duration-300 ${
-                      hasVerifiedID
-                        ? 'border-emerald-500/40 hover:border-emerald-400/80 bg-zinc-950/90'
-                        : 'border-zinc-700/50 bg-zinc-800/50 cursor-not-allowed'
-                    }`}
+                    className={`px-6 py-3 rounded-lg transition-all duration-200 ${hasVerifiedID ? 'bg-violet-500/20 hover:bg-violet-500/30 text-violet-300 border border-violet-500/30' : 'bg-zinc-800/50 text-zinc-500 border border-zinc-700/30'}`}
                   >
-                    <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                    <span className={`relative font-medium tracking-wider ${
-                      hasVerifiedID
-                        ? 'text-emerald-300 group-hover:text-white'
-                        : 'text-zinc-500'
-                    }`}>
-                      {verifiedVideos.length > 0 ? 'ADD VIDEO' : 'RECORD VIDEO'}
-                    </span>
+                    Record Your First Video
                   </button>
                 </div>
-
-                {/* Videos List with Labels and View Buttons */}
-                {authVideos.length > 0 && (
-                  <div className="mt-4 space-y-3">
-                    <h4 className="text-sm font-medium text-zinc-400 tracking-wide uppercase">Your Videos</h4>
-                    {authVideos.map((video, index) => (
-                      <div key={video.id} className="bg-zinc-900/50 rounded-lg p-4 border border-zinc-800/50">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-3 h-3 rounded-full flex-shrink-0 mt-1 ${video.status === 'verified' ? 'bg-emerald-400' : 'bg-yellow-400'}`}></div>
-                            <div>
-                              <h5 className="text-sm font-medium text-white">
-                                Authentication Video {index + 1}
-                              </h5>
-                              <div className="flex items-center gap-2 text-xs text-zinc-400 mt-1">
-                                <span>{video.declared_items_count} items declared</span>
-                                <span>•</span>
-                                <span className={`px-2 py-0.5 rounded ${
-                                  video.status === 'verified' 
-                                    ? 'bg-emerald-900/50 text-emerald-300' 
-                                    : 'bg-yellow-900/50 text-yellow-300'
-                                }`}>
-                                  {video.status}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <a
-                              href={video.video_url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-violet-400 hover:text-violet-300 px-3 py-1.5 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/30 rounded transition-colors"
-                            >
-                              Watch Video
-                            </a>
-                            <button
-                              onClick={() => setShowDeleteConfirm({type: 'video', id: video.id})}
-                              disabled={deletingVideoId === video.id}
-                              className="text-xs text-red-400 hover:text-red-300 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded transition-colors"
-                            >
-                              {deletingVideoId === video.id ? 'Deleting...' : 'Delete'}
-                            </button>
-                          </div>
-                        </div>
-                        
-                        {/* Declaration Text */}
-                        <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-3">
-                          <div className="flex items-start gap-2">
-                            <div className="text-xs text-zinc-500 font-mono uppercase tracking-wide flex-shrink-0 mt-0.5">
-                              Declaration:
-                            </div>
-                            <p className="text-sm text-zinc-300 leading-relaxed">
-                              {video.declaration_text.length > 200 
-                                ? `${video.declaration_text.substring(0, 200)}...` 
-                                : video.declaration_text
-                              }
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+              )}
             </div>
 
-            {/* Batch Listings Card */}
-            <div className="relative bg-zinc-950/80 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6 overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-violet-500/10 to-transparent rounded-full blur-2xl"></div>
-              <div className="relative flex items-center justify-between">
+            {/* Active Listings Section */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between mb-6">
                 <div>
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className={`w-3 h-3 rounded-full ${canCreateListings ? 'bg-violet-400' : 'bg-zinc-600'}`}></div>
-                    <h3 className="text-xl font-bold text-white tracking-tight">Create Listings</h3>
-                  </div>
-                  <p className="text-zinc-300 mb-4">
-                    {canCreateListings 
-                      ? "Create authenticated auction listings from your verified videos"
-                      : "Complete verification and record videos to create listings"}
+                  <h2 className="text-2xl font-bold text-white mb-2">Active Auctions</h2>
+                  <p className="text-zinc-400">
+                    Your authenticated auction listings organized by video
                   </p>
-                  <div className="text-sm text-zinc-400">
-                    Available videos: <span className="text-white">{verifiedVideos.length}</span>
-                  </div>
                 </div>
+              </div>
+
+              {authenticatedListings.length > 0 ? (
+                <div className="space-y-6">
+                  {verifiedVideos.map((video, videoIndex) => {
+                    const videoListings = authenticatedListings.filter(listing => listing.auth_video_id === video.id);
+                    if (videoListings.length === 0) return null;
+                    
+                    return (
+                      <div key={video.id} className="bg-zinc-900/30 backdrop-blur-sm border border-zinc-700/30 rounded-xl p-5">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-2 h-2 bg-emerald-400 rounded-full"></div>
+                            <h3 className="font-semibold text-white">Authentication Video {videoIndex + 1}</h3>
+                            <span className="text-xs text-zinc-500 bg-zinc-800/50 px-2 py-1 rounded">
+                              {videoListings.length} listings
+                            </span>
+                          </div>
+                          <a 
+                            href={video.video_url} 
+                            target="_blank" 
+                            rel="noopener noreferrer" 
+                            className="text-violet-400 hover:text-violet-300 transition-colors text-sm"
+                          >
+                            Watch Video
+                          </a>
+                        </div>
+                        
+                        <div className="space-y-3">
+                          {videoListings.map((listing) => (
+                            <div key={listing.id} className="group relative">
+                              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-transparent rounded-lg opacity-0 group-hover:opacity-100 transition-all duration-300"></div>
+                              <div className="relative bg-zinc-800/30 rounded-lg p-4 hover:bg-zinc-800/50 transition-all duration-300">
+                                <div className="flex items-start justify-between mb-2">
+                                  <div className="flex items-center gap-3">
+                                    <div className={`w-2 h-2 rounded-full ${listing.auction_status === 'active' ? 'bg-green-400' : 'bg-zinc-500'} animate-pulse`}></div>
+                                    <div className="flex-1">
+                                      <h4 className="font-medium text-white">{listing.title}</h4>
+                                      <div className="flex items-center gap-2 text-sm text-zinc-400">
+                                        <span>Item #{listing.item_position_in_video}</span>
+                                        <span>•</span>
+                                        <span>${listing.starting_price}</span>
+                                        <span>•</span>
+                                        <span>{listing.bid_count} bids</span>
+                                        <span>•</span>
+                                        <span className={`px-1.5 py-0.5 rounded text-xs ${listing.auction_status === 'active' ? 'bg-green-500/20 text-green-300' : 'bg-zinc-500/20 text-zinc-300'}`}>
+                                          {listing.auction_status}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <a href={`/auctions/${listing.auction_item_id}`} target="_blank" rel="noopener noreferrer" className="text-violet-400 hover:text-violet-300 transition-colors text-sm">
+                                      View
+                                    </a>
+                                    <button
+                                      onClick={() => setShowDeleteConfirm({type: 'listing', id: listing.id})}
+                                      className="text-red-400 hover:text-red-300 transition-colors text-sm"
+                                    >
+                                      ×
+                                    </button>
+                                  </div>
+                                </div>
+                                <p className="text-sm text-zinc-300 leading-relaxed mb-2">
+                                  {listing.description.length > 100 ? `${listing.description.substring(0, 100)}...` : listing.description}
+                                </p>
+                                {listing.video_timestamp_start && (
+                                  <div className="text-xs text-zinc-500">
+                                    Video: {listing.video_timestamp_start}s{listing.video_timestamp_end && ` - ${listing.video_timestamp_end}s`}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-12 border-2 border-dashed border-zinc-700/50 rounded-xl">
+                  <div className="w-16 h-16 bg-zinc-800/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <span className="text-2xl">🚀</span>
+                  </div>
+                  <p className="text-zinc-400 mb-4">No active auctions yet</p>
+                  <p className="text-sm text-zinc-500">Create listings from your verified videos to get started</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Delete Confirmation Modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md flex items-center justify-center z-50">
+            <div className="bg-zinc-900/90 backdrop-blur-sm border border-zinc-700/50 rounded-2xl p-8 max-w-md mx-4">
+              <h3 className="text-xl font-bold text-white mb-4">
+                Confirm Delete {showDeleteConfirm.type === 'video' ? 'Video' : 'Listing'}
+              </h3>
+              <p className="text-zinc-300 mb-8 leading-relaxed">
+                {showDeleteConfirm.type === 'video' 
+                  ? 'This will permanently delete your authentication video. Any associated listings must be deleted first.'
+                  : 'This will permanently delete your authenticated listing and remove it from auction. This action cannot be undone.'
+                }
+              </p>
+              <div className="flex gap-4">
                 <button
-                  onClick={() => setStep('batch-listings')}
-                  disabled={!canCreateListings}
-                  className={`group relative overflow-hidden border px-6 py-3 rounded-lg transition-all duration-300 ${
-                    canCreateListings
-                      ? 'border-violet-500/40 hover:border-violet-400/80 bg-zinc-950/90'
-                      : 'border-zinc-700/50 bg-zinc-800/50 cursor-not-allowed'
-                  }`}
+                  onClick={() => setShowDeleteConfirm(null)}
+                  className="flex-1 bg-zinc-700/50 hover:bg-zinc-700 text-white py-3 px-4 rounded-lg transition-all duration-200"
                 >
-                  <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                  <span className={`relative font-medium tracking-wider ${
-                    canCreateListings
-                      ? 'text-violet-300 group-hover:text-white'
-                      : 'text-zinc-500'
-                  }`}>
-                    CREATE LISTINGS
-                  </span>
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (showDeleteConfirm.type === 'video') {
+                      handleDeleteVideo(showDeleteConfirm.id);
+                    } else {
+                      handleDeleteListing(showDeleteConfirm.id);
+                    }
+                  }}
+                  className="flex-1 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 py-3 px-4 rounded-lg transition-all duration-200"
+                >
+                  Delete
                 </button>
               </div>
             </div>
-
-            {/* Authenticated Listings Display */}
-            {authenticatedListings.length > 0 && (
-              <div className="relative bg-zinc-950/80 backdrop-blur-sm border border-zinc-800/50 rounded-2xl p-6 overflow-hidden">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-violet-500/10 to-transparent rounded-full blur-2xl"></div>
-                <div className="relative">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-3 h-3 rounded-full bg-violet-400"></div>
-                    <h3 className="text-xl font-bold text-white tracking-tight">Active Authenticated Listings</h3>
-                    <div className="px-3 py-1 bg-violet-500/20 border border-violet-500/30 rounded text-xs font-mono text-violet-300">
-                      {authenticatedListings.length} LISTINGS
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-4">
-                    {authenticatedListings.map((listing) => (
-                      <div key={listing.id} className="bg-zinc-900/50 border border-zinc-800/50 rounded-lg p-4">
-                        <div className="flex items-start justify-between mb-3">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-3 h-3 rounded-full flex-shrink-0 mt-1 ${
-                              listing.auction_status === 'active' ? 'bg-green-400' : 
-                              listing.auction_status === 'ended' ? 'bg-zinc-500' : 'bg-yellow-400'
-                            }`}></div>
-                            <div>
-                              <h4 className="text-sm font-medium text-white">{listing.title}</h4>
-                              <div className="flex items-center gap-2 text-xs text-zinc-400 mt-1">
-                                <span>Item #{listing.item_position_in_video}</span>
-                                <span>•</span>
-                                <span>${listing.starting_price}</span>
-                                <span>•</span>
-                                <span>{listing.bid_count} bids</span>
-                                <span>•</span>
-                                <span className={`px-2 py-0.5 rounded ${
-                                  listing.auction_status === 'active' ? 'bg-green-900/50 text-green-300' :
-                                  listing.auction_status === 'ended' ? 'bg-zinc-700/50 text-zinc-300' :
-                                  'bg-yellow-900/50 text-yellow-300'
-                                }`}>
-                                  {listing.auction_status}
-                                </span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <a 
-                              href={`/auctions/${listing.auction_item_id}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-violet-400 hover:text-violet-300 px-3 py-1.5 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/30 rounded transition-colors"
-                            >
-                              View Auction
-                            </a>
-                            <button
-                              onClick={() => setShowDeleteConfirm({type: 'listing', id: listing.id})}
-                              disabled={deletingListingId === listing.id}
-                              className="text-xs text-red-400 hover:text-red-300 px-3 py-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 rounded transition-colors"
-                            >
-                              {deletingListingId === listing.id ? 'Deleting...' : 'Delete'}
-                            </button>
-                          </div>
-                        </div>
-                        
-                        {/* Item Description Preview */}
-                        <div className="bg-zinc-800/50 border border-zinc-700/50 rounded-lg p-3">
-                          <p className="text-sm text-zinc-300 leading-relaxed">
-                            {listing.description.length > 150 
-                              ? `${listing.description.substring(0, 150)}...` 
-                              : listing.description
-                            }
-                          </p>
-                          {listing.video_timestamp_start && (
-                            <div className="mt-2 text-xs text-zinc-500 font-mono">
-                              Video timestamp: {listing.video_timestamp_start}s
-                              {listing.video_timestamp_end && ` - ${listing.video_timestamp_end}s`}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
-
-          {/* Delete Confirmation Modal */}
-          {showDeleteConfirm && (
-            <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
-              <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-6 max-w-md mx-4">
-                <h3 className="text-lg font-bold text-white mb-4">
-                  Confirm Delete {showDeleteConfirm.type === 'video' ? 'Video' : 'Listing'}
-                </h3>
-                <p className="text-zinc-300 mb-6">
-                  {showDeleteConfirm.type === 'video' 
-                    ? 'This will permanently delete your authentication video. Any associated listings must be deleted first.'
-                    : 'This will permanently delete your authenticated listing and remove it from auction. This action cannot be undone.'
-                  }
-                </p>
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowDeleteConfirm(null)}
-                    className="flex-1 bg-zinc-700 hover:bg-zinc-600 text-white py-2 px-4 rounded transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (showDeleteConfirm.type === 'video') {
-                        handleDeleteVideo(showDeleteConfirm.id);
-                      } else {
-                        handleDeleteListing(showDeleteConfirm.id);
-                      }
-                    }}
-                    className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded transition-colors"
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        )}
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 py-8">
+    <div className="min-h-screen bg-gradient-to-br from-zinc-950 via-zinc-900 to-violet-950/20 py-8">
       <div className="max-w-4xl mx-auto px-6">
         {/* Back Button */}
         <button
           onClick={() => setStep('overview')}
-          className="mb-6 text-violet-400 hover:text-violet-300 flex items-center gap-2 transition-colors duration-300"
+          className="mb-8 text-violet-400 hover:text-violet-300 flex items-center gap-2 transition-all duration-200 group"
         >
-          ← Back to Overview
+          <span className="group-hover:-translate-x-1 transition-transform duration-200">←</span>
+          Back to Overview
         </button>
 
         {/* Step Content */}
@@ -606,11 +581,14 @@ export default function NewVideoAuthPage() {
           />
         )}
 
-        {step === 'batch-listings' && verifiedVideos.length > 0 && (
+        {step === 'batch-listings' && selectedVideoForListings && (
           <BatchListingForm
-            authVideo={verifiedVideos[0]} // For now, use first verified video
+            authVideo={selectedVideoForListings}
             onListingsCreated={handleListingsCreated}
-            onCancel={() => setStep('overview')}
+            onCancel={() => {
+              setSelectedVideoForListings(null);
+              setStep('overview');
+            }}
           />
         )}
       </div>
@@ -618,35 +596,51 @@ export default function NewVideoAuthPage() {
   );
 }
 
-interface StepIndicatorProps {
-  number: number;
+interface ProgressNodeProps {
+  icon: string;
   title: string;
-  description: string;
+  subtitle: string;
   completed: boolean;
-  active: boolean;
+  onClick: () => void;
+  disabled?: boolean;
 }
 
-function StepIndicator({ number, title, description, completed, active }: StepIndicatorProps) {
+function ProgressNode({ icon, title, subtitle, completed, onClick, disabled = false }: ProgressNodeProps) {
   return (
-    <div className="text-center relative">
-      <div className={`w-14 h-14 rounded-full flex items-center justify-center font-bold text-lg mb-4 transition-all duration-500 relative overflow-hidden ${
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`group relative p-6 rounded-2xl transition-all duration-300 ${
         completed 
-          ? 'bg-gradient-to-br from-violet-500 to-violet-600 text-white shadow-lg shadow-violet-500/30' 
-          : active 
-            ? 'bg-zinc-950 border-2 border-violet-500/60 text-violet-400' 
-            : 'bg-zinc-900 border border-zinc-700 text-zinc-500'
-      }`}>
-        {completed && (
-          <div className="absolute inset-0 bg-gradient-to-br from-violet-400/20 to-transparent"></div>
-        )}
-        <span className="relative">{completed ? '✓' : number}</span>
+          ? 'bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 border border-emerald-500/30 hover:border-emerald-500/50' 
+          : disabled
+            ? 'bg-zinc-800/30 border border-zinc-700/30 cursor-not-allowed opacity-50'
+            : 'bg-zinc-800/50 border border-zinc-700/50 hover:border-zinc-600/70 hover:bg-zinc-800/70'
+      }`}
+    >
+      {completed && (
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-2xl"></div>
+      )}
+      <div className="relative text-center">
+        <div className={`text-3xl mb-3 transition-transform duration-300 ${!disabled && 'group-hover:scale-110'}`}>
+          {icon}
+        </div>
+        <h3 className={`font-semibold text-sm mb-1 ${completed || !disabled ? 'text-white' : 'text-zinc-500'}`}>
+          {title}
+        </h3>
+        <p className={`text-xs ${completed || !disabled ? 'text-zinc-400' : 'text-zinc-600'}`}>
+          {subtitle}
+        </p>
       </div>
-      <h3 className={`font-medium mb-2 text-sm tracking-wider uppercase ${active || completed ? 'text-white' : 'text-zinc-500'}`}>
-        {title}
-      </h3>
-      <p className={`text-xs leading-relaxed ${active || completed ? 'text-zinc-300' : 'text-zinc-600'}`}>
-        {description}
-      </p>
+    </button>
+  );
+}
+
+function FlowArrow({ completed }: { completed: boolean }) {
+  return (
+    <div className="flex items-center">
+      <div className={`w-12 h-0.5 transition-all duration-700 ${completed ? 'bg-emerald-400' : 'bg-zinc-700'}`}></div>
+      <div className={`w-0 h-0 border-l-4 border-t-2 border-b-2 border-t-transparent border-b-transparent transition-all duration-700 ${completed ? 'border-l-emerald-400' : 'border-l-zinc-700'}`}></div>
     </div>
   );
 }
