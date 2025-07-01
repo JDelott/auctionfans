@@ -2,11 +2,56 @@
 
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
+
+interface IDVerificationStatus {
+  verified: boolean;
+  status: string;
+  canSubmit: boolean;
+}
 
 export default function CreatorDashboard() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const [idVerificationStatus, setIdVerificationStatus] = useState<IDVerificationStatus | null>(null);
+  const [loadingVerification, setLoadingVerification] = useState(true);
+
+  useEffect(() => {
+    if (!loading && user?.is_creator) {
+      checkVerificationStatus();
+    }
+  }, [user, loading]);
+
+  const checkVerificationStatus = async () => {
+    try {
+      const response = await fetch('/api/creator-verification/id-verification');
+      const data = await response.json();
+      
+      if (response.ok) {
+        setIdVerificationStatus({
+          verified: data.verified,
+          status: data.status,
+          canSubmit: data.canSubmit
+        });
+      } else {
+        setIdVerificationStatus({
+          verified: false,
+          status: 'none',
+          canSubmit: true
+        });
+      }
+    } catch (error) {
+      console.error('Failed to check ID verification status:', error);
+      setIdVerificationStatus({
+        verified: false,
+        status: 'error',
+        canSubmit: true
+      });
+    } finally {
+      setLoadingVerification(false);
+    }
+  };
 
   if (loading) {
     return <div className="min-h-screen bg-zinc-950 flex items-center justify-center">
@@ -18,6 +63,8 @@ export default function CreatorDashboard() {
     router.push('/auth/login');
     return null;
   }
+
+  const isVerified = idVerificationStatus?.verified ?? false;
 
   return (
     <div className="min-h-screen bg-zinc-950 text-white">
@@ -83,57 +130,105 @@ export default function CreatorDashboard() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                   </svg>
                 </div>
-                <span className="text-xs bg-violet-600/30 text-violet-300 px-2 py-1 rounded-full font-medium">VERIFIED CREATOR</span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${isVerified ? 'bg-emerald-500/20 text-emerald-300' : 'bg-violet-600/30 text-violet-300'}`}>
+                    {isVerified ? 'VERIFIED CREATOR' : 'VERIFICATION AVAILABLE'}
+                  </span>
+                  {!loadingVerification && idVerificationStatus && (
+                    <span className="text-xs text-zinc-500">
+                      Status: {idVerificationStatus.status}
+                    </span>
+                  )}
+                </div>
               </div>
               
               <h3 className="text-xl font-bold mb-2">Authenticated Content Items</h3>
               <p className="text-zinc-400 mb-6 text-sm">
-                Verify item ownership through creator authentication and provide official authenticity certificates to your fans
+                {isVerified 
+                  ? "Create verified listings with your authenticated creator status and provide official authenticity certificates"
+                  : "Verify item ownership through creator authentication and provide official authenticity certificates to your fans"
+                }
               </p>
               
               <div className="space-y-3 mb-6">
                 <div className="flex items-center text-sm text-zinc-300">
-                  <div className="w-1.5 h-1.5 bg-violet-400 rounded-full mr-3"></div>
+                  <div className={`w-1.5 h-1.5 rounded-full mr-3 ${isVerified ? 'bg-emerald-400' : 'bg-violet-400'}`}></div>
                   Creator ID verification for fan trust
                 </div>
                 <div className="flex items-center text-sm text-zinc-300">
-                  <div className="w-1.5 h-1.5 bg-violet-400 rounded-full mr-3"></div>
+                  <div className={`w-1.5 h-1.5 rounded-full mr-3 ${isVerified ? 'bg-emerald-400' : 'bg-violet-400'}`}></div>
                   Video proof of item ownership from content
                 </div>
                 <div className="flex items-center text-sm text-zinc-300">
-                  <div className="w-1.5 h-1.5 bg-violet-400 rounded-full mr-3"></div>
+                  <div className={`w-1.5 h-1.5 rounded-full mr-3 ${isVerified ? 'bg-emerald-400' : 'bg-violet-400'}`}></div>
                   Verified creator badge increases fan confidence
                 </div>
                 <div className="flex items-center text-sm text-zinc-300">
-                  <div className="w-1.5 h-1.5 bg-violet-400 rounded-full mr-3"></div>
+                  <div className={`w-1.5 h-1.5 rounded-full mr-3 ${isVerified ? 'bg-emerald-400' : 'bg-violet-400'}`}></div>
                   Official authenticity certificates for buyers
                 </div>
                 <div className="flex items-center text-sm text-zinc-300">
-                  <div className="w-1.5 h-1.5 bg-violet-400 rounded-full mr-3"></div>
+                  <div className={`w-1.5 h-1.5 rounded-full mr-3 ${isVerified ? 'bg-emerald-400' : 'bg-violet-400'}`}></div>
                   Batch authenticate multiple content items
                 </div>
               </div>
 
-              <div className="bg-violet-900/20 border border-violet-700/30 rounded-lg p-3 mb-4">
-                <div className="text-violet-300 font-medium text-xs mb-1">Perfect For:</div>
+              <div className={`border rounded-lg p-3 mb-4 ${isVerified ? 'bg-emerald-900/20 border-emerald-700/30' : 'bg-violet-900/20 border-violet-700/30'}`}>
+                <div className={`font-medium text-xs mb-1 ${isVerified ? 'text-emerald-300' : 'text-violet-300'}`}>
+                  {isVerified ? 'You can now sell:' : 'Perfect For:'}
+                </div>
                 <p className="text-zinc-300 text-xs">
                   Clothing, accessories, gear, collectibles, or any items featured in your videos, streams, or posts
                 </p>
               </div>
               
               <div className="flex gap-3">
-                <Link 
-                  href="/creator/new-video-auth"
-                  className="bg-violet-600 hover:bg-violet-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                >
-                  Get Verified
-                </Link>
-                <Link 
-                  href="/creator/auctions"
-                  className="border border-violet-500/30 text-violet-400 hover:text-violet-300 hover:border-violet-500/50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                >
-                  View Items
-                </Link>
+                {loadingVerification ? (
+                  <div className="bg-zinc-700/50 text-zinc-400 px-4 py-2 rounded-lg text-sm font-medium">
+                    Checking status...
+                  </div>
+                ) : (
+                  <Link 
+                    href="/creator/new-video-auth"
+                    className={`group relative overflow-hidden px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] border backdrop-blur-sm text-white hover:text-white shadow-lg ${
+                      isVerified 
+                        ? 'border-emerald-400/30 hover:border-emerald-300/50 bg-emerald-500/10 hover:bg-emerald-400/15 shadow-emerald-500/10 hover:shadow-emerald-400/20'
+                        : 'border-violet-400/30 hover:border-violet-300/50 bg-violet-500/10 hover:bg-violet-400/15 shadow-violet-500/10 hover:shadow-violet-400/20'
+                    }`}
+                    style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}
+                  >
+                    {/* Glass reflection effect */}
+                    <div className={`absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
+                      isVerified 
+                        ? 'bg-gradient-to-br from-emerald-400/20 via-transparent to-emerald-600/10'
+                        : 'bg-gradient-to-br from-violet-400/20 via-transparent to-violet-600/10'
+                    }`}></div>
+                    
+                    {/* Inner content */}
+                    <div className="relative flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                        isVerified 
+                          ? 'bg-emerald-300 group-hover:bg-emerald-100 group-hover:shadow-md group-hover:shadow-emerald-200/60'
+                          : 'bg-violet-300 group-hover:bg-violet-100 group-hover:shadow-md group-hover:shadow-violet-200/60'
+                      }`}></div>
+                      <span className="tracking-wide font-mono text-xs uppercase font-bold">
+                        {isVerified ? 'Create Listings' : 'Get Verified'}
+                      </span>
+                      <div className={`w-1 h-1 rounded-full transition-all duration-300 ${
+                        isVerified 
+                          ? 'bg-emerald-200 group-hover:bg-emerald-100'
+                          : 'bg-violet-200 group-hover:bg-violet-100'
+                      }`}></div>
+                    </div>
+                    
+                    {/* Swiss geometric accent */}
+                    <div className={`absolute top-0 right-3 w-4 h-[1px] transition-all duration-300 ${
+                      isVerified 
+                        ? 'bg-emerald-200/60 group-hover:bg-emerald-100/80 group-hover:w-6'
+                        : 'bg-violet-200/60 group-hover:bg-violet-100/80 group-hover:w-6'
+                    }`}></div>
+                  </Link>
+                )}
               </div>
             </div>
           </div>
@@ -187,25 +282,33 @@ export default function CreatorDashboard() {
                 </p>
               </div>
               
-              <div className="flex gap-3">
+              <div>
                 <Link 
                   href="/creator/create-auction"
-                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                  className="group relative overflow-hidden border border-emerald-400/30 hover:border-emerald-300/50 bg-emerald-500/10 hover:bg-emerald-400/15 text-white hover:text-white px-6 py-3 rounded-lg text-sm font-semibold transition-all duration-300 transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-emerald-500/10 hover:shadow-emerald-400/20 inline-flex items-center backdrop-blur-sm"
+                  style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}
                 >
-                  Start Selling
-                </Link>
-                <Link 
-                  href="/creator/auctions"
-                  className="border border-emerald-500/30 text-emerald-400 hover:text-emerald-300 hover:border-emerald-500/50 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                >
-                  View Auctions
+                  {/* Glass reflection effect */}
+                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-400/20 via-transparent to-emerald-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+                  
+                  {/* Inner content */}
+                  <div className="relative flex items-center gap-2">
+                    <div className="w-2 h-2 bg-emerald-300 group-hover:bg-emerald-100 rounded-full group-hover:shadow-md group-hover:shadow-emerald-200/60 transition-all duration-300"></div>
+                    <span className="tracking-wide font-mono text-xs uppercase font-bold">
+                      Start Selling
+                    </span>
+                    <div className="w-1 h-1 bg-emerald-200 group-hover:bg-emerald-100 rounded-full transition-all duration-300"></div>
+                  </div>
+                  
+                  {/* Swiss geometric accent */}
+                  <div className="absolute top-0 right-3 w-4 h-[1px] bg-emerald-200/60 group-hover:bg-emerald-100/80 group-hover:w-6 transition-all duration-300"></div>
                 </Link>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Compact Electric CTA */}
+        {/* Updated Compact Electric CTA */}
         <div className="mt-12 relative bg-zinc-900/50 border border-zinc-800/50 rounded-xl p-8 text-center overflow-hidden">
           {/* Subtle electric accents */}
           <div className="absolute top-0 left-1/4 w-32 h-[1px] bg-gradient-to-r from-transparent via-violet-500/50 to-transparent"></div>
@@ -219,23 +322,45 @@ export default function CreatorDashboard() {
           <div className="flex gap-4 justify-center">
             <Link 
               href="/creator/new-video-auth" 
-              className="group relative overflow-hidden border border-violet-500/30 hover:border-violet-400/60 bg-zinc-950/90 px-6 py-2.5 rounded-lg transition-all duration-300"
+              className={`group relative overflow-hidden border backdrop-blur-sm px-6 py-3 rounded-lg transition-all duration-300 hover:scale-[1.02] ${
+                isVerified 
+                  ? 'border-emerald-400/20 hover:border-emerald-300/40 bg-emerald-500/5 hover:bg-emerald-400/10'
+                  : 'border-violet-400/20 hover:border-violet-300/40 bg-violet-500/5 hover:bg-violet-400/10'
+              }`}
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <div className="relative flex items-center gap-2">
-                <div className="w-1 h-1 bg-violet-400 rounded-full group-hover:shadow-sm group-hover:shadow-violet-400"></div>
-                <span className="text-violet-300 group-hover:text-white font-medium text-sm tracking-wider">VERIFIED</span>
+              <div className={`absolute inset-0 bg-gradient-to-r to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 ${
+                isVerified ? 'from-emerald-500/5' : 'from-violet-500/5'
+              }`}></div>
+              <div className="relative flex items-center gap-3">
+                <div className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                  isVerified 
+                    ? 'bg-emerald-300 group-hover:bg-emerald-100 group-hover:shadow-md group-hover:shadow-emerald-200/60' 
+                    : 'bg-violet-300 group-hover:bg-violet-100 group-hover:shadow-md group-hover:shadow-violet-200/60'
+                }`}></div>
+                <span className="text-zinc-100 group-hover:text-white font-mono text-xs tracking-wider transition-colors duration-300 font-bold"
+                style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
+                >
+                  {isVerified ? 'VERIFIED' : 'GET VERIFIED'}
+                </span>
+                <div className={`w-3 h-[1px] transition-all duration-300 ${
+                  isVerified 
+                    ? 'bg-emerald-200/60 group-hover:bg-emerald-100/80' 
+                    : 'bg-violet-200/60 group-hover:bg-violet-100/80'
+                }`}></div>
               </div>
             </Link>
             
             <Link 
               href="/creator/create-auction" 
-              className="group relative overflow-hidden border border-emerald-500/30 hover:border-emerald-400/60 bg-zinc-950/90 px-6 py-2.5 rounded-lg transition-all duration-300"
+              className="group relative overflow-hidden border border-emerald-400/20 hover:border-emerald-300/40 bg-emerald-500/5 hover:bg-emerald-400/10 px-6 py-3 rounded-lg transition-all duration-300 hover:scale-[1.02] backdrop-blur-sm"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-              <div className="relative flex items-center gap-2">
-                <div className="w-1 h-1 bg-emerald-400 rounded-full group-hover:shadow-sm group-hover:shadow-emerald-400"></div>
-                <span className="text-emerald-300 group-hover:text-white font-medium text-sm tracking-wider">STANDARD</span>
+              <div className="absolute inset-0 bg-gradient-to-r from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
+              <div className="relative flex items-center gap-3">
+                <div className="w-1.5 h-1.5 bg-emerald-300 group-hover:bg-emerald-100 rounded-full group-hover:shadow-md group-hover:shadow-emerald-200/60 transition-all duration-300"></div>
+                <span className="text-zinc-100 group-hover:text-white font-mono text-xs tracking-wider transition-colors duration-300 font-bold"
+                style={{ textShadow: '0 1px 2px rgba(0,0,0,0.4)' }}
+                >STANDARD</span>
+                <div className="w-3 h-[1px] bg-emerald-200/60 group-hover:bg-emerald-100/80 transition-all duration-300"></div>
               </div>
             </Link>
           </div>
